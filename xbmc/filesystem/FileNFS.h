@@ -51,7 +51,6 @@ class DllLibNfs;
 class CNfsConnection : public CCriticalSection
 {     
 public:
-  typedef std::map<struct nfsfh  *, unsigned int> tFileKeepAliveMap;  
   
   CNfsConnection();
   ~CNfsConnection();
@@ -74,13 +73,7 @@ public:
   void CheckIfIdle();
   void SetActivityTime();
   void Deinit();
-  bool HandleDyLoad();//loads the lib if needed
-  //adds the filehandle to the keep alive list or resets
-  //the timeout for this filehandle if already in list
-  void resetKeepAlive(struct nfsfh  *_pFileHandle);
-  //removes file handle from keep alive list
-  void removeFromKeepAliveList(struct nfsfh  *_pFileHandle);  
-  
+  bool HandleDyLoad();//loads the lib if needed 
   const CStdString& GetConnectedIp() const {return m_resolvedHostName;}
   const CStdString& GetConnectedExport() const {return m_exportPath;}
 
@@ -93,15 +86,12 @@ private:
   size_t m_writeChunkSize;//current write chunksize of connected server
   int m_OpenConnections;//number of open connections
   unsigned int m_IdleTimeout;//timeout for idle connection close and dyunload
-  tFileKeepAliveMap m_KeepAliveTimeouts;//mapping filehandles to its idle timeout
   DllLibNfs *m_pLibNfs;//the lib
   std::list<CStdString> m_exportList;//list of exported pathes of current connected servers
-  CCriticalSection keepAliveLock;
  
   void clearMembers();
   bool resetContext();//clear old nfs context and init new context
   void resolveHost(const CURL &url);//resolve hostname by dnslookup
-  void keepAlive(struct nfsfh  *_pFileHandle);
 };
 
 extern CNfsConnection gNfsConnection;

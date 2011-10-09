@@ -119,7 +119,6 @@ void CNfsConnection::clearMembers()
     m_writeChunkSize = 0;
     m_readChunkSize = 0;  
     m_pNfsContext = NULL;
-    m_KeepAliveTimeouts.clear();    
 }
 
 bool CNfsConnection::resetContext()
@@ -254,55 +253,6 @@ void CNfsConnection::CheckIfIdle()
       }
     }
   }
-  
-  if( m_pNfsContext != NULL )
-  {
-    //handle keep alive on opened files
-    for( tFileKeepAliveMap::iterator it = m_KeepAliveTimeouts.begin();it!=m_KeepAliveTimeouts.end();it++)
-    {
-      CSingleLock lock(keepAliveLock);
-      if(it->second > 0)
-      {
-        it->second--;
-      }
-      else
-      {
-        lock.Leave();
-        keepAlive(it->first);
-        //reset timeout
-        resetKeepAlive(it->first);
-      }
-    }
-  }
-}
-
-//remove file handle from keep alive list on file close
-void CNfsConnection::removeFromKeepAliveList(struct nfsfh  *_pFileHandle)
-{
-  CSingleLock lock(keepAliveLock);
-  m_KeepAliveTimeouts.erase(_pFileHandle);
-}
-
-//reset timeouts on read
-void CNfsConnection::resetKeepAlive(struct nfsfh  *_pFileHandle)
-{
-  CSingleLock lock(keepAliveLock);
-  //adds new keys - refreshs existing ones  
-  m_KeepAliveTimeouts[_pFileHandle] = KEEP_ALIVE_TIMEOUT;
-}
-
-//keep alive the filehandles nfs connection
-//by blindly doing a read 32bytes - seek back to where
-//we were before
-void CNfsConnection::keepAlive(struct nfsfh  *_pFileHandle)
-{
-  off_t offset = 0;
-  char buffer[32];
-  CLog::Log(LOGNOTICE, "NFS: sending keep alive after %i s.",KEEP_ALIVE_TIMEOUT/2);
-  CSingleLock lock(*this);
-  m_pLibNfs->nfs_lseek(m_pNfsContext, _pFileHandle, 0, SEEK_CUR, &offset);
-  m_pLibNfs->nfs_read(m_pNfsContext, _pFileHandle, 32, buffer);
-  m_pLibNfs->nfs_lseek(m_pNfsContext, _pFileHandle, offset, SEEK_SET, &offset);
 }
 
 int CNfsConnection::stat(const CURL &url, struct stat *statbuff)
@@ -509,8 +459,6 @@ unsigned int CFileNFS::Read(void *lpBuf, int64_t uiBufSize)
 
   lock.Leave();//no need to keep the connection lock after that
   
-  gNfsConnection.resetKeepAlive(m_pFileHandle);//triggers keep alive timer reset for this filehandle
-  
   //something went wrong ...
   if (numberOfBytesRead < 0) 
   {
@@ -547,7 +495,6 @@ void CFileNFS::Close()
     int ret = 0;
     CLog::Log(LOGDEBUG,"CFileNFS::Close closing file %s", m_url.GetFileName().c_str());
     ret = gNfsConnection.GetImpl()->nfs_close(gNfsConnection.GetNfsContext(), m_pFileHandle);
-    gNfsConnection.removeFromKeepAliveList(m_pFileHandle);
         
 	  if (ret < 0) 
     {
