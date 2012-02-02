@@ -439,12 +439,26 @@ void CGUISettings::Initialize()
   AddInt(ao, "audiooutput.channellayout", 34100, PCM_LAYOUT_2_0, channelLayout, SPIN_CONTROL_TEXT);
   AddBool(ao, "audiooutput.dontnormalizelevels", 346, true);
 
+  map<int,int> dtslevel, dtscore;
+  dtslevel.insert (make_pair (691, 0));
+  dtslevel.insert (make_pair (692, 1));
+  dtslevel.insert (make_pair (693, 2));
+  dtslevel.insert (make_pair (694, 3));
+  dtslevel.insert (make_pair (695, 4));
+  dtslevel.insert (make_pair (696, 5));
+  dtscore.insert (make_pair (698, 0));
+  dtscore.insert (make_pair (699, 1));
+
 #if (defined(__APPLE__) && defined(__arm__))
   AddBool(g_sysinfo.IsAppleTV2() ? ao : NULL, "audiooutput.ac3passthrough", 364, false);
-  AddBool(g_sysinfo.IsAppleTV2() ? ao : NULL, "audiooutput.dtspassthrough", 254, false);
+  AddInt(g_sysinfo.IsAppleTV2() ? ao : NULL, "audiooutput.dtspassthrough", 690, 0, dtsmode, SPIN_CONTROL_TEXT);
 #else
   AddBool(ao, "audiooutput.ac3passthrough", 364, true);
-  AddBool(ao, "audiooutput.dtspassthrough", 254, true);
+  AddInt(ao, "audiooutput.dtslvlpassthrough", 690, 0, dtslevel, SPIN_CONTROL_TEXT);
+  AddInt(ao, "audiooutput.dtscorepassthrough", 697, 0, dtscore, SPIN_CONTROL_TEXT);
+  AddBool(ao, "audiooutput.eac3passthrough", 348, false);
+  AddBool(ao, "audiooutput.truehdpassthrough", 347, false);
+  AddBool(ao, "audiooutput.mlppassthrough", 349, false);
 #endif
   AddBool(NULL, "audiooutput.passthroughaac", 299, false);
   AddBool(NULL, "audiooutput.passthroughmp1", 300, false);

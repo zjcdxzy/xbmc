@@ -309,6 +309,9 @@
   <string id="344">Actors</string>
   <string id="345">Year</string>
   <string id="346">Boost volume level on downmix</string>
+  <string id="347">- Dolby TrueHD capable receiver</string>
+  <string id="348">- Dolby Digital Plus capable receiver</string>
+  <string id="349">- Meridian Lossless Packing capable receiver</string>
   <string id="350">Programs</string>
   <string id="351">Off</string>
   <string id="352">Dim</string>
@@ -605,6 +608,17 @@
   <string id="663">Would you like to remove it from the library?</string>
   <string id="664">Browse for Script</string>
   <string id="665">Compression level</string>
+
+  <string id="690">- receiver supports</string>
+  <string id="691">no DTS</string>
+  <string id="692">DTS-5.1</string>
+  <string id="693">DTS-ES</string>
+  <string id="694">DTS-96/24</string>
+  <string id="695">DTS-HD High Resolution Audio</string>
+  <string id="696">DTS-HD Master Audio</string>
+  <string id="697">- receiver gets other DTS formats</string>
+  <string id="698">decoded (LPCM)</string>
+  <string id="699">reduced (core)</string>
 
   <string id="700">Cleaning up library</string>
   <string id="701">Removing old songs from the library</string>

@@ -695,7 +695,8 @@ void CGUIWindowSettingsCategory::UpdateSettings()
     else if (
              strSetting.Equals("audiooutput.passthroughdevice") ||
              strSetting.Equals("audiooutput.ac3passthrough") ||
-             strSetting.Equals("audiooutput.dtspassthrough") ||
+             strSetting.Equals("audiooutput.dtslvlpassthrough") ||
+             strSetting.Equals("audiooutput.dtscorepassthrough") ||
              strSetting.Equals("audiooutput.passthroughaac") ||
              strSetting.Equals("audiooutput.passthroughmp1") ||
              strSetting.Equals("audiooutput.passthroughmp2") ||
@@ -703,6 +704,13 @@ void CGUIWindowSettingsCategory::UpdateSettings()
     { // only visible if we are in digital mode
       CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
       if (pControl) pControl->SetEnabled(AUDIO_IS_BITSTREAM(g_guiSettings.GetInt("audiooutput.mode")));
+    }
+    else if (strSetting.Equals("audiooutput.eac3passthrough") ||
+             strSetting.Equals("audiooutput.truehdpassthrough") ||
+             strSetting.Equals("audiooutput.mlppassthrough"))
+    { // only visible if we output to HDMI
+      CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
+      if (pControl) pControl->SetEnabled(g_guiSettings.GetInt("audiooutput.mode") == AUDIO_HDMI);
     }
     else if (strSetting.Equals("musicplayer.crossfade"))
     {

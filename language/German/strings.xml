@@ -313,6 +313,9 @@
   <string id="344">Darsteller</string>
   <string id="345">Jahr</string>
   <string id="346">Lautstärke bei Downmix erhöhen</string>
+  <string id="347">- Receiver unterstützt Dolby TrueHD</string>
+  <string id="348">- Receiver unterstützt Dolby Digital Plus</string>
+  <string id="349">- Receiver unterstützt Meridian Lossless Packing</string>
   <string id="350">Programme</string>
   <string id="351">Aus</string>
   <string id="352">Dimmen</string>
@@ -327,7 +330,7 @@
   <string id="361">Rekurs. Diaschau</string>
   <string id="362">Bildschirm verdunkeln um</string>
   <string id="363">Nach Datei</string>
-  <string id="364">- Receiver unterstützt AC3</string>
+  <string id="364">- Receiver unterstützt Dolby Digital</string>
   <string id="365">Nach Namen</string>
   <string id="366">Nach Jahr</string>
   <string id="367">Nach Bewertung</string>
@@ -610,6 +613,17 @@
   <string id="663">Soll der Eintrag aus der Datenbank entfernt werden?</string>
   <string id="664">Nach Skript suchen</string>
   <string id="665">Komprimierungsgrad</string>
+
+  <string id="690">- Receiver unterstützt</string>
+  <string id="691">kein DTS</string>
+  <string id="692">DTS-5.1</string>
+  <string id="693">DTS-ES</string>
+  <string id="694">DTS-96/24</string>
+  <string id="695">DTS-HD High Resolution Audio</string>
+  <string id="696">DTS-HD Master Audio</string>
+  <string id="697">- Receiver erhält übrige DTS-Formate</string>
+  <string id="698">dekodiert (LPCM)</string>
+  <string id="699">reduziert (Kern)</string>
 
   <string id="700">Datenbank wird bereinigt</string>
   <string id="701">Alte Musikdaten aus der Datenbank löschen</string>
