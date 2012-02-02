@@ -38,6 +38,9 @@
 DEFINE_GUID( _KSDATAFORMAT_SUBTYPE_IEEE_FLOAT, WAVE_FORMAT_IEEE_FLOAT, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 );
 DEFINE_GUID( _KSDATAFORMAT_SUBTYPE_PCM, WAVE_FORMAT_PCM, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 );
 DEFINE_GUID( _KSDATAFORMAT_SUBTYPE_DOLBY_AC3_SPDIF, WAVE_FORMAT_DOLBY_AC3_SPDIF, 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71 );
+DEFINE_GUID( _KSDATAFORMAT_SUBTYPE_DOLBY_DIGITAL_PLUS, 0x0000000a, 0x0cea, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
+DEFINE_GUID( _KSDATAFORMAT_SUBTYPE_DTS_HD, 0x0000000b, 0x0cea, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
+DEFINE_GUID( _KSDATAFORMAT_SUBTYPE_DOLBY_MLP, 0x0000000c, 0x0cea, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71);
 
 const enum PCMChannels dsound_default_channel_layout[][8] = 
 {
@@ -124,28 +127,53 @@ bool CWin32DirectSound::Initialize(IAudioCallback* pCallback, const CStdString& 
 
   //fill waveformatex
   ZeroMemory(&wfxex, sizeof(WAVEFORMATEXTENSIBLE));
-  wfxex.Format.cbSize          =  sizeof(WAVEFORMATEXTENSIBLE)-sizeof(WAVEFORMATEX);
-  wfxex.Format.nChannels       = iChannels;
+  wfxex.Format.cbSize          = sizeof(WAVEFORMATEXTENSIBLE)-sizeof(WAVEFORMATEX);
+  wfxex.Format.wFormatTag      = WAVE_FORMAT_EXTENSIBLE;
   wfxex.Format.nSamplesPerSec  = uiSamplesPerSec;
-  if (bAudioPassthrough)
+  wfxex.Format.wBitsPerSample  = 16;
+  wfxex.Format.nChannels       = 2;
+  wfxex.dwChannelMask          = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
+
+  switch (bAudioPassthrough) 
   {
-    wfxex.dwChannelMask          = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
+  case ENCODED_IEC61937_AC3:
+  case ENCODED_IEC61937_DTS:
     wfxex.Format.wFormatTag      = WAVE_FORMAT_DOLBY_AC3_SPDIF;
     wfxex.SubFormat              = _KSDATAFORMAT_SUBTYPE_DOLBY_AC3_SPDIF;
-    wfxex.Format.wBitsPerSample  = 16;
-    wfxex.Format.nChannels       = 2;
-  }
-  else
-  {
-    wfxex.dwChannelMask          = m_uiSpeakerMask;
+	wfxex.Format.nSamplesPerSec  = 48000;
+	break;
 
-    if (iChannels > 2)
-      wfxex.Format.wFormatTag    = WAVE_FORMAT_EXTENSIBLE;
-    else
+  case ENCODED_IEC61937_EAC3:
+    wfxex.SubFormat              = _KSDATAFORMAT_SUBTYPE_DOLBY_DIGITAL_PLUS;
+	wfxex.Format.nSamplesPerSec  = 192000;
+	break;
+
+  case ENCODED_IEC61937_MAT:
+    wfxex.SubFormat              = _KSDATAFORMAT_SUBTYPE_DOLBY_MLP;
+    wfxex.dwChannelMask         |= SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY |
+                                   SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT |
+                                   SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT;
+    wfxex.Format.nChannels       = 8;
+	wfxex.Format.nSamplesPerSec  = 192000;
+	break;
+
+  case ENCODED_IEC61937_DTSHD:
+    wfxex.SubFormat              = _KSDATAFORMAT_SUBTYPE_DTS_HD;
+    wfxex.dwChannelMask         |= SPEAKER_FRONT_CENTER | SPEAKER_LOW_FREQUENCY |
+                                   SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT |
+                                   SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT;
+    wfxex.Format.nChannels       = 8;
+	wfxex.Format.nSamplesPerSec  = 192000;
+	break;
+
+  default:
+    wfxex.Format.nChannels       = iChannels;
+    if (iChannels <= 2)
       wfxex.Format.wFormatTag    = WAVE_FORMAT_PCM;
-
+    wfxex.dwChannelMask          = m_uiSpeakerMask;
     wfxex.SubFormat              = _KSDATAFORMAT_SUBTYPE_PCM;
     wfxex.Format.wBitsPerSample  = uiBitsPerSample;
+	break;
   }
 
   wfxex.Samples.wValidBitsPerSample = wfxex.Format.wBitsPerSample;
@@ -199,6 +227,13 @@ bool CWin32DirectSound::Initialize(IAudioCallback* pCallback, const CStdString& 
       dsbdesc.dwFlags &= ~DSBCAPS_CTRLVOLUME;
       res = IDirectSound_CreateSoundBuffer(m_pDSound, &dsbdesc, &m_pBuffer, NULL);
     }
+    if (res == DSERR_UNSUPPORTED && bAudioPassthrough == ENCODED_IEC61937_EAC3)
+    {
+      SAFE_RELEASE(m_pBuffer);
+      CLog::Log(LOGDEBUG, __FUNCTION__": Couldn't create secondary buffer (%s). Trying with E-AC3 hack applied.", dserr2str(res));
+      wfxex.Format.wFormatTag = WAVE_FORMAT_DOLBY_AC3_SPDIF;
+      res = IDirectSound_CreateSoundBuffer(m_pDSound, &dsbdesc, &m_pBuffer, NULL);
+	}
     if (res != DS_OK)
     {
       SAFE_RELEASE(m_pBuffer);
