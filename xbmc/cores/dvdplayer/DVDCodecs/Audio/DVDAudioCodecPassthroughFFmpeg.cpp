@@ -33,11 +33,19 @@
 #define OUT_CHANNELS   2
 #define OUT_SAMPLERATE 48000
 
+#define DTS_PREAMBLE_14BE  0x1FFFE800
+#define DTS_PREAMBLE_14LE  0xFF1F00E8
+#define DTS_PREAMBLE_16BE  0x7FFE8001
+#define DTS_PREAMBLE_16LE  0xFE7F0180
+#define DTS_PREAMBLE_HD    0x64582025
+#define MAX_EAC3_BLOCKS    6
+
 /* Lookup tables */
 static const uint16_t AC3Bitrates[] = {32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, 448, 512, 576, 640};
 static const uint16_t AC3FSCod   [] = {48000, 44100, 32000, 0};
+static const uint8_t  AC3BlkCod  [] = {1, 2, 3, 6};
 
-static const uint16_t DTSFSCod   [] = {0, 8000, 16000, 32000, 0, 0, 11025, 22050, 44100, 0, 0, 12000, 24000, 48000, 0, 0};
+static const uint32_t DTSFSCod   [] = {0, 8000, 16000, 32000, 64000, 128000, 11025, 22050, 44100, 88200, 176400, 12000, 24000, 48000, 96000, 192000};
 
 #define NULL_MUXER(muxer) \
   muxer.m_pFormat    = NULL; \
@@ -53,13 +61,15 @@ CDVDAudioCodecPassthroughFFmpeg::CDVDAudioCodecPassthroughFFmpeg(void)
   NULL_MUXER(m_ADTS );
 
   m_pSyncFrame   = NULL;
-  m_Needed       = 0;
-  m_NeededUsed   = 0;
+  m_InFrameSize  = 0;
+  m_OutFrameSize = 0;
+  m_Size         = 0;
   m_SampleRate   = 0;
-
+  m_StreamType   = STREAM_TYPE_NULL;
   m_Codec        = NULL;
   m_Encoder      = NULL;
   m_InitEncoder  = true;
+  m_Encoding     = IAudioRenderer::ENCODED_NONE;
   
   /* make enough room for at-least two audio frames */
   m_DecodeSize   = 0;
@@ -74,7 +84,7 @@ CDVDAudioCodecPassthroughFFmpeg::~CDVDAudioCodecPassthroughFFmpeg(void)
 /*===================== MUXER FUNCTIONS ========================*/
 bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdString muxerName, Muxer &muxer)
 {
-  CLog::Log(LOGINFO, "CDVDAudioCodecPassthroughFFmpeg::SetupMuxer - Trying to setup %s muxer", muxerName.c_str());
+  CLog::Log(LOGINFO, "CDVDAudioCodecPassthroughFFmpeg::SetupMuxer - Trying to setup %s muxer for codec %i/%i", muxerName.c_str(), hints.codec, hints.profile);
 
   /* get the muxer */
   AVOutputFormat *fOut = NULL;
@@ -165,6 +175,13 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
   if(!m_SampleRate && hints.codec == CODEC_ID_AC3)
     m_SampleRate = 48000;
 
+  unsigned dtshd_rate = 0;
+  if (hints.codec == CODEC_ID_DTS && hints.profile >= FF_PROFILE_DTS_HD_HRA) {
+    dtshd_rate = 768000;
+  }
+  m_dllAvUtil.av_set_int(muxer.m_pFormat->priv_data, "dtshd_rate", dtshd_rate);
+  m_dllAvUtil.av_set_int(muxer.m_pFormat->priv_data, "dtshd_fallback_time", -1);
+
   AVCodecContext *codec = muxer.m_pStream->codec;
   codec->codec_type     = AVMEDIA_TYPE_AUDIO;
   codec->codec_id       = hints.codec;
@@ -181,6 +198,20 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
   {
     CLog::Log(LOGERROR, "CDVDAudioCodecPassthrough::SetupMuxer - Failed to write the frame header");
     return false;
+  }
+
+  switch (hints.codec) {
+    case CODEC_ID_AC3 : m_Encoding = IAudioRenderer::ENCODED_IEC61937_AC3;    break;
+    case CODEC_ID_EAC3: m_Encoding = IAudioRenderer::ENCODED_IEC61937_EAC3;   break;
+    case CODEC_ID_DTS : m_Encoding = hints.profile >= FF_PROFILE_DTS_HD_HRA ?
+                                     IAudioRenderer::ENCODED_IEC61937_DTSHD : 
+                                     IAudioRenderer::ENCODED_IEC61937_DTS;    break;
+    case CODEC_ID_MP1 :
+    case CODEC_ID_MP2 :
+    case CODEC_ID_MP3 : m_Encoding = IAudioRenderer::ENCODED_IEC61937_MPEG;   break;
+    case CODEC_ID_MLP :
+    case CODEC_ID_TRUEHD : m_Encoding = IAudioRenderer::ENCODED_IEC61937_MAT; break;
+    default:               m_Encoding = IAudioRenderer::ENCODED_NONE;         break;
   }
 
   CLog::Log(LOGINFO, "CDVDAudioCodecPassthroughFFmpeg::SetupMuxer - %s muxer ready", muxerName.c_str());
@@ -300,12 +331,32 @@ bool CDVDAudioCodecPassthroughFFmpeg::SupportsFormat(CDVDStreamInfo &hints)
 {
   m_pSyncFrame = NULL;
 
-       if (m_bSupportsAC3Out && hints.codec == CODEC_ID_AC3) m_pSyncFrame = &CDVDAudioCodecPassthroughFFmpeg::SyncAC3;
-  else if (m_bSupportsDTSOut && hints.codec == CODEC_ID_DTS) m_pSyncFrame = &CDVDAudioCodecPassthroughFFmpeg::SyncDTS;
-  else if (m_bSupportsAACOut && hints.codec == CODEC_ID_AAC) m_pSyncFrame = &CDVDAudioCodecPassthroughFFmpeg::SyncAAC;
+       if (m_bSupportsAC3Out  && hints.codec == CODEC_ID_AC3)  m_pSyncFrame = &CDVDAudioCodecPassthroughFFmpeg::SyncAC3;
+  else if (m_bSupportsEAC3Out && hints.codec == CODEC_ID_EAC3) m_pSyncFrame = &CDVDAudioCodecPassthroughFFmpeg::SyncAC3;
+  else if (hints.codec == CODEC_ID_DTS)
+  {
+    if (hints.profile > m_iSupportsDTSLvl)
+    {
+      if (!m_bDTSCoreOut) return false;
+      switch (m_iSupportsDTSLvl)
+      {
+      case FF_PROFILE_DTS_HD_MA:  hints.profile = FF_PROFILE_DTS_HD_MA; break;
+      case FF_PROFILE_DTS_HD_HRA: hints.profile = FF_PROFILE_DTS_96_24; break;
+      case FF_PROFILE_DTS_96_24:  hints.profile = FF_PROFILE_DTS_96_24; break;
+      case FF_PROFILE_DTS_ES:     hints.profile = FF_PROFILE_DTS_ES;    break;
+      case FF_PROFILE_DTS:        hints.profile = FF_PROFILE_DTS;       break;
+      default: return false;
+      }
+    }
+    m_coreOnly   = hints.profile <= FF_PROFILE_DTS_96_24;
+    m_pSyncFrame = &CDVDAudioCodecPassthroughFFmpeg::SyncDTS;
+  }
+  else if (m_bSupportsAACOut && hints.codec == CODEC_ID_AAC)    m_pSyncFrame = &CDVDAudioCodecPassthroughFFmpeg::SyncAAC;
   else if (m_bSupportsMP1Out && hints.codec == CODEC_ID_MP1);
   else if (m_bSupportsMP2Out && hints.codec == CODEC_ID_MP2);
   else if (m_bSupportsMP3Out && hints.codec == CODEC_ID_MP3);
+  else if (m_bSupportsTHDOut && hints.codec == CODEC_ID_TRUEHD) m_pSyncFrame = &CDVDAudioCodecPassthroughFFmpeg::SyncMLP;
+  else if (m_bSupportsMLPOut && hints.codec == CODEC_ID_MLP)    m_pSyncFrame = &CDVDAudioCodecPassthroughFFmpeg::SyncMLP;
   else return false;
 
   return true;
@@ -349,11 +400,26 @@ bool CDVDAudioCodecPassthroughFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptio
   if (AUDIO_IS_BITSTREAM(audioMode))
   {
     m_bSupportsAC3Out = g_guiSettings.GetBool("audiooutput.ac3passthrough");
-    m_bSupportsDTSOut = g_guiSettings.GetBool("audiooutput.dtspassthrough");
+    m_iSupportsDTSLvl = g_guiSettings.GetInt("audiooutput.dtslvlpassthrough");
+    m_bDTSCoreOut     = g_guiSettings.GetInt("audiooutput.dtscorepassthrough") != 0;
     m_bSupportsAACOut = g_guiSettings.GetBool("audiooutput.passthroughaac");
     m_bSupportsMP1Out = g_guiSettings.GetBool("audiooutput.passthroughmp1");
     m_bSupportsMP2Out = g_guiSettings.GetBool("audiooutput.passthroughmp2");
     m_bSupportsMP3Out = g_guiSettings.GetBool("audiooutput.passthroughmp3");
+    m_bSupportsEAC3Out= g_guiSettings.GetBool("audiooutput.eac3passthrough");
+    m_bSupportsTHDOut = g_guiSettings.GetBool("audiooutput.truehdpassthrough");
+    m_bSupportsMLPOut = g_guiSettings.GetBool("audiooutput.mlppassthrough");
+
+	switch (m_iSupportsDTSLvl)
+	{
+	case 1:  m_iSupportsDTSLvl = FF_PROFILE_DTS;        break;
+	case 2:  m_iSupportsDTSLvl = FF_PROFILE_DTS_ES;     break;
+	case 3:  m_iSupportsDTSLvl = FF_PROFILE_DTS_96_24;  break;
+	case 4:  m_iSupportsDTSLvl = FF_PROFILE_DTS_HD_HRA; break;
+	case 5:  m_iSupportsDTSLvl = FF_PROFILE_DTS_HD_MA;  break;
+	default: m_iSupportsDTSLvl = 0;
+	}
+	if (audioMode != AUDIO_HDMI) m_iSupportsDTSLvl = std::min(m_iSupportsDTSLvl, FF_PROFILE_DTS_96_24);
   }
   else
     return false;
@@ -366,7 +432,7 @@ bool CDVDAudioCodecPassthroughFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptio
   }
 
   // TODO - some soundcards do support other sample rates, but they are quite uncommon
-  if( hints.samplerate > 0 && hints.samplerate != 48000 )
+  if( hints.samplerate > 0 && hints.samplerate != 48000 && audioMode != AUDIO_HDMI)
   {
     CLog::Log(LOGINFO, "CDVDAudioCodecPassthrough::Open - disabled passthrough due to sample rate not being 48000");
     return false;
@@ -376,6 +442,7 @@ bool CDVDAudioCodecPassthroughFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptio
     return false;
 
   m_dllAvFormat.av_register_all();
+  m_dllAvUtil.av_crc_init(m_crcMLP, 0, 16, 0x2D, sizeof(m_crcMLP));
 
   /* see if the muxer supports our codec (see spdif.c for supported formats) */
   if (!SupportsFormat(hints))
@@ -416,7 +483,8 @@ bool CDVDAudioCodecPassthroughFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptio
   Reset();
 
   /* we will check the first packet's crc */
-  m_LostSync = true;
+  m_LostSync   = true;
+  m_StreamType = STREAM_TYPE_NULL;
   return true;
 }
 
@@ -525,24 +593,59 @@ int CDVDAudioCodecPassthroughFFmpeg::Decode(BYTE* pData, int iSize)
   }
 
   used = 0;
-  while(iSize > 0)
+  for(bool repeat = true; repeat;)
   {
     /* skip data until we can sync and know how much we need */
-    if (m_Needed == 0)
+    if (m_InFrameSize == 0)
     {
+      int room = sizeof(m_FrameBuffer) - m_Size;
+      int copy = std::min(room, iSize);
+      memcpy(m_FrameBuffer + m_Size, pData, copy);
+      m_Size += copy;
+      used   += copy;
+      iSize  -= copy;
+      pData  += copy;
+
       /* if we have a sync function for this codec */
       if (m_pSyncFrame)
       {
-	int skip = (this->*m_pSyncFrame)(pData, iSize, &m_Needed);
-	if (skip > 0)
-	{
-	  /* we lost sync, so invalidate our buffer */
-	  m_NeededUsed = 0;
-	  return used + skip;
-	}
+		int skip = (this->*m_pSyncFrame)(m_FrameBuffer, m_Size);
+        if (skip > 0)
+        {
+          /* we lost sync, so invalidate our buffer */
+          m_Size = std::max((int)(m_Size - skip), 0);
+          if (m_Size > 0) memmove (m_FrameBuffer, m_FrameBuffer + skip, m_Size);
+        }
       }
       else
-        m_Needed = iSize;
+        m_InFrameSize = m_OutFrameSize = m_Size;
+    }
+
+    repeat = iSize > 0;
+
+    if (m_InFrameSize > 0)
+    {
+      /* append one block or less of data */
+      int room = sizeof(m_FrameBuffer) - m_Size;
+      int need = std::max((int)(m_InFrameSize - m_Size), 0);
+      int copy = std::min (room, need);
+      copy = std::min(copy, iSize);
+      memcpy(m_FrameBuffer + m_Size, pData, copy);
+      m_Size += copy;
+      used   += copy;
+      iSize  -= copy;
+      pData  += copy;
+      repeat = iSize > 0;
+
+      /* if we have enough data in the buffer, write it out */
+      if (m_Size >= m_InFrameSize)
+      {
+        WriteFrame(m_SPDIF, m_FrameBuffer, m_OutFrameSize);
+        m_Size -= m_InFrameSize;
+        if (m_Size > 0) memmove (m_FrameBuffer, m_FrameBuffer + m_InFrameSize, m_Size);
+        m_InFrameSize = 0;
+        repeat |= m_Size > 0;
+      }
     }
 
     if(m_SPDIF.m_pStream->codec->sample_rate != m_SampleRate)
@@ -551,30 +654,6 @@ int CDVDAudioCodecPassthroughFFmpeg::Decode(BYTE* pData, int iSize)
                        , m_SPDIF.m_pStream->codec->sample_rate
                        , m_SampleRate);
      m_SPDIF.m_pStream->codec->sample_rate = m_SampleRate;
-    }
-
-    /* check for bad parsing */
-    assert(m_Needed > 0);
-
-    /* append one block or less of data */
-    int copy;
-    int room = sizeof(m_NeededBuffer) - m_NeededUsed;
-    int need = m_Needed - m_NeededUsed;
-    copy = room  > need ? need : room;
-    copy = iSize > copy ? copy : iSize;
-    memcpy(m_NeededBuffer + m_NeededUsed, pData, copy);
-
-    m_NeededUsed += copy;
-    used         += copy;
-    iSize        -= copy;
-    pData        += copy;
-
-    /* if we have enough data in the buffer, write it out */
-    if (m_NeededUsed == m_Needed)
-    {
-      WriteFrame(m_SPDIF, m_NeededBuffer, m_Needed);
-      m_NeededUsed = 0;
-      m_Needed     = 0;
     }
   }
 
@@ -592,10 +671,11 @@ int CDVDAudioCodecPassthroughFFmpeg::GetData(BYTE** dst)
 
 void CDVDAudioCodecPassthroughFFmpeg::Reset()
 {
-  m_DecodeSize = 0;
-  m_LostSync   = true;
-  m_Needed     = 0;
-  m_NeededUsed = 0;
+  m_DecodeSize  = 0;
+  m_LostSync    = true;
+  m_StreamType  = STREAM_TYPE_NULL;
+  m_InFrameSize = 0;
+  m_Size        = 0;
 
   ResetMuxer(m_SPDIF);
   ResetMuxer(m_ADTS );
@@ -626,116 +706,219 @@ int CDVDAudioCodecPassthroughFFmpeg::GetBufferSize()
   if (m_Codec)
     return m_Codec->GetBufferSize();
   else
-    return m_SPDIF.m_Consumed + m_ADTS.m_Consumed + m_NeededUsed;
+    return m_SPDIF.m_Consumed + m_ADTS.m_Consumed + m_Size;
 }
 
 /* ========================== SYNC FUNCTIONS ========================== */
-unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAC3(BYTE* pData, unsigned int iSize, unsigned int *fSize)
+unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAC3(BYTE* pData, unsigned int iSize)
 {
   unsigned int skip = 0;
-  for(skip = 0; iSize - skip > 6; ++skip, ++pData)
+  for(; iSize - skip > 6; ++skip, ++pData)
   {
     /* search for an ac3 sync word */
     if(pData[0] != 0x0b || pData[1] != 0x77)
       continue;
  
-    uint8_t fscod      = pData[4] >> 6;
-    uint8_t frmsizecod = pData[4] & 0x3F;
-    uint8_t bsid       = pData[5] >> 3;
+    uint8_t bsid = pData[5] >> 3;
+    if (bsid > 0x11)
+      continue;
 
-    /* sanity checks on the header */
-    if (
-        fscod      ==   3 ||
-        frmsizecod >   37 ||
-        bsid       > 0x11
-    ) continue;
-
-    /* get the details we need to check crc1 and framesize */
-    uint16_t     bitrate   = AC3Bitrates[frmsizecod >> 1];
-    unsigned int framesize = 0;
-    switch(fscod)
+    if (bsid <= 10)
     {
-      case 0: framesize = bitrate * 2; break;
-      case 1: framesize = (320 * bitrate / 147 + (frmsizecod & 1 ? 1 : 0)); break;
-      case 2: framesize = bitrate * 4; break;
-    }
+      /* Normal AC-3 */
 
-    *fSize = framesize * 2;
-    m_SampleRate = AC3FSCod[fscod];
-
-    /* dont do extensive testing if we have not lost sync */
-    if (!m_LostSync && skip == 0)
-      return 0;
-
-    unsigned int crc_size;
-    /* if we have enough data, validate the entire packet, else try to validate crc2 (5/8 of the packet) */
-    if (framesize <= iSize - skip)
-         crc_size = framesize - 1;
-    else crc_size = (framesize >> 1) + (framesize >> 3) - 1;
-
-    if (crc_size <= iSize - skip)
-      if(m_dllAvUtil.av_crc(m_dllAvUtil.av_crc_get_table(AV_CRC_16_ANSI), 0, &pData[2], crc_size * 2))
+      uint8_t fscod      = pData[4] >> 6;
+      uint8_t frmsizecod = pData[4] & 0x3F;
+      if (fscod == 3 || frmsizecod > 37)
         continue;
 
-    /* if we get here, we can sync */
-    m_LostSync = false;
-    return skip;
+      /* get the details we need to check crc1 and framesize */
+      unsigned int bitRate = AC3Bitrates[frmsizecod >> 1];
+      unsigned int framesize = 0;
+      switch(fscod)
+      {
+        case 0: framesize = bitRate * 2; break;
+        case 1: framesize = (320 * bitRate / 147 + (frmsizecod & 1 ? 1 : 0)); break;
+        case 2: framesize = bitRate * 4; break;
+      }
+
+      m_InFrameSize = m_OutFrameSize = framesize * 2;
+      m_SampleRate  = AC3FSCod[fscod];
+
+      /* dont do extensive testing if we have not lost sync */
+      if (!m_LostSync && skip == 0)
+        return 0;
+
+      unsigned int crc_size;
+      /* if we have enough data, validate the entire packet, else try to validate crc2 (5/8 of the packet) */
+      if (framesize <= iSize - skip)
+           crc_size = framesize - 1;
+      else crc_size = (framesize >> 1) + (framesize >> 3) - 1;
+
+      if (crc_size <= iSize - skip)
+        if(m_dllAvUtil.av_crc(m_dllAvUtil.av_crc_get_table(AV_CRC_16_ANSI), 0, &pData[2], crc_size * 2))
+          continue;
+
+      /* if we get here, we can sync */
+      m_LostSync   = false;
+      m_StreamType = STREAM_TYPE_AC3;
+      CLog::Log(LOGINFO, __FUNCTION__" - AC3 stream detected (%dHz)", m_SampleRate);
+      return skip;
+    }
+    else
+    {
+      /* Enhanced AC-3 */
+      uint8_t strmtyp = pData[2] >> 6;
+      if (strmtyp == 3) continue;
+
+      unsigned int framesize = (((pData[2] & 0x7) << 8) | pData[3]) + 1;
+      uint8_t      fscod     = (pData[4] >> 6) & 0x3;
+      uint8_t      cod       = (pData[4] >> 4) & 0x3;
+      uint8_t      blocks;
+
+      if (fscod == 0x3)
+      {
+        if (cod == 0x3)
+          continue;
+
+        blocks       = 6;
+        m_SampleRate = AC3FSCod[cod] >> 1;
+      }
+      else
+      {
+        blocks       = AC3BlkCod[cod  ];
+        m_SampleRate = AC3FSCod [fscod];
+      }
+
+      m_InFrameSize = m_OutFrameSize = framesize * 2;
+
+      if (!m_LostSync && m_StreamType == STREAM_TYPE_EAC3 && skip == 0)
+        return 0;
+
+      /* if we get here, we can sync */
+      m_LostSync   = false;
+      m_StreamType = STREAM_TYPE_EAC3;
+      CLog::Log(LOGINFO, __FUNCTION__" - E-AC3 stream detected (%dHz)", m_SampleRate);
+      return skip;
+    }
   }
 
   /* if we get here, the entire packet is invalid and we have lost sync */
   m_LostSync = true;
-  return iSize;
+  return skip;
 }
 
-unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncDTS(BYTE* pData, unsigned int iSize, unsigned int *fSize)
+unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncDTS(BYTE* pData, unsigned int iSize)
 {
-  unsigned int skip;
-  unsigned int srCode;
-  bool littleEndian;
+  m_InFrameSize = 0;
 
-  for(skip = 0; iSize - skip > 8; ++skip, ++pData)
+  unsigned int skip = 0;
+  for(; iSize - skip > 10; ++skip, ++pData)
   {
-    /* 16bit le */ if (pData[0] == 0x7F && pData[1] == 0xFE && pData[2] == 0x80 && pData[3] == 0x01                                                 ) littleEndian = true ; else
-    /* 14bit le */ if (pData[0] == 0x1F && pData[1] == 0xFF && pData[2] == 0xE8 && pData[3] == 0x00 && pData[4] == 0x07 && (pData[5] & 0xF0) == 0xF0) littleEndian = true ; else
-    /* 16bit be */ if (pData[1] == 0x7F && pData[0] == 0xFE && pData[3] == 0x80 && pData[2] == 0x01                                                 ) littleEndian = false; else
-    /* 14bit be */ if (pData[1] == 0x1F && pData[0] == 0xFF && pData[3] == 0xE8 && pData[2] == 0x00 && pData[5] == 0x07 && (pData[4] & 0xF0) == 0xF0) littleEndian = false; else
-      continue;
+    unsigned int header = pData[0] << 24 | pData[1] << 16 | pData[2] << 8 | pData[3];
+//    unsigned int hd_sync = 0;
+    unsigned int srate_code, dtsBlocks, frameSize;
+    bool match = true;
 
-    if (littleEndian)
+    switch(header)
     {
-      /* if it is not a termination frame, check the next 6 bits are set */
-      if ((pData[4] & 0x80) == 0x80 && (pData[4] & 0x7C) != 0x7C)
-        continue;
+      /* 14bit BE */
+      case DTS_PREAMBLE_14BE:
+        match = pData[4] == 0x07 && (pData[5] & 0xf0) == 0xf0;
+        dtsBlocks  = (((pData[5] & 0x7) << 4) | (pData[6] & 0x3C) >> 2) + 1;
+        frameSize  = ((((pData[6] & 0x3) << 12) | (pData[7] << 4) | (pData[8] & 0x3C) >> 2) + 1) / 14 * 16;
+        srate_code = pData[9] & 0xf;
+        break;
 
-      /* get the frame size */
-      *fSize = ((((pData[5] & 0x3) << 8 | pData[6]) << 4) | ((pData[7] & 0xF0) >> 4)) + 1;
-      srCode = (pData[8] & 0x3C) >> 2;
-   }
-   else
-   {
-      /* if it is not a termination frame, check the next 6 bits are set */
-      if ((pData[5] & 0x80) == 0x80 && (pData[5] & 0x7C) != 0x7C)
-        continue;
+      /* 14bit LE */
+      case DTS_PREAMBLE_14LE:
+        match = pData[5] == 0x07 && (pData[4] & 0xf0) == 0xf0;
+        dtsBlocks  = (((pData[4] & 0x7) << 4) | (pData[7] & 0x3C) >> 2) + 1;
+        frameSize  = ((((pData[7] & 0x3) << 12) | (pData[6] << 4) | (pData[9] & 0x3C) >> 2) + 1) / 14 * 16;
+        srate_code = pData[8] & 0xf;
+        break;
 
-      /* get the frame size */
-      *fSize = ((((pData[4] & 0x3) << 8 | pData[7]) << 4) | ((pData[6] & 0xF0) >> 4)) + 1;
-      srCode = (pData[9] & 0x3C) >> 2;
-   }
+      /* 16bit BE */
+      case DTS_PREAMBLE_16BE:
+        dtsBlocks  = ((pData[5] >> 2) & 0x7f) + 1;
+        frameSize  = ((((pData[5] & 0x3) << 8 | pData[6]) << 4) | ((pData[7] & 0xF0) >> 4)) + 1;
+        srate_code = (pData[8] & 0x3C) >> 2;
+        break;
+
+      /* 16bit LE */
+      case DTS_PREAMBLE_16LE:
+        dtsBlocks  = ((pData[4] >> 2) & 0x7f) + 1;
+        frameSize  = ((((pData[4] & 0x3) << 8 | pData[7]) << 4) | ((pData[6] & 0xF0) >> 4)) + 1;
+        srate_code = (pData[9] & 0x3C) >> 2;
+        break;
+
+      default:
+        match = false;
+        break;      
+    }
+
+    if (!match || srate_code == 0 || srate_code >= (sizeof(DTSFSCod) / sizeof(DTSFSCod[0]))) continue;
 
     /* make sure the framesize is sane */
-    if (*fSize < 96 || *fSize > 16384)
+    if (frameSize < 96 || frameSize > 16384)
       continue;
 
-    m_SampleRate = DTSFSCod[srCode];
-    m_LostSync = false;
+    dtsBlocks <<= 5;
+	if (dtsBlocks != 512 && dtsBlocks != 1024 && dtsBlocks != 2048)
+      continue;
+
+    StreamType streamType = STREAM_TYPE_DTS;
+
+    /* we need enough pData to check for DTS-HD */
+    if (iSize - skip < frameSize + 10)
+    {
+      /* we can assume DTS sync at this point */
+      return skip;
+    }
+
+	m_InFrameSize = m_OutFrameSize = frameSize;
+
+    /* look for DTS-HD */
+    unsigned int hd_sync = (pData[frameSize] << 24) | (pData[frameSize + 1] << 16) | (pData[frameSize + 2] << 8) | pData[frameSize + 3];
+    if (hd_sync == DTS_PREAMBLE_HD)
+    {
+      int hd_size;
+      bool blownup = (pData[frameSize + 5] & 0x20) != 0;
+      if (blownup)
+           hd_size = (((pData[frameSize + 6] & 0x01) << 19) | (pData[frameSize + 7] << 11) | (pData[frameSize + 8] << 3) | ((pData[frameSize + 9] & 0xe0) >> 5)) + 1;
+      else hd_size = (((pData[frameSize + 6] & 0x1f) << 11) | (pData[frameSize + 7] << 3) | ((pData[frameSize + 8] & 0xe0) >> 5)) + 1;
+      m_InFrameSize += hd_size;
+      streamType = STREAM_TYPE_DTSHD;
+      /* set the type according to core or not */
+      if (m_coreOnly)
+           streamType = STREAM_TYPE_DTSHD_CORE;
+      else m_OutFrameSize = m_InFrameSize;
+    }
+
+    unsigned int sampleRate = DTSFSCod[srate_code];
+    if (m_LostSync || skip || streamType != m_StreamType || sampleRate != m_SampleRate)
+    {
+      m_LostSync   = false;
+      m_StreamType = streamType;
+      m_SampleRate = sampleRate;
+
+      switch(m_StreamType)
+      {
+        case STREAM_TYPE_DTSHD     : CLog::Log(LOGINFO, __FUNCTION__" - dtsHD stream detected (%dHz)", m_SampleRate); break;
+        case STREAM_TYPE_DTSHD_CORE: CLog::Log(LOGINFO, __FUNCTION__" - dtsHD stream detected (%dHz), only using core (dts)", m_SampleRate); break;
+        default                    : CLog::Log(LOGINFO, __FUNCTION__" - dts stream detected (%dHz)", m_SampleRate);
+      }
+    }
+
     return skip;
   }
 
+  /* lost sync */
   m_LostSync = true;
-  return iSize;
+  return skip;
 }
 
-unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAAC(BYTE* pData, unsigned int iSize, unsigned int *fSize)
+unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAAC(BYTE* pData, unsigned int iSize)
 {
   unsigned int skip;
   for(skip = 0; iSize - skip > 5; ++skip, ++pData)
@@ -743,15 +926,109 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAAC(BYTE* pData, unsigned int 
     if (pData[0] != 0xFF || (pData[1] & 0xF0) != 0xF0)
       continue;
 
-    *fSize = (pData[3] & 0x03) << 11 | pData[4] << 3 | (pData[5] & 0xE0) >> 5;
-    if (*fSize < 7)
+    int frameSize = (pData[3] & 0x03) << 11 | pData[4] << 3 | (pData[5] & 0xE0) >> 5;
+    if (frameSize < 7)
       continue;
 
+	m_InFrameSize = m_OutFrameSize = frameSize;
     m_LostSync = false;
     return skip;
   }
 
   m_LostSync = true;
   return iSize;
+}
+
+unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncMLP(BYTE* pData, unsigned int iSize)
+{
+  unsigned int left = iSize;
+  unsigned int skip = 0;
+
+  /* if MLP */
+  for(; left; ++skip, ++pData, --left)
+  {
+    /* if we dont have sync and there is less the 8 bytes, then break out */
+    if (m_LostSync && left < 8)
+      return iSize;
+
+    /* if its a major audio unit */
+    uint16_t length   = ((pData[0] & 0x0F) << 8 | pData[1]) << 1;
+    uint32_t syncword = ((((pData[4] << 8 | pData[5]) << 8) | pData[6]) << 8) | pData[7];
+    if ((syncword & 0xfffffffe) == 0xf8726fba)
+    {
+      /* we need 32 bytes to sync on a master audio unit */
+      if (left < 32)
+        return skip;
+
+      /* get the rate and ensure its valid */
+      int rate = pData[8 + (syncword & 1)];
+      rate = (rate & 0xf0) >> 4;
+      if (rate == 0xF)
+        continue;
+
+      /* verify the crc of the audio unit */
+      uint16_t crc = m_dllAvUtil.av_crc(m_crcMLP, 0, pData + 4, 24);
+      crc ^= (pData[29] << 8) | pData[28];
+      if (((pData[31] << 8) | pData[30]) != crc)
+        continue;
+
+      /* get the sample rate and substreams, we have a valid master audio unit */
+      m_SampleRate = (rate & 0x8 ? 44100 : 48000) << (rate & 0x7);
+      m_SubStreams = (pData[20] & 0xF0) >> 4;
+
+      if (m_LostSync)
+        if (syncword & 1)
+          CLog::Log(LOGINFO, __FUNCTION__" - MLP stream detected (%dHz)", m_SampleRate);
+        else
+          CLog::Log(LOGINFO, __FUNCTION__" - Dolby TrueHD stream detected (%dHz)", m_SampleRate);
+
+      m_LostSync    = false;
+      m_InFrameSize = m_OutFrameSize = length;
+      m_StreamType  = syncword & 1 ? STREAM_TYPE_MLP : STREAM_TYPE_TRUEHD;
+      return skip;
+    }
+    else
+    {
+      /* we cant sink to a subframe until we have the information from a master audio unit */
+      if (m_LostSync)
+        continue;
+
+      /* if there is not enough data left to verify the packet, just return the skip amount */
+      if (left < (unsigned int)m_SubStreams * 4)
+        return skip;
+
+      /* verify the parity */
+      int     p     = 0;
+      uint8_t check = 0;
+      for(int i = -1; i < m_SubStreams; ++i)
+      {
+        check ^= pData[p++];
+        check ^= pData[p++];
+        if (i == -1 || pData[p - 2] & 0x80)
+        {
+          check ^= pData[p++];
+          check ^= pData[p++];
+        }
+      }
+
+      /* if the parity nibble does not match */
+      if ((((check >> 4) ^ check) & 0xF) != 0xF)
+      {
+        /* lost sync */
+        m_LostSync = true;
+        CLog::Log(LOGINFO, __FUNCTION__" - Sync Lost");
+        continue;
+      }
+      else
+      {
+        m_InFrameSize = m_OutFrameSize = length;
+        return skip;
+      }
+    }
+  }
+
+  /* lost sync */
+  m_LostSync = true;
+  return skip;
 }
 /* ========================== END SYNC FUNCTIONS ========================== */

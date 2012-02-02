@@ -50,11 +50,25 @@ public:
   virtual bool NeedPassthrough() { return true; }
   virtual const char* GetName()  { return "PassthroughFFmpeg"; }
   virtual int GetBufferSize();
+  virtual IAudioRenderer::EEncoded GetRenderEncoding() { return m_Encoding; }
+
 private:
   DllAvFormat m_dllAvFormat;
   DllAvUtil   m_dllAvUtil;
   DllAvCodec  m_dllAvCodec;
 
+  enum StreamType
+  {
+    STREAM_TYPE_NULL,
+    STREAM_TYPE_AC3,
+    STREAM_TYPE_DTS,
+    STREAM_TYPE_DTSHD,
+    STREAM_TYPE_DTSHD_CORE,
+    STREAM_TYPE_EAC3,
+    STREAM_TYPE_MLP,
+    STREAM_TYPE_TRUEHD
+  };
+  
   typedef struct
   {
     int      size;
@@ -83,11 +97,15 @@ private:
   void       DisposeMuxer(Muxer &muxer);
 
   bool m_bSupportsAC3Out;
-  bool m_bSupportsDTSOut;
   bool m_bSupportsAACOut;
   bool m_bSupportsMP1Out;
   bool m_bSupportsMP2Out;
   bool m_bSupportsMP3Out;
+  bool m_bSupportsEAC3Out;
+  bool m_bSupportsTHDOut;
+  bool m_bSupportsMLPOut;
+  int  m_iSupportsDTSLvl;
+  bool m_bDTSCoreOut;
 
   CDVDAudioCodec   *m_Codec;
   IDVDAudioEncoder *m_Encoder;
@@ -98,15 +116,22 @@ private:
   bool SupportsFormat(CDVDStreamInfo &hints);
   bool SetupEncoder  (CDVDStreamInfo &hints);
 
-  uint8_t      m_NeededBuffer[AVCODEC_MAX_AUDIO_FRAME_SIZE];
-  unsigned int m_NeededUsed;
-  unsigned int m_Needed;
+  uint8_t      m_FrameBuffer[AVCODEC_MAX_AUDIO_FRAME_SIZE];
+  unsigned int m_Size;
+  unsigned int m_InFrameSize;
+  unsigned int m_OutFrameSize;
   bool         m_LostSync;
+  bool         m_coreOnly;
+  StreamType   m_StreamType;
   int          m_SampleRate;
+  int          m_SubStreams;
+  AVCRC        m_crcMLP[1024];  /* MLP crc table */
+  IAudioRenderer::EEncoded m_Encoding;
 
-  unsigned int (CDVDAudioCodecPassthroughFFmpeg::*m_pSyncFrame)(BYTE* pData, unsigned int iSize, unsigned int *fSize);
-  unsigned int SyncAC3(BYTE* pData, unsigned int iSize, unsigned int *fSize);
-  unsigned int SyncDTS(BYTE* pData, unsigned int iSize, unsigned int *fSize);
-  unsigned int SyncAAC(BYTE* pData, unsigned int iSize, unsigned int *fSize);
+  unsigned int (CDVDAudioCodecPassthroughFFmpeg::*m_pSyncFrame)(BYTE* pData, unsigned int iSize);
+  unsigned int SyncAC3(BYTE* pData, unsigned int iSize);
+  unsigned int SyncDTS(BYTE* pData, unsigned int iSize);
+  unsigned int SyncAAC(BYTE* pData, unsigned int iSize);
+  unsigned int SyncMLP(BYTE* pData, unsigned int iSize);
 };
 
