@@ -29,6 +29,7 @@
 #include "DVDStreamInfo.h"
 #include "utils/BitstreamStats.h"
 #include "DVDPlayerAudioResampler.h"
+#include "../AudioRenderers/IAudioRenderer.h"
 
 #include <list>
 #include <queue>
@@ -57,7 +58,7 @@ typedef struct stDVDAudioFrame
   enum PCMChannels *channel_map;
   int bits_per_sample;
   int sample_rate;
-  bool passthrough;
+  IAudioRenderer::EEncoded passthrough;
 } DVDAudioFrame;
 
 class CPTSOutputQueue

@@ -39,7 +39,7 @@ CDVDAudio::CDVDAudio(volatile bool &bStop)
   m_iBufferSize = 0;
   m_dwPacketSize = 0;
   m_pBuffer = NULL;
-  m_bPassthrough = false;
+  m_Passthrough = IAudioRenderer::ENCODED_NONE;
   m_iBitsPerSample = 0;
   m_iBitrate = 0;
   m_iChannels = 0;
@@ -62,7 +62,7 @@ void CDVDAudio::RegisterAudioCallback(IAudioCallback* pCallback)
 {
   CSingleLock lock (m_critSection);
   m_pCallback = pCallback;
-  if (m_pCallback && m_pAudioDecoder && !m_bPassthrough)
+  if (m_pCallback && m_pAudioDecoder && !m_Passthrough)
     m_pCallback->OnInitialize(m_iChannels, m_iBitrate, m_iBitsPerSample);
 }
 
@@ -79,28 +79,14 @@ bool CDVDAudio::Create(const DVDAudioFrame &audioframe, CodecID codec)
   // if passthrough isset do something else
   CSingleLock lock (m_critSection);
 
-  IAudioRenderer::EEncoded encoded = IAudioRenderer::ENCODED_NONE;
-  if(audioframe.passthrough)
-  {
-    switch(codec) {
-      case CODEC_ID_AC3 : encoded = IAudioRenderer::ENCODED_IEC61937_AC3;     break;
-      case CODEC_ID_EAC3: encoded = IAudioRenderer::ENCODED_IEC61937_EAC3;    break;
-      case CODEC_ID_DTS : encoded = IAudioRenderer::ENCODED_IEC61937_DTS;     break;
-      case CODEC_ID_MP1 :
-      case CODEC_ID_MP2 :
-      case CODEC_ID_MP3 : encoded = IAudioRenderer::ENCODED_IEC61937_MPEG;    break;
-      default:            encoded = IAudioRenderer::ENCODED_IEC61937_UNKNOWN; break;
-    }
-  }
-
-  m_pAudioDecoder = CAudioRendererFactory::Create(m_pCallback, audioframe.channels, audioframe.channel_map, audioframe.sample_rate, audioframe.bits_per_sample, false, false, encoded);
+  m_pAudioDecoder = CAudioRendererFactory::Create(m_pCallback, audioframe.channels, audioframe.channel_map, audioframe.sample_rate, audioframe.bits_per_sample, false, false, audioframe.passthrough);
 
   if (!m_pAudioDecoder) return false;
 
   m_iChannels = audioframe.channels;
   m_iBitrate = audioframe.sample_rate;
   m_iBitsPerSample = audioframe.bits_per_sample;
-  m_bPassthrough = audioframe.passthrough;
+  m_Passthrough = audioframe.passthrough;
   if(m_iChannels && m_iBitrate && m_iBitsPerSample)
     m_SecondsPerByte = 1.0 / (m_iChannels * m_iBitrate * (m_iBitsPerSample>>3));
   else
@@ -112,7 +98,7 @@ bool CDVDAudio::Create(const DVDAudioFrame &audioframe, CodecID codec)
 
   m_iBufferSize = 0;
 
-  if(m_pCallback && !m_bPassthrough)
+  if(m_pCallback && !m_Passthrough)
     m_pCallback->OnInitialize(m_iChannels, m_iBitrate, m_iBitsPerSample);
 
   SetDynamicRangeCompression((long)(g_settings.m_currentVideoSettings.m_VolumeAmplification * 100));
@@ -138,7 +124,7 @@ void CDVDAudio::Destroy()
   m_iChannels = 0;
   m_iBitrate = 0;
   m_iBitsPerSample = 0;
-  m_bPassthrough = false;
+  m_Passthrough = IAudioRenderer::ENCODED_NONE;
   m_bPaused = true;
 }
 
@@ -192,7 +178,7 @@ DWORD CDVDAudio::AddPackets(const DVDAudioFrame &audioframe)
   DWORD copied;
 
   //Feed audio to the visualizer if necessary.
-  if(m_pCallback && !m_bPassthrough)
+  if(m_pCallback && !m_Passthrough)
     m_pCallback->OnAudioData(data, len);
 
   // When paused, we need to buffer all data as renderers don't need to accept it
@@ -249,7 +235,7 @@ double CDVDAudio::AddSilence(double delay)
 {
   CLog::Log(LOGDEBUG, "CDVDAudio::AddSilence - %f seconds", delay);
   DVDAudioFrame audioframe;
-  audioframe.passthrough     = m_bPassthrough;
+  audioframe.passthrough     = m_Passthrough;
   audioframe.channels        = m_iChannels;
   audioframe.sample_rate     = m_iBitrate;
   audioframe.bits_per_sample = m_iBitsPerSample;
@@ -365,7 +351,7 @@ bool CDVDAudio::IsValidFormat(const DVDAudioFrame &audioframe)
   if(!m_pAudioDecoder)
     return false;
 
-  if(audioframe.passthrough != m_bPassthrough)
+  if(audioframe.passthrough != m_Passthrough)
     return false;
 
   if(audioframe.channels != m_iChannels

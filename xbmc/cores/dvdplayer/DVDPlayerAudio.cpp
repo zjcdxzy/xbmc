@@ -181,7 +181,7 @@ bool CDVDPlayerAudio::OpenStream( CDVDStreamInfo &hints )
 {
   bool passthrough = AUDIO_IS_BITSTREAM(g_guiSettings.GetInt("audiooutput.mode"));
 
-  CLog::Log(LOGNOTICE, "Finding audio codec for: %i", hints.codec);
+  CLog::Log(LOGNOTICE, "Finding audio codec for: %i/%i", hints.codec, hints.profile);
   CDVDAudioCodec* codec = CDVDFactoryCodec::CreateAudioCodec(hints, passthrough);
   if( !codec )
   {
@@ -333,7 +333,7 @@ int CDVDPlayerAudio::DecodeFrame(DVDAudioFrame &audioframe, bool bDropPacket)
       audioframe.channels = m_pAudioCodec->GetChannels(); /* get channels AFTER map so that it can be corrected if bad */
       audioframe.bits_per_sample = m_pAudioCodec->GetBitsPerSample();
       audioframe.sample_rate = m_pAudioCodec->GetSampleRate();
-      audioframe.passthrough = m_pAudioCodec->NeedPassthrough();
+	  audioframe.passthrough = m_pAudioCodec->GetRenderEncoding();
 
       if (audioframe.size <= 0)
         continue;
@@ -589,7 +589,7 @@ void CDVDPlayerAudio::Process()
       else
         m_dvdAudio.Pause();
 
-      if(!m_dvdAudio.Create(audioframe, m_streaminfo.codec))
+	  if(!m_dvdAudio.Create(audioframe, m_streaminfo.codec))
         CLog::Log(LOGERROR, "%s - failed to create audio renderer", __FUNCTION__);
     }
 
@@ -615,7 +615,7 @@ void CDVDPlayerAudio::Process()
     {
       m_droptime = 0.0;
 
-      SetSyncType(audioframe.passthrough);
+	  SetSyncType(audioframe.passthrough != IAudioRenderer::ENCODED_NONE);
 
       // add any packets play
       packetadded = OutputPacket(audioframe);

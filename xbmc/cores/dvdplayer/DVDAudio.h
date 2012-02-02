@@ -87,7 +87,7 @@ protected:
   int m_iBitrate;
   int m_iBitsPerSample;
   double m_SecondsPerByte;
-  bool m_bPassthrough;
+  IAudioRenderer::EEncoded m_Passthrough;
   bool m_bPaused;
 
   volatile bool& m_bStop;
