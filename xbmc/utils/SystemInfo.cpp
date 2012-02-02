@@ -366,6 +366,12 @@ CStdString CSysInfo::GetKernelVersion()
           strKernel.append("7");
         else
           strKernel.append("Server 2008 R2");
+      } else if (osvi.dwMinorVersion == 2)
+      {
+        if( osvi.wProductType == VER_NT_WORKSTATION )
+          strKernel.append("8");
+        else
+          strKernel.append("Win8 kernel based Server");
       }
 
       if ( si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_AMD64 || si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_IA64)
