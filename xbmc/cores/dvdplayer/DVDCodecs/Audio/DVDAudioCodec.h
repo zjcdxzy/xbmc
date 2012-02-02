@@ -23,6 +23,7 @@
 
 #include "system.h"
 #include "utils/PCMRemap.h"
+#include "../AudioRenderers/IAudioRenderer.h"
 
 #if (defined HAVE_CONFIG_H) && (!defined WIN32)
   #include "config.h"
@@ -109,4 +110,10 @@ public:
    * should return amount of data decoded has buffered in preparation for next audio frame
    */
   virtual int GetBufferSize() { return 0; }
+
+  /*
+   * returns if the render encoding in cas of passtrough
+   */
+  virtual IAudioRenderer::EEncoded GetRenderEncoding() { return IAudioRenderer::ENCODED_NONE; }
+
 };
