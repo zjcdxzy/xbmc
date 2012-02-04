@@ -357,8 +357,12 @@ int CDVDPlayerAudio::DecodeFrame(DVDAudioFrame &audioframe, bool bDropPacket)
       int n = (audioframe.channels * audioframe.bits_per_sample * audioframe.sample_rate)>>3;
       if (n > 0)
       {
+        // DTS frame size is always 2048 bytes, but demuxed frame might be larger
+        unsigned int size = audioframe.size;
+        if (m_streaminfo.codec == CODEC_ID_DTS) size = 2048;
+
         // safety check, if channels == 0, n will result in 0, and that will result in a nice devide exception
-        audioframe.duration = ((double)audioframe.size * DVD_TIME_BASE) / n;
+        audioframe.duration = ((double)size * DVD_TIME_BASE) / n;
 
         // increase audioclock to after the packet
         m_audioClock += audioframe.duration;
