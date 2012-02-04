@@ -311,6 +311,9 @@
   <string id="344">Színészek</string>
   <string id="345">Év</string>
   <string id="346">Csatornalekeverésnél hangerő emelése</string>
+  <string id="347">- Dolby TrueHD képes erősítő</string>
+  <string id="348">- Dolby Digital Plus képes erősítő</string>
+  <string id="349">- Meridian Lossless Packing képes erősítő</string>
   <string id="350">Programok</string>
   <string id="351">Ki</string>
   <string id="352">Elhalványít</string>
@@ -607,6 +610,17 @@
   <string id="663">Eltávolítás a médiatárból?</string>
   <string id="664">Program keresése</string>
   <string id="665">Tömörítés erőssége</string>
+
+  <string id="690">- Legjobb támogatott DTS formátum</string>
+  <string id="691">nem DTS képes</string>
+  <string id="692">DTS-5.1</string>
+  <string id="693">DTS-ES</string>
+  <string id="694">DTS-96/24</string>
+  <string id="695">DTS-HD High Resolution Audio</string>
+  <string id="696">DTS-HD Master Audio</string>
+  <string id="697">- Egyéb DTS formátumok kezelése</string>
+  <string id="698">dekódolt kimenet (LPCM)</string>
+  <string id="699">hagyományos DTS (core)</string>
 
   <string id="700">Médiatár tisztítása</string>
   <string id="701">Régi dalok eltávolítása a médiatárból</string>
