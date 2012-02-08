@@ -37,6 +37,11 @@ SRCS=action.cpp \
      xbmcplugin.cpp \
      xbmcvfsmodule.cpp \
 
+ifeq (@USE_AVAHI@, 1)
+SRCS+=pyzeroconf.cpp
+endif
+
+
 LIB=xbmcmodule.a
 
 INCLUDES+= @PYTHON_CPPFLAGS@

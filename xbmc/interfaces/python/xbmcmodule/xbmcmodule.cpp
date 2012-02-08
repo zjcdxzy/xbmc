@@ -54,6 +54,9 @@
 #include "pythreadstate.h"
 #include "utils/log.h"
 #include "pyrendercapture.h"
+#ifdef HAS_ZEROCONF
+#include "pyzeroconf.h"
+#endif//HAS_ZEROCONF
 
 // include for constants
 #include "pyutil.h"
@@ -1028,6 +1031,10 @@ namespace PYXBMC
     initPlayListItem_Type();
     initInfoTagMusic_Type();
     initInfoTagVideo_Type();
+ 
+ #ifdef HAS_ZEROCONF
+    initZeroconf_Type();
+ #endif//HAS_ZEROCONF
 
 #ifdef HAS_PYRENDERCAPTURE
     initRenderCapture_Type();
@@ -1040,6 +1047,11 @@ namespace PYXBMC
         PyType_Ready(&InfoTagMusic_Type) < 0 ||
         PyType_Ready(&InfoTagVideo_Type) < 0) return;
 
+#ifdef HAS_ZEROCONF
+    if (PyType_Ready(&Zeroconf_Type) < 0)
+      return;
+#endif//HAS_ZEROCONF
+        
 #ifdef HAS_PYRENDERCAPTURE
     if (PyType_Ready(&RenderCapture_Type) < 0)
       return;
@@ -1065,6 +1077,10 @@ namespace PYXBMC
     Py_INCREF(&PlayListItem_Type);
     Py_INCREF(&InfoTagMusic_Type);
     Py_INCREF(&InfoTagVideo_Type);
+    
+#ifdef HAS_ZEROCONF
+    Py_INCREF(&Zeroconf_Type);
+#endif//HAS_ZEROCONF
 
 #ifdef HAS_PYRENDERCAPTURE
     Py_INCREF(&RenderCapture_Type);
@@ -1079,6 +1095,10 @@ namespace PYXBMC
     PyModule_AddObject(pXbmcModule, (char*)"PlayListItem", (PyObject*)&PlayListItem_Type);
     PyModule_AddObject(pXbmcModule, (char*)"InfoTagMusic", (PyObject*)&InfoTagMusic_Type);
     PyModule_AddObject(pXbmcModule, (char*)"InfoTagVideo", (PyObject*)&InfoTagVideo_Type);
+    
+#ifdef HAS_ZEROCONF
+    PyModule_AddObject(pXbmcModule, (char*)"Zeroconf", (PyObject*)&Zeroconf_Type);
+#endif//HAS_ZEROCONF
 
     // constants
     PyModule_AddStringConstant(pXbmcModule, (char*)"__author__", (char*)PY_XBMC_AUTHOR);
@@ -1134,3 +1154,4 @@ namespace PYXBMC
 #ifdef __cplusplus
 }
 #endif
+
