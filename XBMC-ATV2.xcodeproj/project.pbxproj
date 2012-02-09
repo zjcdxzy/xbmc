@@ -46,6 +46,7 @@
 		DFD4D22013D7286E00A47C47 /* Implementation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFD4D21413D7286E00A47C47 /* Implementation.cpp */; };
 		DFD4D22113D7286E00A47C47 /* README.platform in Resources */ = {isa = PBXBuildFile; fileRef = DFD4D21613D7286E00A47C47 /* README.platform */; };
 		DFD4D22213D7286E00A47C47 /* SystemClock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFD4D21C13D7286E00A47C47 /* SystemClock.cpp */; };
+		DFED3C2014E4843300CE6232 /* pypipesmanager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFED3C1E14E4843300CE6232 /* pypipesmanager.cpp */; };
 		F54D9E8E12B71457006870F9 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F54D9E8D12B71457006870F9 /* CoreAudio.framework */; };
 		F56B15FB12CD6922009B4C96 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56B15FA12CD6922009B4C96 /* CoreVideo.framework */; };
 		F56B15FD12CD6930009B4C96 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56B15FC12CD6930009B4C96 /* AudioToolbox.framework */; };
@@ -1032,6 +1033,8 @@
 		DFD4D21713D7286E00A47C47 /* ThreadLocal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadLocal.h; sourceTree = "<group>"; };
 		DFD4D21C13D7286E00A47C47 /* SystemClock.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SystemClock.cpp; sourceTree = "<group>"; };
 		DFD4D21D13D7286E00A47C47 /* SystemClock.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SystemClock.h; sourceTree = "<group>"; };
+		DFED3C1E14E4843300CE6232 /* pypipesmanager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = pypipesmanager.cpp; sourceTree = "<group>"; };
+		DFED3C1F14E4843300CE6232 /* pypipesmanager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pypipesmanager.h; sourceTree = "<group>"; };
 		F54D9E8D12B71457006870F9 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		F558F66813AFE7F300631E12 /* Condition.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Condition.h; sourceTree = "<group>"; };
 		F558F66E13AFE81500631E12 /* ThreadLocal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadLocal.h; sourceTree = "<group>"; };
@@ -4611,6 +4614,8 @@
 				F56C758C131EC152000AD0F6 /* listitem.h */,
 				F56C758D131EC152000AD0F6 /* player.cpp */,
 				F56C758E131EC152000AD0F6 /* player.h */,
+				DFED3C1E14E4843300CE6232 /* pypipesmanager.cpp */,
+				DFED3C1F14E4843300CE6232 /* pypipesmanager.h */,
 				F56C758F131EC152000AD0F6 /* pyplaylist.cpp */,
 				F56C7590131EC152000AD0F6 /* pyplaylist.h */,
 				F5E113AC1435882400175026 /* pyrendercapture.cpp */,
@@ -6940,6 +6945,7 @@
 				DF673A251443769300A5A509 /* FileUPnP.cpp in Sources */,
 				F5BD033A148D4923001B5583 /* CryptThreading.cpp in Sources */,
 				DF4A2EF514E2E84800E2A981 /* pyzeroconf.cpp in Sources */,
+				DFED3C2014E4843300CE6232 /* pypipesmanager.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

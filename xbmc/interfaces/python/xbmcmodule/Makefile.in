@@ -25,6 +25,7 @@ SRCS=action.cpp \
      player.cpp \
      pyplaylist.cpp \
      pyrendercapture.cpp \
+     pypipesmanager.cpp \
      PythonAddon.cpp \
      PythonPlayer.cpp \
      pyutil.cpp \
