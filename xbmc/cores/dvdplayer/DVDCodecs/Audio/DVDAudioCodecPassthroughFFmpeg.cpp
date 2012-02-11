@@ -30,8 +30,6 @@
 
 //These values are forced to allow spdif out
 #define OUT_SAMPLESIZE 16
-#define OUT_CHANNELS   2
-#define OUT_SAMPLERATE 48000
 
 #define DTS_PREAMBLE_14BE  0x1FFFE800
 #define DTS_PREAMBLE_14LE  0xFF1F00E8
@@ -65,6 +63,8 @@ CDVDAudioCodecPassthroughFFmpeg::CDVDAudioCodecPassthroughFFmpeg(void)
   m_OutFrameSize = 0;
   m_Size         = 0;
   m_SampleRate   = 0;
+  m_DataRate     = 0;
+  m_Channels     = 0;
   m_StreamType   = STREAM_TYPE_NULL;
   m_Codec        = NULL;
   m_Encoder      = NULL;
@@ -169,16 +169,49 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
 
 
   /* set the stream's parameters */
-  muxer.m_pStream->stream_copy           = 1;
+  muxer.m_pStream->stream_copy = 1;
+  unsigned dtshd_rate          = 0;
+  m_SampleRate                 = hints.samplerate;
+  m_Channels                   = hints.channels;
 
-  m_SampleRate = hints.samplerate;
-  if(!m_SampleRate && hints.codec == CODEC_ID_AC3)
-    m_SampleRate = 48000;
+  switch (hints.codec) {
+    case CODEC_ID_AC3 :    m_Encoding = IAudioRenderer::ENCODED_IEC61937_AC3;
+                           m_DataRate = 48000;
+                           m_Channels = 2;
+                           break;
 
-  unsigned dtshd_rate = 0;
-  if (hints.codec == CODEC_ID_DTS && hints.profile >= FF_PROFILE_DTS_HD_HRA) {
-    dtshd_rate = 768000;
+	case CODEC_ID_EAC3:    m_Encoding = IAudioRenderer::ENCODED_IEC61937_EAC3;
+                           m_DataRate = 192000;
+                           m_Channels = 2;
+                           break;
+
+	case CODEC_ID_DTS :    if (hints.profile >= FF_PROFILE_DTS_HD_HRA) {
+                             m_Encoding = IAudioRenderer::ENCODED_IEC61937_DTSHD;
+                             m_DataRate = 192000;
+                             m_Channels = 8;
+                             dtshd_rate = 768000;
+                           } else {
+                             m_Encoding = IAudioRenderer::ENCODED_IEC61937_DTS;
+                             m_DataRate = 48000;
+                             m_Channels = 2;
+                           }
+                           break;
+    case CODEC_ID_MP1 :
+    case CODEC_ID_MP2 :
+    case CODEC_ID_MP3 :    m_Encoding = IAudioRenderer::ENCODED_IEC61937_MPEG;
+                           m_DataRate = 48000;
+                           break;
+    case CODEC_ID_MLP :
+    case CODEC_ID_TRUEHD : m_Encoding = IAudioRenderer::ENCODED_IEC61937_MAT;
+                           m_DataRate = 192000;
+                           m_Channels = 8;
+                           break;
+
+	default:               m_Encoding = IAudioRenderer::ENCODED_NONE;
+                           m_DataRate = 48000;
+                           break;
   }
+
   m_dllAvUtil.av_set_int(muxer.m_pFormat->priv_data, "dtshd_rate", dtshd_rate);
   m_dllAvUtil.av_set_int(muxer.m_pFormat->priv_data, "dtshd_fallback_time", -1);
 
@@ -198,20 +231,6 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
   {
     CLog::Log(LOGERROR, "CDVDAudioCodecPassthrough::SetupMuxer - Failed to write the frame header");
     return false;
-  }
-
-  switch (hints.codec) {
-    case CODEC_ID_AC3 : m_Encoding = IAudioRenderer::ENCODED_IEC61937_AC3;    break;
-    case CODEC_ID_EAC3: m_Encoding = IAudioRenderer::ENCODED_IEC61937_EAC3;   break;
-    case CODEC_ID_DTS : m_Encoding = hints.profile >= FF_PROFILE_DTS_HD_HRA ?
-                                     IAudioRenderer::ENCODED_IEC61937_DTSHD : 
-                                     IAudioRenderer::ENCODED_IEC61937_DTS;    break;
-    case CODEC_ID_MP1 :
-    case CODEC_ID_MP2 :
-    case CODEC_ID_MP3 : m_Encoding = IAudioRenderer::ENCODED_IEC61937_MPEG;   break;
-    case CODEC_ID_MLP :
-    case CODEC_ID_TRUEHD : m_Encoding = IAudioRenderer::ENCODED_IEC61937_MAT; break;
-    default:               m_Encoding = IAudioRenderer::ENCODED_NONE;         break;
   }
 
   CLog::Log(LOGINFO, "CDVDAudioCodecPassthroughFFmpeg::SetupMuxer - %s muxer ready", muxerName.c_str());
@@ -386,7 +405,7 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupEncoder(CDVDStreamInfo &hints)
   /* adjust the hints according to the encorders output */
   hints.codec    = m_Encoder->GetCodecID();
   hints.bitrate  = m_Encoder->GetBitRate();
-  hints.channels = OUT_CHANNELS;
+  hints.channels = 2;
 
   CLog::Log(LOGDEBUG, "CDVDAudioCodecPassthroughFFmpeg::SetupEncoder - Ready to transcode");
   return true;
@@ -612,7 +631,7 @@ int CDVDAudioCodecPassthroughFFmpeg::Decode(BYTE* pData, int iSize)
 		int skip = (this->*m_pSyncFrame)(m_FrameBuffer, m_Size);
         if (skip > 0)
         {
-          /* we lost sync, so invalidate our buffer */
+          /* we lost sync, so drop excess bytes */
           m_Size = std::max((int)(m_Size - skip), 0);
           if (m_Size > 0) memmove (m_FrameBuffer, m_FrameBuffer + skip, m_Size);
         }
@@ -686,14 +705,12 @@ void CDVDAudioCodecPassthroughFFmpeg::Reset()
 
 int CDVDAudioCodecPassthroughFFmpeg::GetChannels()
 {
-  //Can't return correct channels here as this is used to keep sync.
-  //should probably have some other way to find out this
-  return OUT_CHANNELS;
+  return m_Channels;
 }
 
 int CDVDAudioCodecPassthroughFFmpeg::GetSampleRate()
 {
-  return m_SPDIF.m_pStream->codec->sample_rate;
+  return m_DataRate;
 }
 
 int CDVDAudioCodecPassthroughFFmpeg::GetBitsPerSample()
@@ -816,7 +833,6 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncDTS(BYTE* pData, unsigned int 
   for(; iSize - skip > 10; ++skip, ++pData)
   {
     unsigned int header = pData[0] << 24 | pData[1] << 16 | pData[2] << 8 | pData[3];
-//    unsigned int hd_sync = 0;
     unsigned int srate_code, dtsBlocks, frameSize;
     bool match = true;
 

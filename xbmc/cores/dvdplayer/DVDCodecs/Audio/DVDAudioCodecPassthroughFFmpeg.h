@@ -124,6 +124,8 @@ private:
   bool         m_coreOnly;
   StreamType   m_StreamType;
   int          m_SampleRate;
+  int          m_DataRate;
+  int          m_Channels;
   int          m_SubStreams;
   AVCRC        m_crcMLP[1024];  /* MLP crc table */
   IAudioRenderer::EEncoded m_Encoding;
