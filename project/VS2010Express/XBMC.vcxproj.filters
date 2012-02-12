@@ -2568,6 +2568,12 @@
     <ClCompile Include="..\..\xbmc\storage\DetectDVDType.cpp">
       <Filter>storage</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\python\xbmcmodule\pyzeroconf.cpp">
+      <Filter>interfaces\python\xbmcmodule</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\python\xbmcmodule\pypipesmanager.cpp">
+      <Filter>interfaces\python\xbmcmodule</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\xbmc\win32\pch.h">
@@ -5156,6 +5162,12 @@
     <ClInclude Include="..\..\xbmc\cores\AudioRenderers\IAudioRenderer.h" />
     <ClInclude Include="..\..\xbmc\storage\DetectDVDType.h">
       <Filter>storage</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\interfaces\python\xbmcmodule\pypipesmanager.h">
+      <Filter>interfaces\python\xbmcmodule</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\interfaces\python\xbmcmodule\pyzeroconf.h">
+      <Filter>interfaces\python\xbmcmodule</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
