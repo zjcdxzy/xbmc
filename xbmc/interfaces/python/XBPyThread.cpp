@@ -428,6 +428,14 @@ void XBPyThread::stop()
     if(!m || PyObject_SetAttrString(m, (char*)"abortRequested", PyBool_FromLong(1)))
       CLog::Log(LOGERROR, "XBPyThread::stop - failed to set abortRequested");
 
+    PyThreadState_Swap(old);
+    PyEval_ReleaseLock();
+    
+    Sleep(4000);//give python threads some time to react on the abortRequested flag
+    
+    //everything which didn't exit by now gets killed
+    PyEval_AcquireLock();
+    old = PyThreadState_Swap((PyThreadState*)m_threadState);    
     for(PyThreadState* state = ((PyThreadState*)m_threadState)->interp->tstate_head; state; state = state->next)
     {
       Py_XDECREF(state->async_exc);
