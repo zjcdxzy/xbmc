@@ -524,6 +524,14 @@ int CBuiltins::Execute(const CStdString& execString)
         item.SetProperty("playlist_starting_track", atoi(params[i].Mid(11)) - 1);
       else if (params[i].Left(16).Equals("startpercentage="))
         item.SetProperty("StartPercent", atoi(params[i].Mid(16)) - 1);
+      else if (params[i].Equals("airtunes"))
+      {
+        item.SetMimeType("audio/x-xbmc-pcm");
+        item.SetProperty("isradio", true);
+        item.SetProperty("no-skip", true);
+        item.SetProperty("no-pause", true);
+        item.m_bIsFolder = false;
+      }
 
     }
 
