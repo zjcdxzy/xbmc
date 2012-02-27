@@ -779,7 +779,7 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAC3(BYTE* pData, unsigned int 
       /* if we get here, we can sync */
       m_LostSync   = false;
       m_StreamType = STREAM_TYPE_AC3;
-      CLog::Log(LOGINFO, __FUNCTION__" - AC3 stream detected (%dHz)", m_SampleRate);
+      CLog::Log(LOGINFO, "%s - AC3 stream detected (%dHz)", __FUNCTION__, m_SampleRate);
       return skip;
     }
     else
@@ -815,7 +815,7 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncAC3(BYTE* pData, unsigned int 
       /* if we get here, we can sync */
       m_LostSync   = false;
       m_StreamType = STREAM_TYPE_EAC3;
-      CLog::Log(LOGINFO, __FUNCTION__" - E-AC3 stream detected (%dHz)", m_SampleRate);
+      CLog::Log(LOGINFO, "%s - E-AC3 stream detected (%dHz)", __FUNCTION__, m_SampleRate);
       return skip;
     }
   }
@@ -912,7 +912,7 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncDTS(BYTE* pData, unsigned int 
     }
 
     unsigned int sampleRate = DTSFSCod[srate_code];
-    if (m_LostSync || skip || streamType != m_StreamType || sampleRate != m_SampleRate)
+    if (m_LostSync || skip || streamType != m_StreamType || sampleRate != (unsigned int)m_SampleRate)
     {
       m_LostSync   = false;
       m_StreamType = streamType;
@@ -920,9 +920,9 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncDTS(BYTE* pData, unsigned int 
 
       switch(m_StreamType)
       {
-        case STREAM_TYPE_DTSHD     : CLog::Log(LOGINFO, __FUNCTION__" - dtsHD stream detected (%dHz)", m_SampleRate); break;
-        case STREAM_TYPE_DTSHD_CORE: CLog::Log(LOGINFO, __FUNCTION__" - dtsHD stream detected (%dHz), only using core (dts)", m_SampleRate); break;
-        default                    : CLog::Log(LOGINFO, __FUNCTION__" - dts stream detected (%dHz)", m_SampleRate);
+        case STREAM_TYPE_DTSHD     : CLog::Log(LOGINFO, "%s - dtsHD stream detected (%dHz)", __FUNCTION__, m_SampleRate); break;
+        case STREAM_TYPE_DTSHD_CORE: CLog::Log(LOGINFO, "%s - dtsHD stream detected (%dHz), only using core (dts)", __FUNCTION__, m_SampleRate); break;
+        default                    : CLog::Log(LOGINFO, " - dts stream detected (%dHz)", __FUNCTION__, m_SampleRate);
       }
     }
 
@@ -994,9 +994,9 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncMLP(BYTE* pData, unsigned int 
 
       if (m_LostSync)
         if (syncword & 1)
-          CLog::Log(LOGINFO, __FUNCTION__" - MLP stream detected (%dHz)", m_SampleRate);
+          CLog::Log(LOGINFO, "%s - MLP stream detected (%dHz)", __FUNCTION__, m_SampleRate);
         else
-          CLog::Log(LOGINFO, __FUNCTION__" - Dolby TrueHD stream detected (%dHz)", m_SampleRate);
+          CLog::Log(LOGINFO, "%s - Dolby TrueHD stream detected (%dHz)", __FUNCTION__, m_SampleRate);
 
       m_LostSync    = false;
       m_InFrameSize = m_OutFrameSize = length;
@@ -1032,7 +1032,7 @@ unsigned int CDVDAudioCodecPassthroughFFmpeg::SyncMLP(BYTE* pData, unsigned int 
       {
         /* lost sync */
         m_LostSync = true;
-        CLog::Log(LOGINFO, __FUNCTION__" - Sync Lost");
+        CLog::Log(LOGINFO, "%s - Sync Lost", __FUNCTION__);
         continue;
       }
       else
