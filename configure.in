@@ -482,7 +482,7 @@ case $host in
      ;;
   *86-apple-darwin*)
      use_joystick=no
-     use_vtbdecoder=no
+     use_vtbdecoder=yes
      use_texturepacker_native=yes
      USE_TEXTUREPACKER_NATIVE_ROOT="$prefix"
      ARCH="x86-osx"

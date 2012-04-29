@@ -26,10 +26,16 @@
 
 #include "DVDVideoCodec.h"
 #include <CoreVideo/CoreVideo.h>
-#include <CoreMedia/CoreMedia.h>
+//#include <CoreMedia/CoreMedia.h>
+//#include <CoreMedia/CMFormatDescription.h>
+#include <CoreVideo/CoreVideo.h>                                                                                                                                                                                                            
+#include <CoreVideo/CVHostTime.h> 
+
+  typedef CFTypeRef CMFormatDescriptionRef;
+
 
 // tracks a frame in and output queue in display order
-typedef struct frame_queue {
+typedef struct vtframe_queue {
   double              dts;
   double              pts;
   int                 width;
@@ -37,11 +43,12 @@ typedef struct frame_queue {
   double              sort_time;
   FourCharCode        pixel_buffer_format;
   CVPixelBufferRef    pixel_buffer_ref;
-  struct frame_queue  *nextframe;
-} frame_queue;
+  struct vtframe_queue  *nextframe;
+} vtframe_queue;
 
 class DllAvUtil;
 class DllAvFormat;
+class DllLibVTBDecoder;
 class CDVDVideoCodecVideoToolBox : public CDVDVideoCodec
 {
 public:
@@ -75,7 +82,7 @@ protected:
 
   double            m_sort_time_offset;
   pthread_mutex_t   m_queue_mutex;    // mutex protecting queue manipulation
-  frame_queue       *m_display_queue; // display-order queue - next display frame is always at the queue head
+  vtframe_queue       *m_display_queue; // display-order queue - next display frame is always at the queue head
   int32_t           m_queue_depth;    // we will try to keep the queue depth at m_max_ref_frames
   int32_t           m_max_ref_frames;
 
@@ -84,6 +91,7 @@ protected:
 
   DllAvUtil         *m_dllAvUtil;
   DllAvFormat       *m_dllAvFormat;
+  DllLibVTBDecoder  *m_dll;
 };
 
 #endif

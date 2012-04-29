@@ -624,6 +624,8 @@
 		C8D0B2B01265A9A800F0C0AC /* SystemGlobals.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C8D0B2AE1265A9A800F0C0AC /* SystemGlobals.cpp */; };
 		C8EC5D0E1369519D00CCC10D /* XBMC_keytable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C8EC5D0C1369519D00CCC10D /* XBMC_keytable.cpp */; };
 		DF0DF15C13A3ADA7008ED511 /* NFSDirectory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF0DF15913A3ADA7008ED511 /* NFSDirectory.cpp */; };
+		DF1DEBA7154D9AF4004B1A0D /* DVDVideoCodecVideoToolBox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFF011B61549D7F800B868BB /* DVDVideoCodecVideoToolBox.cpp */; };
+		DF1DEBA8154D9AF5004B1A0D /* DVDVideoCodecVideoToolBox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFF011B61549D7F800B868BB /* DVDVideoCodecVideoToolBox.cpp */; };
 		DF24A6B41406C7C500C7721E /* AFPDirectory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF24A6B01406C7C500C7721E /* AFPDirectory.cpp */; };
 		DF24A6B61406C7C500C7721E /* AFPDirectory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF24A6B01406C7C500C7721E /* AFPDirectory.cpp */; };
 		DF3488E713FD958F0026A711 /* GUIAction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF3488E513FD958F0026A711 /* GUIAction.cpp */; };
@@ -729,6 +731,8 @@
 		DFCA6AD0152245CD000BFAAE /* HTTPWebinterfaceAddonsHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFCA6ABF152245CD000BFAAE /* HTTPWebinterfaceAddonsHandler.cpp */; };
 		DFCA6AD1152245CD000BFAAE /* HTTPWebinterfaceHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFCA6AC1152245CD000BFAAE /* HTTPWebinterfaceHandler.cpp */; };
 		DFCA6AD2152245CD000BFAAE /* IHTTPRequestHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFCA6AC3152245CD000BFAAE /* IHTTPRequestHandler.cpp */; };
+		DFF85B94154D90A800B8B009 /* CoreMedia in Frameworks */ = {isa = PBXBuildFile; fileRef = DFF85B93154D90A800B8B009 /* CoreMedia */; };
+		DFF85B95154D90A800B8B009 /* CoreMedia in Frameworks */ = {isa = PBXBuildFile; fileRef = DFF85B93154D90A800B8B009 /* CoreMedia */; };
 		E306D12E0DDF7B590052C2AD /* XBMCHelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E306D12C0DDF7B590052C2AD /* XBMCHelper.cpp */; };
 		E33206380D5070AA00435CE3 /* DVDDemuxVobsub.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E33206370D5070AA00435CE3 /* DVDDemuxVobsub.cpp */; };
 		E33466A60D2E5103005A65EC /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E33466A50D2E5103005A65EC /* IOKit.framework */; };
@@ -2744,6 +2748,9 @@
 		DFCA6AC2152245CD000BFAAE /* HTTPWebinterfaceHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HTTPWebinterfaceHandler.h; sourceTree = "<group>"; };
 		DFCA6AC3152245CD000BFAAE /* IHTTPRequestHandler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IHTTPRequestHandler.cpp; sourceTree = "<group>"; };
 		DFCA6AC4152245CD000BFAAE /* IHTTPRequestHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IHTTPRequestHandler.h; sourceTree = "<group>"; };
+		DFF011B61549D7F800B868BB /* DVDVideoCodecVideoToolBox.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DVDVideoCodecVideoToolBox.cpp; sourceTree = "<group>"; };
+		DFF011B71549D7F800B868BB /* DVDVideoCodecVideoToolBox.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DVDVideoCodecVideoToolBox.h; sourceTree = "<group>"; };
+		DFF85B93154D90A800B8B009 /* CoreMedia */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = CoreMedia; path = /System/Library/PrivateFrameworks/CoreMedia.framework/CoreMedia; sourceTree = "<absolute>"; };
 		E306D12C0DDF7B590052C2AD /* XBMCHelper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = XBMCHelper.cpp; sourceTree = "<group>"; };
 		E306D12D0DDF7B590052C2AD /* XBMCHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XBMCHelper.h; sourceTree = "<group>"; };
 		E33206370D5070AA00435CE3 /* DVDDemuxVobsub.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DVDDemuxVobsub.cpp; sourceTree = "<group>"; };
@@ -4071,6 +4078,7 @@
 				18404DA61396C31B00863BBA /* SlingboxLib.a in Frameworks */,
 				DFC1B8F01464840E00B1BE79 /* SystemConfiguration.framework in Frameworks */,
 				F572CF01154C646300BC83A0 /* IOSurface.framework in Frameworks */,
+				DFF85B94154D90A800B8B009 /* CoreMedia in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4105,6 +4113,7 @@
 				F5B5D650133FC312007A4B4C /* libxdaap.a in Frameworks */,
 				18404E711396E06C00863BBA /* SlingboxLib.a in Frameworks */,
 				DFC1BA3414648D6500B1BE79 /* SystemConfiguration.framework in Frameworks */,
+				DFF85B95154D90A800B8B009 /* CoreMedia in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4135,6 +4144,7 @@
 		08FB779DFE84155DC02AAC07 /* System Libs and Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				DFF85B93154D90A800B8B009 /* CoreMedia */,
 				E38E25330D26365C00618676 /* AppKit.framework */,
 				E38E25340D26365C00618676 /* ApplicationServices.framework */,
 				E38E238B0D2626E600618676 /* AudioToolbox.framework */,
@@ -5560,6 +5570,8 @@
 				E38E15400D25F9F900618676 /* DVDVideoCodecLibMpeg2.h */,
 				F52B06B81187CE18004B1D66 /* DVDVideoCodecVDA.cpp */,
 				F52B06B91187CE18004B1D66 /* DVDVideoCodecVDA.h */,
+				DFF011B61549D7F800B868BB /* DVDVideoCodecVideoToolBox.cpp */,
+				DFF011B71549D7F800B868BB /* DVDVideoCodecVideoToolBox.h */,
 				E38E15410D25F9F900618676 /* DVDVideoPPFFmpeg.cpp */,
 				E38E15420D25F9F900618676 /* DVDVideoPPFFmpeg.h */,
 			);
@@ -8213,6 +8225,7 @@
 				7C1A85661520522500C63311 /* TextureCacheJob.cpp in Sources */,
 				C8936052152C86CF00812418 /* monitor.cpp in Sources */,
 				C8936056152C86D800812418 /* PythonMonitor.cpp in Sources */,
+				DF1DEBA7154D9AF4004B1A0D /* DVDVideoCodecVideoToolBox.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -9153,6 +9166,7 @@
 				7C1A85651520522500C63311 /* TextureCacheJob.cpp in Sources */,
 				C8936053152C86CF00812418 /* monitor.cpp in Sources */,
 				C8936057152C86D800812418 /* PythonMonitor.cpp in Sources */,
+				DF1DEBA8154D9AF5004B1A0D /* DVDVideoCodecVideoToolBox.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -9177,7 +9191,10 @@
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = NO;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks\"",
+				);
 				GCC_AUTO_VECTORIZATION = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
@@ -9238,6 +9255,7 @@
 					"\"$(SRCROOT)/lib/ffmpeg/libswresample\"",
 					"\"$(SRCROOT)/lib/ffmpeg/libpostproc\"",
 					"\"$(SRCROOT)/lib/ffmpeg/libswscale\"",
+					"\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks/CoreMedia.framework\"",
 				);
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				OTHER_LDFLAGS = (
@@ -9288,7 +9306,10 @@
 				COPY_PHASE_STRIP = NO;
 				DEAD_CODE_STRIPPING = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks\"",
+				);
 				GCC_AUTO_VECTORIZATION = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
@@ -9352,6 +9373,7 @@
 					"\"$(SRCROOT)/lib/ffmpeg/libswresample\"",
 					"\"$(SRCROOT)/lib/ffmpeg/libpostproc\"",
 					"\"$(SRCROOT)/lib/ffmpeg/libswscale\"",
+					"\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks/CoreMedia.framework\"",
 				);
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				OTHER_LDFLAGS = (
@@ -9528,6 +9550,7 @@
 					"\"$(SRCROOT)/lib/ffmpeg/libswresample\"",
 					"\"$(SRCROOT)/lib/ffmpeg/libpostproc\"",
 					"\"$(SRCROOT)/lib/ffmpeg/libswscale\"",
+					"\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks/CoreMedia.framework\"",
 				);
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				OTHER_LDFLAGS = (
@@ -9645,6 +9668,7 @@
 					"\"$(SRCROOT)/lib/ffmpeg/libswresample\"",
 					"\"$(SRCROOT)/lib/ffmpeg/libpostproc\"",
 					"\"$(SRCROOT)/lib/ffmpeg/libswscale\"",
+					"\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks/CoreMedia.framework\"",
 				);
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				OTHER_LDFLAGS = (

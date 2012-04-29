@@ -24,6 +24,7 @@
 #endif
 
 #if defined(HAVE_VIDEOTOOLBOXDECODER)
+#include "DynamicDll.h"
 #include "GUISettings.h"
 #include "DVDClock.h"
 #include "DVDStreamInfo.h"
@@ -41,96 +42,312 @@ extern "C"
 #endif
 
 #pragma pack(push, 4)
+  //-----------------------------------------------------------------------------------
+  // CoreMedia.framework (private)
+  // 10.6+
+  typedef struct _GstCMApi GstCMApi;
+  typedef struct _GstCMApiClass GstCMApiClass;
+  
+  typedef CFTypeRef FigBaseObjectRef;
+  typedef struct _FigBaseVTable FigBaseVTable;
+  typedef struct _FigBaseIface FigBaseIface;
+  
+  typedef struct _CMVideoDimensions CMVideoDimensions;
+  typedef struct _CMTime CMTime;
+  
+  typedef CFTypeRef CMBufferQueueRef;
+  typedef SInt32 CMBufferQueueTriggerCondition;
+  typedef struct _CMBufferQueueTriggerToken *CMBufferQueueTriggerToken;
+  typedef CFTypeRef CMSampleBufferRef;
+  typedef CFTypeRef CMBlockBufferRef;
+  
+  typedef void (* CMBufferQueueTriggerCallback) (void *triggerRefcon,
+                                                 CMBufferQueueTriggerToken triggerToken);
+  typedef Boolean (* CMBufferQueueValidationCallback) (CMBufferQueueRef queue,
+                                                       CMSampleBufferRef buf, void *refCon);
+  
+  enum _FigMediaType
+  {
+    kFigMediaTypeVideo = 'vide'
+  };
+  
+  enum _FigCodecType
+  {
+    kComponentVideoUnsigned           = 'yuvs',
+    kFigVideoCodecType_JPEG_OpenDML   = 'dmb1',
+    kYUV420vCodecType                 = '420v'
+  };
+  
+  enum {
+    kVTDecoderNoErr = 0,
+    kVTDecoderHardwareNotSupportedErr = -12470,
+    kVTDecoderFormatNotSupportedErr = -12471,
+    kVTDecoderConfigurationError = -12472,
+    kVTDecoderDecoderFailedErr = -12473,
+  };
+  
+  enum {
+    kVTDecodeInfo_Asynchronous = 1UL << 0,
+    kVTDecodeInfo_FrameDropped = 1UL << 1
+  };
+  
+  enum _CMBufferQueueTriggerCondition
+  {
+    kCMBufferQueueTrigger_WhenDurationBecomesLessThan             = 1,
+    kCMBufferQueueTrigger_WhenDurationBecomesLessThanOrEqualTo    = 2,
+    kCMBufferQueueTrigger_WhenDurationBecomesGreaterThan          = 3,
+    kCMBufferQueueTrigger_WhenDurationBecomesGreaterThanOrEqualTo = 4,
+    kCMBufferQueueTrigger_WhenMinPresentationTimeStampChanges     = 5,
+    kCMBufferQueueTrigger_WhenMaxPresentationTimeStampChanges     = 6,
+    kCMBufferQueueTrigger_WhenDataBecomesReady                    = 7,
+    kCMBufferQueueTrigger_WhenEndOfDataReached                    = 8,
+    kCMBufferQueueTrigger_WhenReset                               = 9,
+    kCMBufferQueueTrigger_WhenBufferCountBecomesLessThan          = 10,
+    kCMBufferQueueTrigger_WhenBufferCountBecomesGreaterThan       = 11
+  };
+  
+  
+  struct _FigBaseVTable
+  {
+    uint32_t unk;
+    FigBaseIface * base;
+    void * derived;
+  };
+  
+  struct _FigBaseIface
+  {
+    uint32_t unk1;
+    uint32_t unk2;
+    uint32_t unk3;
+    OSStatus (* Invalidate) (FigBaseObjectRef obj);
+    OSStatus (* Finalize) (FigBaseObjectRef obj);
+    void* unk4;
+    OSStatus (* CopyProperty) (FigBaseObjectRef obj, CFTypeRef key, void *unk,
+                               CFTypeRef * value);
+    OSStatus (* SetProperty) (FigBaseObjectRef obj, CFTypeRef key,
+                              CFTypeRef value);
+  };
+  
+  struct _CMVideoDimensions
+  {
+    UInt32 width;
+    UInt32 height;
+  };
+  
+  struct _CMTime
+  {
+    UInt8 data[24];
+  };
+  
+  extern void *CMGetAttachment(CFTypeRef obj, CFStringRef attachmentKey,
+                               UInt32 * foundWherePtr);
+  
+  extern void FigFormatDescriptionRelease(CMFormatDescriptionRef desc);
+  CMFormatDescriptionRef (* FigFormatDescriptionRetain) (
+                                                         CMFormatDescriptionRef desc);
+  Boolean (* CMFormatDescriptionEqual) (CMFormatDescriptionRef desc1,
+                                        CMFormatDescriptionRef desc2);
+  CFTypeRef (* CMFormatDescriptionGetExtension) (
+                                                 const CMFormatDescriptionRef desc, CFStringRef extensionKey);
+  UInt32 (* CMFormatDescriptionGetMediaType) (
+                                              const CMFormatDescriptionRef desc);
+  UInt32 (* CMFormatDescriptionGetMediaSubType) (
+                                                 const CMFormatDescriptionRef desc);
+  
+  extern OSStatus FigVideoFormatDescriptionCreate(
+                                                  CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
+                                                  CFDictionaryRef extensions, CMFormatDescriptionRef * desc);
+  extern OSStatus FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom
+  (CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
+   UInt32 atomId, const UInt8 * data, CFIndex len,
+   CMFormatDescriptionRef * formatDesc);
+  extern CMVideoDimensions CMVideoFormatDescriptionGetDimensions (
+                                                                  const CMFormatDescriptionRef desc);
+  
+  extern CMTime CMTimeMake(int64_t value, int32_t timescale);
+  
+  extern OSStatus FigSampleBufferCreate(CFAllocatorRef allocator,
+                                        CMBlockBufferRef blockBuf, Boolean unkBool, UInt32 unkDW1, UInt32 unkDW2,
+                                        CMFormatDescriptionRef fmtDesc, UInt32 unkCountA, UInt32 unkCountB,
+                                        const void * unkTimeData, UInt32 unkCountC, const void * unkDWordData,
+                                        CMSampleBufferRef * sampleBuffer);
+  extern Boolean CMSampleBufferDataIsReady(
+                                           const CMSampleBufferRef buf);
+  extern CMBlockBufferRef CMSampleBufferGetDataBuffer(
+                                                      const CMSampleBufferRef buf);
+  extern CMFormatDescriptionRef CMSampleBufferGetFormatDescription(
+                                                                   const CMSampleBufferRef buf);
+  extern CVImageBufferRef CMSampleBufferGetImageBuffer(
+                                                       const CMSampleBufferRef buf);
+  extern SInt32 CMSampleBufferGetNumSamples(
+                                            const CMSampleBufferRef buf);
+  extern CFArrayRef CMSampleBufferGetSampleAttachmentsArray(
+                                                            const CMSampleBufferRef buf, SInt32 sampleIndex);
+  extern SInt32 CMSampleBufferGetSampleSize(
+                                            const CMSampleBufferRef buf, SInt32 sampleIndex);
+  extern void FigSampleBufferRelease(CMSampleBufferRef buf);
+  extern CMSampleBufferRef FigSampleBufferRetain(CMSampleBufferRef buf);
+  
+  extern OSStatus FigBlockBufferCreateWithMemoryBlock
+  (CFAllocatorRef allocator, void *data, UInt32 size,
+   CFAllocatorRef dataAllocator, void *unk1, UInt32 sizeA, UInt32 sizeB,
+   Boolean unkBool, CMBlockBufferRef * blockBuffer);
+  extern SInt32 CMBlockBufferGetDataLength(const CMBlockBufferRef buf);
+  extern OSStatus CMBlockBufferGetDataPointer(
+                                              const CMBlockBufferRef buf, UInt32 unk1, UInt32 unk2, UInt32 unk3,
+                                              Byte ** dataPtr);
+  extern void FigBlockBufferRelease(CMBlockBufferRef buf);
+  extern CMBlockBufferRef FigBlockBufferRetain(CMBlockBufferRef buf);
+  
+  extern CMSampleBufferRef CMBufferQueueDequeueAndRetain
+  (CMBufferQueueRef queue);
+  extern CFIndex CMBufferQueueGetBufferCount(CMBufferQueueRef queue);
+  extern OSStatus CMBufferQueueInstallTrigger(CMBufferQueueRef queue,
+                                              CMBufferQueueTriggerCallback triggerCallback, void * triggerRefCon,
+                                              CMBufferQueueTriggerCondition triggerCondition, CMTime triggerTime,
+                                              CMBufferQueueTriggerToken * triggerTokenOut);
+  extern Boolean CMBufferQueueIsEmpty(CMBufferQueueRef queue);
+  extern void FigBufferQueueRelease(CMBufferQueueRef queue);
+  extern OSStatus CMBufferQueueRemoveTrigger(CMBufferQueueRef queue,
+                                             CMBufferQueueTriggerToken triggerToken);
+  extern OSStatus CMBufferQueueSetValidationCallback(CMBufferQueueRef queue,
+                                                     CMBufferQueueValidationCallback func, void *refCon);
+  
+  extern CFStringRef * kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms;
+  extern CFStringRef * kCMSampleAttachmentKey_DependsOnOthers;
+  extern CMTime * kCMTimeInvalid;
+  
+  //
+  /*
+   extern OSStatus FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom(
+   CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
+   UInt32 atomId, const UInt8 *data, CFIndex len, CMFormatDescriptionRef *formatDesc);
+   extern void FigFormatDescriptionRelease(CMFormatDescriptionRef desc);
+   extern CMSampleBufferRef FigSampleBufferRetain(CMSampleBufferRef buf);
+   extern void FigSampleBufferRelease(CMSampleBufferRef buf);
+   extern void FigBlockBufferRelease(CMBlockBufferRef buf);
+   */
+  //-----------------------------------------------------------------------------------
+  // -F/System/Library/PrivateFrameworks -framework VideoToolbox
+  typedef uint32_t VTFormatId;
+  
+  typedef CFTypeRef VTDecompressionSessionRef;
+  typedef struct _VTDecompressionOutputCallback VTDecompressionOutputCallback;
+  
+  typedef void (*VTDecompressionOutputCallbackFunc) (void *data, CFDictionaryRef unk1,
+                                                     OSStatus result, UInt32 unk2, CVBufferRef cvbuf);
+  
+  /*enum _VTFormat
+  {
+    kCMVideoCodecType_JPEG             = 'jpeg',
+    kCMVideoCodecType_H264             = 'avc1', // MPEG-4 Part 10, Advanced Video 
+    kCMVideoCodecType_MPEG4Video       = 'mp4v', // MPEG-4 Part 2 video format.
+    kCMVideoCodecType_MPEG2Video       = 'mp2v',
+  };*/
+  
+  enum VTFormat {
+    kVTFormatJPEG = 'jpeg', // kCMVideoCodecType_JPEG
+    kVTFormatH264 = 'avc1', // kCMVideoCodecType_H264 (MPEG-4 Part 10))
+    kVTFormatMPEG4Video = 'mp4v', // kCMVideoCodecType_MPEG4Video (MPEG-4 Part 2)
+    kVTFormatMPEG2Video = 'mp2v' // kCMVideoCodecType_MPEG2Video
+  };
+  
+  enum {
+    kVTDecoderDecodeFlags_DontEmitFrame = 1 << 0
+  };
+  struct _VTDecompressionOutputCallback
+  {
+    VTDecompressionOutputCallbackFunc callback;
+    void *refcon;
+  };
+  
+  extern CFStringRef kVTVideoDecoderSpecification_EnableSandboxedVideoDecoder;
+  
+  extern OSStatus VTDecompressionSessionCreate(
+                                               CFAllocatorRef allocator,
+                                               CMFormatDescriptionRef videoFormatDescription,
+                                               CFTypeRef sessionOptions,
+                                               CFDictionaryRef destinationPixelBufferAttributes,
+                                               VTDecompressionOutputCallback *outputCallback,
+                                               VTDecompressionSessionRef *session);
+  
+  extern OSStatus VTDecompressionSessionDecodeFrame(
+                                                    VTDecompressionSessionRef session,
+                                                    CMSampleBufferRef sbuf,
+                                                    uint32_t decoderFlags, CFDictionaryRef frameInfo, uint32_t unk1);
+  
+  extern void VTDecompressionSessionInvalidate(VTDecompressionSessionRef session);
+  extern void VTDecompressionSessionRelease(VTDecompressionSessionRef session);
+  extern VTDecompressionSessionRef VTDecompressionSessionRetain(VTDecompressionSessionRef session);
+  extern OSStatus VTDecompressionSessionWaitForAsynchronousFrames(VTDecompressionSessionRef session);
+  
 
-//-----------------------------------------------------------------------------------
-// /System/Library/PrivateFrameworks/VideoToolbox.framework
-enum VTFormat {
-  kVTFormatJPEG         = 'jpeg', // kCMVideoCodecType_JPEG
-  kVTFormatH264         = 'avc1', // kCMVideoCodecType_H264 (MPEG-4 Part 10))
-  kVTFormatMPEG4Video   = 'mp4v', // kCMVideoCodecType_MPEG4Video (MPEG-4 Part 2)
-  kVTFormatMPEG2Video   = 'mp2v'  // kCMVideoCodecType_MPEG2Video
-};
-enum {
-  kVTDecoderNoErr = 0,
-  kVTDecoderHardwareNotSupportedErr = -12470,
-  kVTDecoderFormatNotSupportedErr = -12471,
-  kVTDecoderConfigurationError = -12472,
-  kVTDecoderDecoderFailedErr = -12473,
-};
-enum {
-  kVTDecodeInfo_Asynchronous = 1UL << 0,
-  kVTDecodeInfo_FrameDropped = 1UL << 1
-};
-enum {
-  // tells the decoder not to bother returning a CVPixelBuffer
-  // in the outputCallback. The output callback will still be called.
-  kVTDecoderDecodeFlags_DontEmitFrame = 1 << 0
-};
-enum {
-  // decode and return buffers for all frames currently in flight.
-  kVTDecoderFlush_EmitFrames = 1 << 0		
-};
-
-typedef UInt32 VTFormatId;
-typedef CFTypeRef VTDecompressionSessionRef;
-
-typedef void (*VTDecompressionOutputCallbackFunc)(
-  void            *refCon,
-  CFDictionaryRef frameInfo,
-  OSStatus        status,
-  UInt32          infoFlags,
-  CVBufferRef     imageBuffer);
-
-typedef struct _VTDecompressionOutputCallback VTDecompressionOutputCallback;
-struct _VTDecompressionOutputCallback {
-  VTDecompressionOutputCallbackFunc callback;
-  void *refcon;
-};
-
-extern CFStringRef kVTVideoDecoderSpecification_EnableSandboxedVideoDecoder;
-
-extern OSStatus VTDecompressionSessionCreate(
-  CFAllocatorRef allocator,
-  CMFormatDescriptionRef videoFormatDescription,
-  CFTypeRef sessionOptions,
-  CFDictionaryRef destinationPixelBufferAttributes,
-  VTDecompressionOutputCallback *outputCallback,
-  VTDecompressionSessionRef *session);
-
-extern OSStatus VTDecompressionSessionDecodeFrame(
-  VTDecompressionSessionRef session, CMSampleBufferRef sbuf,
-  uint32_t decoderFlags, CFDictionaryRef frameInfo, uint32_t unk1);
-
-extern OSStatus VTDecompressionSessionCopyProperty(VTDecompressionSessionRef session, CFTypeRef key, void* unk, CFTypeRef * value);
-extern OSStatus VTDecompressionSessionCopySupportedPropertyDictionary(VTDecompressionSessionRef session, CFDictionaryRef * dict);
-extern OSStatus VTDecompressionSessionSetProperty(VTDecompressionSessionRef session, CFStringRef propName, CFTypeRef propValue);
-extern void VTDecompressionSessionInvalidate(VTDecompressionSessionRef session);
-extern void VTDecompressionSessionRelease(VTDecompressionSessionRef session);
-extern VTDecompressionSessionRef VTDecompressionSessionRetain(VTDecompressionSessionRef session);
-extern OSStatus VTDecompressionSessionWaitForAsynchronousFrames(VTDecompressionSessionRef session);
-
-//-----------------------------------------------------------------------------------
-// /System/Library/Frameworks/CoreMedia.framework
-union
-{
-  void* lpAddress;
-  // iOS <= 4.2
-  OSStatus (*FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom1)(
-    CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
-    UInt32 atomId, const UInt8 *data, CFIndex len, CMFormatDescriptionRef *formatDesc);
-  // iOS >= 4.3
-  OSStatus (*FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom2)(
-    CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
-    UInt32 atomId, const UInt8 *data, CFIndex len, CFDictionaryRef extensions, CMFormatDescriptionRef *formatDesc);
-} FigVideoHack;
-extern OSStatus FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom(
-  CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
-  UInt32 atomId, const UInt8 *data, CFIndex len, CMFormatDescriptionRef *formatDesc);
-
-extern CMSampleBufferRef FigSampleBufferRetain(CMSampleBufferRef buf);
-//-----------------------------------------------------------------------------------
-#pragma pack(pop)
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  class DllLibVTBDecoderInterface
+  {
+  public:
+    virtual ~DllLibVTBDecoderInterface() {}
+    virtual OSStatus VTDecompressionSessionCreate(
+                                                  CFAllocatorRef allocator,
+                                                  CMFormatDescriptionRef videoFormatDescription,
+                                                  CFTypeRef sessionOptions,
+                                                  CFDictionaryRef destinationPixelBufferAttributes,
+                                                  VTDecompressionOutputCallback *outputCallback,
+                                                  VTDecompressionSessionRef *session) = 0;
     
+    virtual OSStatus VTDecompressionSessionDecodeFrame(
+                                                       VTDecompressionSessionRef session,
+                                                       CMSampleBufferRef sbuf,
+                                                       uint32_t decoderFlags, CFDictionaryRef frameInfo, uint32_t unk1) = 0;
+    
+    virtual void VTDecompressionSessionInvalidate(VTDecompressionSessionRef session)=0;
+    virtual void VTDecompressionSessionRelease(VTDecompressionSessionRef session)=0;
+    virtual VTDecompressionSessionRef VTDecompressionSessionRetain(VTDecompressionSessionRef session)=0;
+    virtual OSStatus VTDecompressionSessionWaitForAsynchronousFrames(VTDecompressionSessionRef session)=0;
+  };
+  
+  class DllLibVTBDecoder : public DllDynamic, DllLibVTBDecoderInterface
+  {
+    #define DLL_PATH_LIBVTBDECODER "/System/Library/PrivateFrameworks/VideoToolbox.framework/Versions/Current/VideoToolbox"
+    DECLARE_DLL_WRAPPER(DllLibVTBDecoder, DLL_PATH_LIBVTBDECODER)
+    
+    DEFINE_METHOD6(OSStatus, VTDecompressionSessionCreate, (CFAllocatorRef p1, CMFormatDescriptionRef p2, CFTypeRef p3, CFDictionaryRef p4, VTDecompressionOutputCallback *p5, VTDecompressionSessionRef *p6))
+    DEFINE_METHOD5(OSStatus, VTDecompressionSessionDecodeFrame, (VTDecompressionSessionRef p1, CMSampleBufferRef p2, uint32_t p3, CFDictionaryRef p4, uint32_t p5))
+    DEFINE_METHOD1(void, VTDecompressionSessionInvalidate, (VTDecompressionSessionRef p1))
+    DEFINE_METHOD1(void, VTDecompressionSessionRelease, (VTDecompressionSessionRef p1))
+    DEFINE_METHOD1(VTDecompressionSessionRef, VTDecompressionSessionRetain, (VTDecompressionSessionRef p1))
+    DEFINE_METHOD1(OSStatus, VTDecompressionSessionWaitForAsynchronousFrames, (VTDecompressionSessionRef p1))
+
+    BEGIN_METHOD_RESOLVE()
+    RESOLVE_METHOD(VTDecompressionSessionCreate)
+    RESOLVE_METHOD(VTDecompressionSessionDecodeFrame)
+    RESOLVE_METHOD(VTDecompressionSessionInvalidate)
+    RESOLVE_METHOD(VTDecompressionSessionRelease)
+    RESOLVE_METHOD(VTDecompressionSessionRetain)
+    RESOLVE_METHOD(VTDecompressionSessionWaitForAsynchronousFrames)
+    END_METHOD_RESOLVE()
+  };
+  
+
+  //-----------------------------------------------------------------------------------
+  union
+  {
+    void* lpAddress;
+    // iOS <= 4.2
+    OSStatus (*FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom1)(
+                                                                                   CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
+                                                                                   UInt32 atomId, const UInt8 *data, CFIndex len, CMFormatDescriptionRef *formatDesc);
+    // iOS >= 4.3
+    OSStatus (*FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom2)(
+                                                                                   CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
+                                                                                   UInt32 atomId, const UInt8 *data, CFIndex len, CFDictionaryRef extensions, CMFormatDescriptionRef *formatDesc);
+  } FigVideoHack;
+  extern OSStatus FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom(
+                                                                                    CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
+                                                                                    UInt32 atomId, const UInt8 *data, CFIndex len, CMFormatDescriptionRef *formatDesc);
+  
+  extern CMSampleBufferRef FigSampleBufferRetain(CMSampleBufferRef buf);
+#pragma pack(pop)    
 #if defined(__cplusplus)
 }
 #endif
@@ -149,7 +366,7 @@ int CheckNP2( unsigned x )
 //-----------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------
 // helper functions for debuging VTDecompression
-#if _DEBUG
+#if _DEBUG2
 char* vtutil_string_to_utf8(CFStringRef s)
 {
   char *result;
@@ -286,7 +503,7 @@ CreateDictionaryWithDisplayTime(double time, double dts, double pts)
 // helper function to extract dts/pts from a dictionary
 static void
 GetFrameDisplayTimeFromDictionary(
-  CFDictionaryRef inFrameInfoDictionary, frame_queue *frame)
+  CFDictionaryRef inFrameInfoDictionary, vtframe_queue *frame)
 {
   // default to DVD_NOPTS_VALUE
   frame->sort_time = -1.0;
@@ -316,7 +533,7 @@ CreateFormatDescription(VTFormatId format_id, int width, int height)
   CMFormatDescriptionRef fmt_desc;
   OSStatus status;
 
-  status = CMVideoFormatDescriptionCreate(
+  status = FigVideoFormatDescriptionCreate(
     NULL,             // CFAllocatorRef allocator
     format_id,
     width,
@@ -379,7 +596,7 @@ CreateSampleBufferFrom(CMFormatDescriptionRef fmt_desc, void *demux_buff, size_t
   CMBlockBufferRef newBBufOut = NULL;
   CMSampleBufferRef sBufOut = NULL;
 
-  status = CMBlockBufferCreateWithMemoryBlock(
+  status = FigBlockBufferCreateWithMemoryBlock(
     NULL,             // CFAllocatorRef structureAllocator
     demux_buff,       // void *memoryBlock
     demux_size,       // size_t blockLengt
@@ -392,7 +609,7 @@ CreateSampleBufferFrom(CMFormatDescriptionRef fmt_desc, void *demux_buff, size_t
 
   if (!status)
   {
-    status = CMSampleBufferCreate(
+    status = FigSampleBufferCreate(
       NULL,           // CFAllocatorRef allocator
       newBBufOut,     // CMBlockBufferRef dataBuffer
       TRUE,           // Boolean dataReady
@@ -604,7 +821,7 @@ void quicktime_esds_dump(quicktime_esds_t * esds)
    (((const uint8_t*)(x))[2] <<  8) |        \
    ((const uint8_t*)(x))[3])
 
-static const uint8_t *avc_find_startcode_internal(const uint8_t *p, const uint8_t *end)
+static const uint8_t *vtbavc_find_startcode_internalvtb(const uint8_t *p, const uint8_t *end)
 {
   const uint8_t *a = p + 4 - ((intptr_t)p & 3);
 
@@ -645,15 +862,15 @@ static const uint8_t *avc_find_startcode_internal(const uint8_t *p, const uint8_
   return end + 3;
 }
 
-const uint8_t *avc_find_startcode(const uint8_t *p, const uint8_t *end)
+const uint8_t *vtbavc_find_startcodevtb(const uint8_t *p, const uint8_t *end)
 {
-  const uint8_t *out= avc_find_startcode_internal(p, end);
+  const uint8_t *out= vtbavc_find_startcode_internalvtb(p, end);
   if (p<out && out<end && !out[-1])
     out--;
   return out;
 }
 
-const int avc_parse_nal_units(DllAvFormat *av_format_ctx,
+const int vtbavc_parse_nal_units(DllAvFormat *av_format_ctx,
   ByteIOContext *pb, const uint8_t *buf_in, int size)
 {
   const uint8_t *p = buf_in;
@@ -661,11 +878,11 @@ const int avc_parse_nal_units(DllAvFormat *av_format_ctx,
   const uint8_t *nal_start, *nal_end;
 
   size = 0;
-  nal_start = avc_find_startcode(p, end);
+  nal_start = vtbavc_find_startcodevtb(p, end);
   while (nal_start < end)
   {
     while (!*(nal_start++));
-    nal_end = avc_find_startcode(nal_start, end);
+    nal_end = vtbavc_find_startcodevtb(nal_start, end);
     av_format_ctx->avio_wb32(pb, nal_end - nal_start);
     av_format_ctx->avio_write(pb, nal_start, nal_end - nal_start);
     size += 4 + nal_end - nal_start;
@@ -674,7 +891,7 @@ const int avc_parse_nal_units(DllAvFormat *av_format_ctx,
   return size;
 }
 
-const int avc_parse_nal_units_buf(DllAvUtil *av_util_ctx, DllAvFormat *av_format_ctx,
+const int vtbavc_parse_nal_units_buf(DllAvUtil *av_util_ctx, DllAvFormat *av_format_ctx,
   const uint8_t *buf_in, uint8_t **buf, int *size)
 {
   ByteIOContext *pb;
@@ -682,7 +899,7 @@ const int avc_parse_nal_units_buf(DllAvUtil *av_util_ctx, DllAvFormat *av_format
   if (ret < 0)
     return ret;
 
-  avc_parse_nal_units(av_format_ctx, pb, buf_in, *size);
+  vtbavc_parse_nal_units(av_format_ctx, pb, buf_in, *size);
 
   av_util_ctx->av_freep(buf);
   *size = av_format_ctx->avio_close_dyn_buf(pb, buf);
@@ -730,7 +947,7 @@ const int avc_parse_nal_units_buf(DllAvUtil *av_util_ctx, DllAvFormat *av_format
    field_pic_flag: 0 on the frames,
    (field_pic_flag: 1 would indicate a normal interlaced frame).
 */
-const int isom_write_avcc(DllAvUtil *av_util_ctx, DllAvFormat *av_format_ctx,
+const int isom_write_avccvtb(DllAvUtil *av_util_ctx, DllAvFormat *av_format_ctx,
   ByteIOContext *pb, const uint8_t *data, int len)
 {
   // extradata from bytestream h264, convert to avcC atom data for bitstream
@@ -743,7 +960,7 @@ const int isom_write_avcc(DllAvUtil *av_util_ctx, DllAvFormat *av_format_ctx,
       uint32_t sps_size=0, pps_size=0;
       uint8_t *sps=0, *pps=0;
 
-      int ret = avc_parse_nal_units_buf(av_util_ctx, av_format_ctx, data, &buf, &len);
+      int ret = vtbavc_parse_nal_units_buf(av_util_ctx, av_format_ctx, data, &buf, &len);
       if (ret < 0)
         return ret;
       start = buf;
@@ -1011,7 +1228,7 @@ parseh264_sps(uint8_t *sps, uint32_t sps_size, bool *interlaced, int32_t *max_re
   *max_ref_frames = sps_info.max_num_ref_frames;
 }
 
-bool validate_avcC_spc(uint8_t *extradata, uint32_t extrasize, int32_t *max_ref_frames)
+bool validate_avcC_spcvtb(uint8_t *extradata, uint32_t extrasize, int32_t *max_ref_frames)
 {
   // check the avcC atom's sps for number of reference frames and
   // bail if interlaced, VDA does not handle interlaced h264.
@@ -1026,9 +1243,18 @@ bool validate_avcC_spc(uint8_t *extradata, uint32_t extrasize, int32_t *max_ref_
 }
 
 //-----------------------------------------------------------------------------------
+static DllLibVTBDecoder *g_DllLibVTBDecoder = (DllLibVTBDecoder*)-1;
 //-----------------------------------------------------------------------------------
 CDVDVideoCodecVideoToolBox::CDVDVideoCodecVideoToolBox() : CDVDVideoCodec()
 {
+  if (g_DllLibVTBDecoder == (DllLibVTBDecoder*)-1)
+  {
+    m_dll = new DllLibVTBDecoder;
+    m_dll->Load();
+  }
+  else
+    m_dll = g_DllLibVTBDecoder;
+  
   m_fmt_desc    = NULL;
   m_vt_session  = NULL;
   m_pFormatName = "vtb";
@@ -1142,7 +1368,7 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
         if (extradata[0] == 1)
         {
           // check for interlaced and get number of ref frames
-          if (!validate_avcC_spc(extradata, extrasize, &m_max_ref_frames))
+          if (!validate_avcC_spcvtb(extradata, extrasize, &m_max_ref_frames))
             return false;
 
           // we need to check this early, CreateFormatDescriptionFromCodecData will silently fail
@@ -1181,14 +1407,14 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
 
             m_convert_bytestream = true;
             // create a valid avcC atom data from ffmpeg's extradata
-            isom_write_avcc(m_dllAvUtil, m_dllAvFormat, pb, extradata, extrasize);
+            isom_write_avccvtb(m_dllAvUtil, m_dllAvFormat, pb, extradata, extrasize);
             // unhook from ffmpeg's extradata
             extradata = NULL;
             // extract the avcC atom data into extradata getting size into extrasize
             extrasize = m_dllAvFormat->avio_close_dyn_buf(pb, &extradata);
 
             // check for interlaced and get number of ref frames
-            if (!validate_avcC_spc(extradata, extrasize, &m_max_ref_frames))
+            if (!validate_avcC_spcvtb(extradata, extrasize, &m_max_ref_frames))
             {
               m_dllAvUtil->av_free(extradata);
               return false;
@@ -1331,7 +1557,7 @@ int CDVDVideoCodecVideoToolBox::Decode(BYTE* pData, int iSize, double dts, doubl
       if(m_dllAvFormat->avio_open_dyn_buf(&pb) < 0)
         return VC_ERROR;
 
-      demux_size = avc_parse_nal_units(m_dllAvFormat, pb, pData, iSize);
+      demux_size = vtbavc_parse_nal_units(m_dllAvFormat, pb, pData, iSize);
       demux_size = m_dllAvFormat->avio_close_dyn_buf(pb, &demux_buff);
       sampleBuff = CreateSampleBufferFrom(m_fmt_desc, demux_buff, demux_size);
     }
@@ -1376,7 +1602,7 @@ int CDVDVideoCodecVideoToolBox::Decode(BYTE* pData, int iSize, double dts, doubl
       decoderFlags = kVTDecoderDecodeFlags_DontEmitFrame;
 
     // submit for decoding
-    status = VTDecompressionSessionDecodeFrame(m_vt_session, sampleBuff, decoderFlags, frameInfo, 0);
+    status = m_dll->VTDecompressionSessionDecodeFrame(m_vt_session, sampleBuff, decoderFlags, frameInfo, 0);
     if (status != kVTDecoderNoErr)
     {
       CLog::Log(LOGNOTICE, "%s - VTDecompressionSessionDecodeFrame returned(%d)",
@@ -1393,7 +1619,7 @@ int CDVDVideoCodecVideoToolBox::Decode(BYTE* pData, int iSize, double dts, doubl
     }
 
     // wait for decoding to finish
-    status = VTDecompressionSessionWaitForAsynchronousFrames(m_vt_session);
+    status = m_dll->VTDecompressionSessionWaitForAsynchronousFrames(m_vt_session);
     if (status != kVTDecoderNoErr)
     {
       CLog::Log(LOGNOTICE, "%s - VTDecompressionSessionWaitForAsynchronousFrames returned(%d)",
@@ -1422,7 +1648,7 @@ int CDVDVideoCodecVideoToolBox::Decode(BYTE* pData, int iSize, double dts, doubl
 void CDVDVideoCodecVideoToolBox::Reset(void)
 {
   // flush decoder
-  VTDecompressionSessionWaitForAsynchronousFrames(m_vt_session);
+  m_dll->VTDecompressionSessionWaitForAsynchronousFrames(m_vt_session);
 
   while (m_queue_depth)
     DisplayQueuePop();
@@ -1483,7 +1709,7 @@ void CDVDVideoCodecVideoToolBox::DisplayQueuePop(void)
 
   // pop the top frame off the queue
   pthread_mutex_lock(&m_queue_mutex);
-  frame_queue *top_frame = m_display_queue;
+  vtframe_queue *top_frame = m_display_queue;
   m_display_queue = m_display_queue->nextframe;
   m_queue_depth--;
   pthread_mutex_unlock(&m_queue_mutex);
@@ -1551,7 +1777,7 @@ CDVDVideoCodecVideoToolBox::CreateVTSession(int width, int height, CMFormatDescr
   outputCallback.callback = VTDecoderCallback;
   outputCallback.refcon = this;
 
-  status = VTDecompressionSessionCreate(
+  status = m_dll->VTDecompressionSessionCreate(
     NULL, // CFAllocatorRef allocator
     fmt_desc,
     NULL, // CFTypeRef sessionOptions
@@ -1577,7 +1803,7 @@ CDVDVideoCodecVideoToolBox::DestroyVTSession(void)
 {
   if (m_vt_session)
   {
-    VTDecompressionSessionInvalidate((VTDecompressionSessionRef)m_vt_session);
+    m_dll->VTDecompressionSessionInvalidate((VTDecompressionSessionRef)m_vt_session);
     CFRelease((VTDecompressionSessionRef)m_vt_session);
     m_vt_session = NULL;
   }
@@ -1621,7 +1847,7 @@ CDVDVideoCodecVideoToolBox::VTDecoderCallback(
   // this pointer to a frame_queue type keeps track of the newest decompressed frame
   // and is then inserted into a linked list of frame pointers depending on the display time
   // parsed out of the bitstream and stored in the frameInfo dictionary by the client
-  frame_queue *newFrame = (frame_queue*)calloc(sizeof(frame_queue), 1);
+  vtframe_queue *newFrame = (vtframe_queue*)calloc(sizeof(vtframe_queue), 1);
   newFrame->nextframe = NULL;
   if (CVPixelBufferIsPlanar(imageBuffer) )
   {
@@ -1652,7 +1878,7 @@ CDVDVideoCodecVideoToolBox::VTDecoderCallback(
   // hold them in display order for display on another thread
   pthread_mutex_lock(&ctx->m_queue_mutex);
   //
-  frame_queue *queueWalker = ctx->m_display_queue;
+  vtframe_queue *queueWalker = ctx->m_display_queue;
   if (!queueWalker || (newFrame->sort_time < queueWalker->sort_time))
   {
     // we have an empty queue, or this frame earlier than the current queue head.
@@ -1663,7 +1889,7 @@ CDVDVideoCodecVideoToolBox::VTDecoderCallback(
   {
     // walk the queue and insert this frame where it belongs in display order.
     bool frameInserted = false;
-    frame_queue *nextFrame = NULL;
+    vtframe_queue *nextFrame = NULL;
     //
     while (!frameInserted)
     {
