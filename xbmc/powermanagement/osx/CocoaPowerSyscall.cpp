@@ -30,6 +30,7 @@ typedef unsigned char   BYTE;
 #include "windowing/WindowingFactory.h"
 #include "CocoaPowerSyscall.h"
 #if !defined(TARGET_DARWIN_IOS)
+#include <Carbon/Carbon.h>
 #include <IOKit/pwr_mgt/IOPMLib.h>
 #include <IOKit/ps/IOPowerSources.h>
 #include <IOKit/ps/IOPSKeys.h>

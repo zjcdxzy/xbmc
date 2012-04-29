@@ -1279,6 +1279,7 @@
 		F56C8CF4131F5DFD000AD0F6 /* libiconv.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C8CF2131F5DFD000AD0F6 /* libiconv.dylib */; };
 		F56C8CF6131F5E0B000AD0F6 /* libncurses.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C8CF5131F5E0B000AD0F6 /* libncurses.dylib */; };
 		F56C8CF7131F5E0B000AD0F6 /* libncurses.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C8CF5131F5E0B000AD0F6 /* libncurses.dylib */; };
+		F572CF01154C646300BC83A0 /* IOSurface.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F572CF00154C646300BC83A0 /* IOSurface.framework */; };
 		F57A1D1E1329B15300498CC7 /* AutoPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = F57A1D1D1329B15300498CC7 /* AutoPool.mm */; };
 		F57A1D1F1329B15300498CC7 /* AutoPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = F57A1D1D1329B15300498CC7 /* AutoPool.mm */; };
 		F57B6F801071B8B500079ACB /* JobManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F57B6F7E1071B8B500079ACB /* JobManager.cpp */; };
@@ -3858,6 +3859,7 @@
 		F56C8CEF131F5DED000AD0F6 /* libxml2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libxml2.dylib; path = usr/lib/libxml2.dylib; sourceTree = SDKROOT; };
 		F56C8CF2131F5DFD000AD0F6 /* libiconv.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libiconv.dylib; path = usr/lib/libiconv.dylib; sourceTree = SDKROOT; };
 		F56C8CF5131F5E0B000AD0F6 /* libncurses.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libncurses.dylib; path = usr/lib/libncurses.dylib; sourceTree = SDKROOT; };
+		F572CF00154C646300BC83A0 /* IOSurface.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOSurface.framework; path = /System/Library/Frameworks/IOSurface.framework; sourceTree = "<absolute>"; };
 		F57A1D1C1329B15300498CC7 /* AutoPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AutoPool.h; sourceTree = "<group>"; };
 		F57A1D1D1329B15300498CC7 /* AutoPool.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AutoPool.mm; sourceTree = "<group>"; };
 		F57B6F7E1071B8B500079ACB /* JobManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JobManager.cpp; sourceTree = "<group>"; };
@@ -4068,6 +4070,7 @@
 				F56C8CF6131F5E0B000AD0F6 /* libncurses.dylib in Frameworks */,
 				18404DA61396C31B00863BBA /* SlingboxLib.a in Frameworks */,
 				DFC1B8F01464840E00B1BE79 /* SystemConfiguration.framework in Frameworks */,
+				F572CF01154C646300BC83A0 /* IOSurface.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4144,16 +4147,17 @@
 				88ECB6580DE013C4003396A7 /* DiskArbitration.framework */,
 				E38E23900D2626E600618676 /* Foundation.framework */,
 				E33466A50D2E5103005A65EC /* IOKit.framework */,
-				F56C8CEC131F5DE7000AD0F6 /* libbz2.dylib */,
-				F56C8CF2131F5DFD000AD0F6 /* libiconv.dylib */,
-				F56C8CE9131F5DCC000AD0F6 /* libm.dylib */,
-				F56C8CF5131F5E0B000AD0F6 /* libncurses.dylib */,
-				F56C8CEF131F5DED000AD0F6 /* libxml2.dylib */,
-				F56C8CE6131F5DC6000AD0F6 /* libz.dylib */,
+				F572CF00154C646300BC83A0 /* IOSurface.framework */,
 				DFC1B8EF1464840E00B1BE79 /* SystemConfiguration.framework */,
 				E38E23910D2626E600618676 /* OpenGL.framework */,
 				F59879070FBAA0C3008EF4FB /* QuartzCore.framework */,
 				E35EF2540D380C3D00DB5CD5 /* QuickTime.framework */,
+				F56C8CF2131F5DFD000AD0F6 /* libiconv.dylib */,
+				F56C8CEC131F5DE7000AD0F6 /* libbz2.dylib */,
+				F56C8CE9131F5DCC000AD0F6 /* libm.dylib */,
+				F56C8CF5131F5E0B000AD0F6 /* libncurses.dylib */,
+				F56C8CEF131F5DED000AD0F6 /* libxml2.dylib */,
+				F56C8CE6131F5DC6000AD0F6 /* libz.dylib */,
 				F56C8CE9131F5DCC000AD0F6 /* libm.dylib */,
 			);
 			name = "System Libs and Frameworks";
@@ -9406,7 +9410,7 @@
 				LIBRARY_SEARCH_PATHS = "";
 				MACOSX_DEPLOYMENT_TARGET = 10.4;
 				PREBINDING = NO;
-				SDKROOT = macosx10.4;
+				SDKROOT = macosx10.6;
 				USER_HEADER_SEARCH_PATHS = .;
 				VALID_ARCHS = "ppc i386";
 			};
@@ -9425,7 +9429,7 @@
 				LIBRARY_SEARCH_PATHS = "";
 				MACOSX_DEPLOYMENT_TARGET = 10.4;
 				PREBINDING = NO;
-				SDKROOT = macosx10.4;
+				SDKROOT = macosx10.6;
 				USER_HEADER_SEARCH_PATHS = .;
 				VALID_ARCHS = "ppc i386";
 			};

@@ -1052,7 +1052,7 @@ void CWinSystemOSX::EnableVSync(bool enable)
   GLint swapInterval;
   
   swapInterval = enable ? 1 : 0;
-  [[NSOpenGLContext currentContext] setValues:(const long int*)&swapInterval forParameter:NSOpenGLCPSwapInterval];
+  [[NSOpenGLContext currentContext] setValues:&swapInterval forParameter:NSOpenGLCPSwapInterval];
 }
 
 bool CWinSystemOSX::SwitchToVideoMode(int width, int height, double refreshrate, int screenIdx)
@@ -1360,6 +1360,11 @@ void CWinSystemOSX::CheckDisplayChanging(u_int32_t flags)
         (*i)->OnResetDevice();
     }
   }
+}
+
+void* CWinSystemOSX::GetCGLContextObj()
+{
+  return [(NSOpenGLContext*)m_glContext CGLContextObj];
 }
 
 void CWinSystemOSX::DisplayReconfigured(CGDirectDisplayID display, 

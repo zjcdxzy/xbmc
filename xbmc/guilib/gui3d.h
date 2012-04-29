@@ -68,6 +68,8 @@ typedef D3DPalette* LPDIRECT3DPALETTE8;
 
 #if defined(HAS_GL) || defined(HAS_GLES)
 
+#include <GL/glew.h>
+
 namespace XBMC
 {
   typedef void*  DevicePtr;

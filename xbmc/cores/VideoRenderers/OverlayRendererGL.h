@@ -24,16 +24,14 @@
 #pragma once
 #include "OverlayRenderer.h"
 
-#ifdef HAS_GL
-#include <GL/glew.h>
-#endif
-
 class CDVDOverlay;
 class CDVDOverlayImage;
 class CDVDOverlaySpu;
 class CDVDOverlaySSA;
 
 #if defined(HAS_GL) || HAS_GLES == 2
+
+#include <GL/glew.h>
 
 namespace OVERLAY {
 

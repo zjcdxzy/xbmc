@@ -27,7 +27,7 @@
 #include "threads/CriticalSection.h"
 #include <SDL/SDL_video.h>
 
-typedef struct _CGDirectDisplayID *CGDirectDisplayID;
+typedef uint32_t CGDirectDisplayID;
 typedef u_int32_t CGDisplayChangeSummaryFlags;
 
 class IDispResource;
@@ -65,6 +65,9 @@ public:
   virtual int GetNumScreens();
 
   void CheckDisplayChanging(u_int32_t flags);
+  
+  void* GetCGLContextObj();
+
 protected:
   void* CreateWindowedContext(void* shareCtx);
   void* CreateFullScreenContext(int screen_index, void* shareCtx);

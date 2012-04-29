@@ -81,6 +81,10 @@ even if they're a different size
   #include "guilib/D3DResource.h"
 #endif
 
+#ifdef HAS_GL
+  #include <GL/glew.h>
+#endif
+
 #include "threads/Event.h"
 
 enum ECAPTURESTATE

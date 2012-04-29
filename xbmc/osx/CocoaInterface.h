@@ -24,7 +24,7 @@
 #include <string>
 #include "utils/StdString.h"
 #if !defined(__arm__)
-#include <Carbon/Carbon.h>
+//#include <Carbon/Carbon.h>
 #endif
 #include "AutoPool.h"
 
@@ -77,9 +77,18 @@ extern "C"
   const char *Cocoa_Paste() ;  
 
 #if !defined(__arm__)
+  #if __LP64__
+  typedef unsigned int                    UInt32;
+  typedef signed int                      SInt32;
+  #else
+  typedef unsigned long                   UInt32;
+  typedef signed long                     SInt32;
+  #endif
+  typedef UInt32        FourCharCode;
+  typedef FourCharCode  AEEventID;
   // helper from QA 1134
   // http://developer.apple.com/mac/library/qa/qa2001/qa1134.html
-  OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend);
+  int SendAppleEventToSystemProcess(AEEventID EventToSend);
 #endif
 
   void Cocoa_ResetAudioDevices();

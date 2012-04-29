@@ -246,8 +246,8 @@
 #include <GL/glu.h>
 //#include <GL/wglext.h>
 #elif defined(TARGET_DARWIN)
-#include <GL/glew.h>
-#include <OpenGL/gl.h>
+//#include <GL/glew.h>
+//#include <OpenGL/gl.h>
 #elif defined(TARGET_LINUX)
 #include <GL/glew.h>
 #include <GL/gl.h>

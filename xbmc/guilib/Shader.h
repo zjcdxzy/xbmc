@@ -29,6 +29,8 @@
 
 #if defined(HAS_GL) || defined(HAS_GLES)
 
+#include <GL/glew.h>
+
 namespace Shaders {
 
   using namespace std;

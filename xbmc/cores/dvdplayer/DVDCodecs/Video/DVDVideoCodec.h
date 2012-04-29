@@ -39,10 +39,7 @@ class CVDPAU;
 class COpenMax;
 class COpenMaxVideo;
 struct OpenMaxVideoBuffer;
-#ifdef HAVE_VIDEOTOOLBOXDECODER
-  class CDVDVideoCodecVideoToolBox;
-  struct __CVBuffer;
-#endif
+typedef struct __CVBuffer *CVBufferRef;
 
 // should be entirely filled by all codecs
 struct DVDVideoPicture
@@ -70,12 +67,10 @@ struct DVDVideoPicture
       COpenMax *openMax;
       OpenMaxVideoBuffer *openMaxBuffer;
     };
-#ifdef HAVE_VIDEOTOOLBOXDECODER
+
     struct {
-      CDVDVideoCodecVideoToolBox *vtb;
-      struct __CVBuffer *cvBufferRef;
+      CVBufferRef cvBufferRef;
     };
-#endif
   };
 
   unsigned int iFlags;

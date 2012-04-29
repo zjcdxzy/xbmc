@@ -26,6 +26,8 @@
 
 #if defined(HAS_GL) || HAS_GLES == 2
 
+#include <GL/glew.h>
+
 //
 // CFrameBufferObject
 // A class that abstracts FBOs to facilitate Render To Texture

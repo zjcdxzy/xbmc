@@ -27,6 +27,10 @@
 #include "system.h"
 #include "rendering/RenderSystem.h"
 
+#ifdef HAS_GL
+#include <GL/glew.h>
+#endif
+
 class CRenderSystemGL : public CRenderSystemBase
 {
 public:

@@ -626,7 +626,7 @@ const char *Cocoa_Paste()
   return NULL;
 }
 
-OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend)
+int SendAppleEventToSystemProcess(AEEventID EventToSend)
 {
   AEAddressDesc targetDesc;
   static const ProcessSerialNumber kPSNOfSystemProcess = { 0, kSystemProcess };

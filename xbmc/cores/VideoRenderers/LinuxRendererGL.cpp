@@ -63,6 +63,11 @@
 
 #endif
 
+#ifdef TARGET_DARWIN
+#include <CoreVideo/CoreVideo.h>
+#include <OpenGL/CGLIOSurface.h>
+#endif
+
 #ifdef HAS_GLX
 #include <GL/glx.h>
 #endif
@@ -135,7 +140,12 @@ CLinuxRendererGL::CLinuxRendererGL()
 {
   m_textureTarget = GL_TEXTURE_2D;
   for (int i = 0; i < NUM_BUFFERS; i++)
+  {
     m_eventTexturesDone[i] = new CEvent(false,true);
+#ifdef TARGET_DARWIN
+    m_buffers[i].cvBufferRef = NULL;
+#endif
+  }
 
   m_renderMethod = RENDER_GLSL;
   m_renderQuality = RQ_SINGLEPASS;
@@ -306,6 +316,11 @@ int CLinuxRendererGL::GetImage(YV12Image *image, int source, bool readonly)
   /* take next available buffer */
   if( source == AUTOSOURCE )
     source = NextYV12Texture();
+
+#ifdef TARGET_DARWIN
+  if (m_renderMethod & RENDER_CVREF )
+    return source;
+#endif
 
   YV12Image &im = m_buffers[source].image;
 
@@ -764,6 +779,9 @@ unsigned int CLinuxRendererGL::PreInit()
   m_formats.push_back(RENDER_FMT_NV12);
   m_formats.push_back(RENDER_FMT_YUYV422);
   m_formats.push_back(RENDER_FMT_UYVY422);
+#ifdef TARGET_DARWIN
+  m_formats.push_back(RENDER_FMT_CVBREF);
+#endif
 
   // setup the background colour
   m_clearColour = (float)(g_advancedSettings.m_videoBlackBarColour & 0xff) / 0xff;
@@ -924,6 +942,11 @@ void CLinuxRendererGL::LoadShaders(int field)
     CLog::Log(LOGNOTICE, "GL: Using VAAPI render method");
     m_renderMethod = RENDER_VAAPI;
   }
+  else if (m_format == RENDER_FMT_CVBREF)
+  {
+    CLog::Log(LOGNOTICE, "GL: Using CoreVideoRef RGBA render method");
+    m_renderMethod = RENDER_CVREF;
+  }
   else
   {
     int requestedMethod = g_guiSettings.GetInt("videoplayer.rendermethod");
@@ -1058,6 +1081,12 @@ void CLinuxRendererGL::LoadShaders(int field)
     m_textureCreate = &CLinuxRendererGL::CreateVAAPITexture;
     m_textureDelete = &CLinuxRendererGL::DeleteVAAPITexture;
   }
+  else if (m_format == RENDER_FMT_CVBREF)
+  {
+    m_textureUpload = &CLinuxRendererGL::UploadCVRefTexture;
+    m_textureCreate = &CLinuxRendererGL::CreateCVRefTexture;
+    m_textureDelete = &CLinuxRendererGL::DeleteCVRefTexture;
+  }
   else
   {
     // setup default YV12 texture handlers
@@ -1156,6 +1185,12 @@ void CLinuxRendererGL::Render(DWORD flags, int renderBuffer)
   {
     UpdateVideoFilter();
     RenderVAAPI(renderBuffer, m_currentField);
+  }
+#endif
+#ifdef TARGET_DARWIN
+  else if (m_renderMethod & RENDER_CVREF)
+  {
+    RenderCoreVideoRef(renderBuffer, m_currentField);
   }
 #endif
   else
@@ -1621,6 +1656,41 @@ void CLinuxRendererGL::RenderVAAPI(int index, int field)
 
   glBindTexture (m_textureTarget, 0);
   glDisable(m_textureTarget);
+#endif
+}
+
+void CLinuxRendererGL::RenderCoreVideoRef(int index, int field)
+{
+#ifdef TARGET_DARWIN
+  YUVPLANE &plane = m_buffers[index].fields[field][0];
+
+  glDisable(GL_DEPTH_TEST);
+
+  // Y
+  glEnable(GL_TEXTURE_RECTANGLE_ARB);
+  glActiveTextureARB(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_RECTANGLE_ARB, plane.id);
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+  glBegin(GL_QUADS);
+  glTexCoord2f(plane.rect.x1, plane.rect.y1);
+  glVertex4f(m_destRect.x1, m_destRect.y1, 0, 1.0f );
+
+  glTexCoord2f(plane.rect.x2, plane.rect.y1);
+  glVertex4f(m_destRect.x2, m_destRect.y1, 0, 1.0f);
+
+  glTexCoord2f(plane.rect.x2, plane.rect.y2);
+  glVertex4f(m_destRect.x2, m_destRect.y2, 0, 1.0f);
+
+  glTexCoord2f(plane.rect.x1, plane.rect.y2);
+  glVertex4f(m_destRect.x1, m_destRect.y2, 0, 1.0f);
+
+  glEnd();
+
+  VerifyGLState();
+
+  glDisable(GL_TEXTURE_RECTANGLE_ARB);
+  VerifyGLState();
 #endif
 }
 
@@ -2395,6 +2465,94 @@ void CLinuxRendererGL::UploadVAAPITexture(int index)
     CLog::Log(LOGERROR, "CLinuxRendererGL::UploadVAAPITexture - failed to copy surface to glx %d - %s", status, vaErrorStr(status));
 
   m_eventTexturesDone[index]->Set();
+#endif
+}
+
+//********************************************************************************************************
+// CoreVideoRef Texture creation, deletion, copying + clearing
+//********************************************************************************************************
+void CLinuxRendererGL::UploadCVRefTexture(int index)
+{
+#ifdef TARGET_DARWIN
+  CVBufferRef cvBufferRef = m_buffers[index].cvBufferRef;
+
+  if (cvBufferRef)
+  {
+    YUVFIELDS &fields = m_buffers[index].fields;
+    YUVPLANE  &plane  = fields[0][0];
+
+    CGLContextObj cgl_ctx  = (CGLContextObj)g_Windowing.GetCGLContextObj();
+    IOSurfaceRef	surface  = CVPixelBufferGetIOSurface(m_buffers[index].cvBufferRef);
+    GLsizei       texWidth = IOSurfaceGetWidth(surface);
+    GLsizei       texHeight= IOSurfaceGetHeight(surface);
+
+		glEnable(GL_TEXTURE_RECTANGLE_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, plane.id);
+		CGLTexImageIOSurface2D(cgl_ctx, GL_TEXTURE_RECTANGLE_ARB, GL_RGB8,
+      texWidth, texHeight, GL_YCBCR_422_APPLE, GL_UNSIGNED_SHORT_8_8_APPLE, surface, 0);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_ARB);
+
+    CVBufferRelease(m_buffers[index].cvBufferRef);
+    m_buffers[index].cvBufferRef = NULL;
+
+    // Calculate Texture Source Rects
+    plane.rect = m_sourceRect;
+    plane.width  = m_buffers[index].image.width;
+    plane.height = m_buffers[index].image.height;
+    plane.flipindex = m_buffers[index].flipindex;
+  }
+
+  m_eventTexturesDone[index]->Set();
+#endif
+}
+
+bool CLinuxRendererGL::CreateCVRefTexture(int index)
+{
+#ifdef TARGET_DARWIN
+  YV12Image &im     = m_buffers[index].image;
+  YUVFIELDS &fields = m_buffers[index].fields;
+  YUVPLANE  &plane  = fields[0][0];
+
+  DeleteCVRefTexture(index);
+
+  memset(&im    , 0, sizeof(im));
+  memset(&fields, 0, sizeof(fields));
+
+  im.height = m_sourceHeight;
+  im.width  = m_sourceWidth;
+
+  plane.texwidth  = im.width;
+  plane.texheight = im.height;
+  plane.pixpertex_x = 1;
+  plane.pixpertex_y = 1;
+
+  if(m_renderMethod & RENDER_POT)
+  {
+    plane.texwidth  = NP2(plane.texwidth);
+    plane.texheight = NP2(plane.texheight);
+  }
+  glEnable(GL_TEXTURE_RECTANGLE_ARB);
+  glGenTextures(1, &plane.id);
+  VerifyGLState();
+  glDisable(GL_TEXTURE_RECTANGLE_ARB);
+
+  m_eventTexturesDone[index]->Set();
+#endif
+  return true;
+}
+
+void CLinuxRendererGL::DeleteCVRefTexture(int index)
+{
+#ifdef TARGET_DARWIN
+  YUVPLANE &plane = m_buffers[index].fields[0][0];
+
+  if (m_buffers[index].cvBufferRef)
+    CVBufferRelease(m_buffers[index].cvBufferRef);
+  m_buffers[index].cvBufferRef = NULL;
+
+  if(plane.id && glIsTexture(plane.id))
+    glDeleteTextures(1, &plane.id), plane.id = 0;
 #endif
 }
 
@@ -3195,6 +3353,18 @@ void CLinuxRendererGL::AddProcessor(VAAPI::CHolder& holder)
 {
   YUVBUFFER &buf = m_buffers[NextYV12Texture()];
   buf.vaapi.surface = holder.surface;
+}
+#endif
+
+#ifdef TARGET_DARWIN
+void CLinuxRendererGL::AddProcessor(CVBufferRef cvBufferRef)
+{
+  YUVBUFFER &buf = m_buffers[NextYV12Texture()];
+  if (buf.cvBufferRef)
+    CVBufferRelease(buf.cvBufferRef);
+  buf.cvBufferRef = cvBufferRef;
+  // retain another reference, this way dvdplayer and renderer can issue releases.
+  CVBufferRetain(buf.cvBufferRef);
 }
 #endif
 

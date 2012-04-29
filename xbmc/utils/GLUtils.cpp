@@ -24,6 +24,8 @@
 #include "settings/AdvancedSettings.h"
 #include "windowing/WindowingFactory.h"
 
+#include "GL/glew.h"
+
 void _VerifyGLState(const char* szfile, const char* szfunction, int lineno){
 #if defined(HAS_GL) && defined(_DEBUG)
 #define printMatrix(matrix)                                             \
