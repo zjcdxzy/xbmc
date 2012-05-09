@@ -39,6 +39,10 @@
 #include "GUIInfoManager.h"
 #include "utils/Variant.h"
 #include "settings/AdvancedSettings.h"
+#include "utils/EndianSwap.h"
+
+#include <map>
+#include <string>
 
 using namespace XFILE;
 
@@ -160,6 +164,63 @@ int CAirTunesServer::AudioOutputFunctions::ao_close(ao_device *device)
   return 0;
 }
 
+//parse daap metadata - thx to project MythTV
+std::map<std::string, std::string> decodeDMAP(const char *buffer, unsigned int size)
+{
+  std::map<std::string, std::string> result;
+  unsigned int offset = 8;
+  while (offset < size)
+  {
+    std::string tag;
+    tag.append(buffer + offset, 4);
+    offset += 4;
+    uint32_t length = Endian_SwapBE32(*(uint32_t *)(buffer + offset));
+    offset += sizeof(uint32_t);
+    std::string content;
+    content.append(buffer + offset, length);//possible fixme - utf8?
+    offset += length;
+    result[tag] = content;
+  }
+  return result;
+}
+
+void CAirTunesServer::AudioOutputFunctions::ao_set_metadata(const char *buffer, unsigned int size)
+{
+  MUSIC_INFO::CMusicInfoTag tag;
+  std::map<std::string, std::string> metadata = decodeDMAP(buffer, size);
+  if(metadata["asal"].length())
+    tag.SetAlbum(metadata["asal"]);//album
+  if(metadata["minm"].length())    
+    tag.SetTitle(metadata["minm"]);//title
+  if(metadata["asar"].length())    
+    tag.SetArtist(metadata["asar"]);//artist
+  g_infoManager.SetCurrentSongTag(tag);
+}
+
+void CAirTunesServer::AudioOutputFunctions::ao_set_metadata_coverart(const char *buffer, unsigned int size)
+{
+  XFILE::CFile tmpFile;
+  const char *tmpFileName = "special://temp/airtunes_album_thumb.jpg";
+
+  if(!size)
+    return;
+
+  if (tmpFile.OpenForWrite(tmpFileName, true))
+  {
+    int writtenBytes=0;
+    writtenBytes = tmpFile.Write(buffer, size);
+    tmpFile.Close();
+
+    if(writtenBytes)
+    {
+      //reset to empty before setting the new one
+      //else it won't get refreshed because the name didn't change
+      g_infoManager.SetCurrentAlbumThumb("");
+      g_infoManager.SetCurrentAlbumThumb(tmpFileName);
+    }
+  }
+}
+
 /* -- Device Setup/Playback/Teardown -- */
 int CAirTunesServer::AudioOutputFunctions::ao_append_option(ao_option **options, const char *key, const char *value)
 {
@@ -264,6 +325,9 @@ bool CAirTunesServer::StartServer(int port, bool nonlocal, bool usePassword, con
     txt["sr"] = "44100";
     txt["pw"] = "false";
     txt["vn"] = "3";
+    txt["da"] = "true";
+    txt["vs"] = "130.14";
+    txt["md"] = "0,1,2";
     txt["txtvers"] = "1";
 
     CZeroconf::GetInstance()->PublishService("servers.airtunes", "_raop._tcp", appName, port, txt);
@@ -359,6 +423,8 @@ bool CAirTunesServer::Initialize(const CStdString &password)
     ao.ao_append_option = AudioOutputFunctions::ao_append_option;
     ao.ao_free_options = AudioOutputFunctions::ao_free_options;
     ao.ao_get_option = AudioOutputFunctions::ao_get_option;
+    ao.ao_set_metadata = AudioOutputFunctions::ao_set_metadata;    
+    ao.ao_set_metadata_coverart = AudioOutputFunctions::ao_set_metadata_coverart;        
     struct printfPtr funcPtr;
     funcPtr.extprintf = shairport_log;
 
