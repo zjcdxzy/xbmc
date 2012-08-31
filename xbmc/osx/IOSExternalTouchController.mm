@@ -22,14 +22,18 @@
 //hack around problem with xbmc's typedef int BOOL
 // and obj-c's typedef unsigned char BOOL
 #define BOOL XBMC_BOOL 
-#include "MouseStat.h"
-#include "WindowingFactory.h"
+#include "input/MouseStat.h"
+#include "windowing/WindowingFactory.h"
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/LocalizeStrings.h"
 #undef BOOL
 
 #import "IOSExternalTouchController.h"
-#import "XBMCController.h"
+#if defined(TARGET_DARWIN_IOS_ATV2)
+#import "atv2/XBMCController.h"
+#else
+#import "ios/XBMCController.h"
+#endif
 
 //dim the touchscreen after 15 secs without touch event
 const CGFloat touchScreenDimTimeoutSecs       = 15.0;

@@ -27,14 +27,18 @@
 #include "utils/log.h"
 #include "threads/Event.h"
 #include "Application.h"
-#include "WindowingFactory.h"
-#include "Settings.h"
+#include "windowing/WindowingFactory.h"
+#include "settings/Settings.h"
 #undef BOOL
 
 #import <Foundation/Foundation.h>
 
 #import "IOSScreenManager.h"
-#import "XBMCController.h"
+#if defined(TARGET_DARWIN_IOS_ATV2)
+#import "atv2/XBMCController.h"
+#else
+#import "ios/XBMCController.h"
+#endif
 #import "IOSExternalTouchController.h"
 #import "IOSEAGLView.h"
 

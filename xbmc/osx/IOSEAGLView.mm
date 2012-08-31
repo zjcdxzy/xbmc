@@ -27,12 +27,12 @@
 #include <stdio.h>
 
 #include "system.h"
-#include "AdvancedSettings.h"
+#include "settings/AdvancedSettings.h"
 #include "FileItem.h"
 #include "Application.h"
 #include "ApplicationMessenger.h"
-#include "WindowingFactory.h"
-#include "VideoReferenceClock.h"
+#include "windowing/WindowingFactory.h"
+#include "video/VideoReferenceClock.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
 #include "Util.h"
@@ -43,7 +43,11 @@
 #import <OpenGLES/ES2/gl.h>
 #import <OpenGLES/ES2/glext.h>
 #import "IOSEAGLView.h"
-#import "XBMCController.h"
+#if defined(TARGET_DARWIN_IOS_ATV2)
+#import "atv2/XBMCController.h"
+#else
+#import "ios/XBMCController.h"
+#endif
 #import "IOSScreenManager.h"
 #import "AutoPool.h"
 #import "DarwinUtils.h"
