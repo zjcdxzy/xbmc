@@ -24,9 +24,9 @@ SRCS += Sinks/AESinkNULL.cpp
 ifeq ($(findstring osx,@ARCH@),osx)
 SRCS += Engines/CoreAudio/CoreAudioAE.cpp
 SRCS += Engines/CoreAudio/CoreAudioAEHAL.cpp
-SRCS += Engines/CoreAudio/CoreAudioAEHALOSX.cpp
-SRCS += Engines/CoreAudio/CoreAudioAESound.cpp
-SRCS += Engines/CoreAudio/CoreAudioAEStream.cpp
+ifeq ($(findstring arm,@ARCH@),arm)
+SRCS += Engines/CoreAudio/CoreAudioAEHALIOS.cpp
+else
 SRCS += Engines/CoreAudio/CoreAudioChannelLayout.cpp
 SRCS += Engines/CoreAudio/CoreAudioDevice.cpp
 SRCS += Engines/CoreAudio/CoreAudioGraph.cpp
@@ -34,6 +34,10 @@ SRCS += Engines/CoreAudio/CoreAudioHardware.cpp
 SRCS += Engines/CoreAudio/CoreAudioMixMap.cpp
 SRCS += Engines/CoreAudio/CoreAudioStream.cpp
 SRCS += Engines/CoreAudio/CoreAudioUnit.cpp
+endif
+SRCS += Engines/CoreAudio/CoreAudioAEHALOSX.cpp
+SRCS += Engines/CoreAudio/CoreAudioAESound.cpp
+SRCS += Engines/CoreAudio/CoreAudioAEStream.cpp
 else
 SRCS += Sinks/AESinkProfiler.cpp
 
