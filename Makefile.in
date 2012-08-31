@@ -96,7 +96,9 @@ endif
 
 ifeq (@USE_OPENGLES@,1)
 DIRECTORY_ARCHIVES += xbmc/rendering/gles/rendering_gles.a
+ifneq ($(findstring arm-osx,@ARCH@),arm-osx)
 DIRECTORY_ARCHIVES += xbmc/windowing/egl/windowing_egl.a
+endif
 DIRECTORY_ARCHIVES += xbmc/visualizations/EGLHelpers/eglhelpers.a
 endif
 

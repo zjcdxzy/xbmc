@@ -1,0 +1,18 @@
+abs_top_srcdir=@abs_top_srcdir@
+
+.SUFFIXES : .m .mm
+
+SRCS  = WinSystem.cpp
+SRCS += WinEventsLinux.cpp
+SRCS += WinEventsSDL.cpp
+
+ifeq ($(findstring arm,@ARCH@),arm)
+ifeq ($(findstring osx,@ARCH@),osx)
+SRCS  = WinSystem.cpp
+endif
+endif
+
+LIB=windowing.a
+
+include ../../Makefile.include
+-include $(patsubst %.cpp,%.P,$(patsubst %.c,%.P,$(SRCS)))

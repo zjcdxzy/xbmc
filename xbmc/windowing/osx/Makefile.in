@@ -1,0 +1,16 @@
+abs_top_srcdir=@abs_top_srcdir@
+
+ifeq ($(findstring arm,@ARCH@),arm)
+SRCS  = WinEventsIOS.mm
+SRCS += WinSystemIOS.mm
+else
+SRCS  = WinEventsOSX.mm
+SRCS += WinSystemOSX.mm
+SRCS += WinSystemOSXGL.mm
+endif
+     
+.SUFFIXES : .m .mm
+LIB=windowing_osx.a
+
+include $(abs_top_srcdir)/Makefile.include
+-include $(patsubst %.mm,%.P,$(SRCS))
