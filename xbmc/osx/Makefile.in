@@ -6,14 +6,23 @@ INCLUDES=-I$(abs_top_srcdir) \
 
 .SUFFIXES : .m .mm
 
-SRCS = \
-	SDLMain.mm \
-	XBMCHelper.m \
-	AutoPool.mm \
-	DarwinUtils.mm \
-	CocoaInterface.mm \
-	HotKeyController.m \
-	OSXGNUReplacements.c \
+SRCS  = SDLMain.mm 
+SRCS += XBMCHelper.m
+SRCS += AutoPool.mm
+SRCS += DarwinUtils.mm
+SRCS += OSXGNUReplacements.c
+ifeq ($(findstring arm,@ARCH@),arm)
+SRCS += IOSEAGLView.mm
+SRCS += IOSExternalTouchController.mm
+SRCS += IOSScreenManager.mm
+SRCS += ios/IOSKeyboard.mm
+SRCS += ios/IOSKeyboardView.mm
+SRCS += ios/XBMCApplication.m
+SRCS += ios/XBMCController.mm
+else
+SRCS += CocoaInterface.mm
+SRCS += HotKeyController.m
+endif
 	
 LIB=osx.a
 
