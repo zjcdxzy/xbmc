@@ -27,6 +27,10 @@ SRCS += OpenMax.cpp \
         DVDVideoCodecOpenMax.cpp \
 
 endif
+ifeq (@USE_VTB@,1)
+SRCS += DVDVideoCodecVideoToolBox.cpp \
+
+endif
 
 LIB=Video.a
 
