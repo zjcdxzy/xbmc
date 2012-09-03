@@ -24,10 +24,10 @@
 #endif
 
 #if defined(HAVE_VIDEOTOOLBOXDECODER)
-#include "GUISettings.h"
+#include "settings/GUISettings.h"
 #include "DVDClock.h"
 #include "DVDStreamInfo.h"
-#include "DVDCodecUtils.h"
+#include "../DVDCodecUtils.h"
 #include "DVDVideoCodecVideoToolBox.h"
 #include "lib/DllSwScale.h"
 #include "lib/DllAvFormat.h"
