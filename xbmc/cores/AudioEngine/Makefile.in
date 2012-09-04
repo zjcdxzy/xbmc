@@ -19,7 +19,6 @@ endif
 CXXFLAGS += -D__STDC_LIMIT_MACROS
 
 SRCS  = AEFactory.cpp
-SRCS += AESinkFactory.cpp
 SRCS += Sinks/AESinkNULL.cpp
 ifeq ($(findstring osx,@ARCH@),osx)
 SRCS += Engines/CoreAudio/CoreAudioAE.cpp
@@ -39,6 +38,7 @@ SRCS += Engines/CoreAudio/CoreAudioAEHALOSX.cpp
 SRCS += Engines/CoreAudio/CoreAudioAESound.cpp
 SRCS += Engines/CoreAudio/CoreAudioAEStream.cpp
 else
+SRCS += AESinkFactory.cpp
 SRCS += Sinks/AESinkProfiler.cpp
 
 SRCS += Engines/SoftAE/SoftAE.cpp
