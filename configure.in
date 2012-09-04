@@ -713,7 +713,7 @@ if test "$host_vendor" = "apple" ; then
     LIBS="$LIBS -framework OpenGLES"
     LIBS="$LIBS -framework QuartzCore"
     LIBS="$LIBS -framework UIKit"
-    LIBS="$LIBS -framework $(platform_sdk_path)/System/Library/PrivateFrameworks/VideoToolBox"
+    LIBS="$LIBS -F$platform_sdk_path/System/Library/PrivateFrameworks/ -framework VideotoolBox"
   fi
   USE_EXTERNAL_FFMPEG=1
 elif test "$use_arch" = "arm"; then
