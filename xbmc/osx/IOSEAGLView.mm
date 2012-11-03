@@ -201,6 +201,11 @@
   return context;
 }
 //--------------------------------------------------------------
+- (EAGLContext *)getCurrentContext
+{
+  return context;
+}
+//--------------------------------------------------------------
 - (void)setContext:(EAGLContext *)newContext
 {
   //NSLog(@"%s", __PRETTY_FUNCTION__);

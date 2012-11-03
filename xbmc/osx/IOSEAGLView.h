@@ -71,4 +71,5 @@
 - (bool) presentFramebuffer;
 - (void) setScreen:(UIScreen *)screen withFrameBufferResize:(BOOL)resize;
 - (CGFloat) getScreenScale:(UIScreen *)screen;
+- (EAGLContext *)getCurrentContext;
 @end

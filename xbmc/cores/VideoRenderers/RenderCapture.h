@@ -142,6 +142,8 @@ class CRenderCaptureBase
 
     /* \brief Called by the code requesting the capture to get the height */
     unsigned int GetHeight()                    { return m_height;   }
+    
+    unsigned int GetRenderBufferSize()          { return m_bufferSize; }
 
     /* \brief Called by the code requesting the capture to get the buffer where the videoframe is stored,
        the format is BGRA for GL and DX, and RGBA for GLES, this buffer is only valid when GetUserState returns CAPTURESTATE_DONE.

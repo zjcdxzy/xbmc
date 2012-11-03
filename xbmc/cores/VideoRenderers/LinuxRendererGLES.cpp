@@ -62,6 +62,7 @@
 
 using namespace Shaders;
 
+void *CLinuxRendererGLES::g_eaglCtx = NULL;
 CLinuxRendererGLES::YUVBUFFER::YUVBUFFER()
 {
   memset(&fields, 0, sizeof(fields));
@@ -112,6 +113,20 @@ CLinuxRendererGLES::CLinuxRendererGLES()
 
   m_dllSwScale = new DllSwScale;
   m_sw_context = NULL;
+#if defined(HAVE_VIDEOTOOLBOXDECODER)
+  m_captureBuffRef = NULL;
+#if defined(__IPHONE_5_0)
+  if (GetIOSVersion() >= 5.0)
+  {
+    CLog::Log(LOGINFO, "IOS Version >= 5.0 - creating textureCache with gles ctx: %p", g_eaglCtx);
+    CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, g_eaglCtx, NULL, &m_textureCache);
+    if (err) 
+    {
+      CLog::Log(LOGERROR, "Error at CVOpenGLESTextureCacheCreate");
+    }
+  }
+#endif
+#endif
 }
 
 CLinuxRendererGLES::~CLinuxRendererGLES()
@@ -133,6 +148,12 @@ CLinuxRendererGLES::~CLinuxRendererGLES()
   }
 
   delete m_dllSwScale;
+#if defined(HAVE_VIDEOTOOLBOXDECODER)
+#if defined(__IPHONE_5_0)
+  if (m_textureCache)
+    CFRelease(m_textureCache);
+#endif
+#endif
 }
 
 void CLinuxRendererGLES::ManageTextures()
@@ -776,6 +797,7 @@ void CLinuxRendererGLES::Render(DWORD flags, int index)
   else
     m_currentField = FIELD_FULL;
 
+  //CLog::Log(LOGDEBUG, "idx: %d", index);
   (this->*m_textureUpload)(index);
 
   if (m_renderMethod & RENDER_GLSL)
@@ -1259,9 +1281,9 @@ void CLinuxRendererGLES::RenderCoreVideoRef(int index, int field)
   GLfloat tex[4][2];
   float col[4][3];
 
-  for (int index = 0;index < 4;++index)
+  for (int idx = 0;idx < 4;++idx)
   {
-    col[index][0] = col[index][1] = col[index][2] = 1.0;
+    col[idx][0] = col[idx][1] = col[idx][2] = 1.0;
   }
 
   GLint   posLoc = g_Windowing.GUIShaderGetPos();
@@ -1292,7 +1314,7 @@ void CLinuxRendererGLES::RenderCoreVideoRef(int index, int field)
   tex[2][1] = tex[3][1] = 0;
 
   glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_BYTE, idx);
-
+  
   glDisableVertexAttribArray(posLoc);
   glDisableVertexAttribArray(texLoc);
   glDisableVertexAttribArray(colLoc);
@@ -1326,18 +1348,34 @@ bool CLinuxRendererGLES::RenderCapture(CRenderCapture* capture)
   g_matrices.Scalef(1.0f, -1.0f, 1.0f);
 
   capture->BeginRender();
-
+  
   Render(RENDER_FLAG_NOOSD, m_iYV12RenderBuffer);
-  // read pixels
-  glReadPixels(0, g_graphicsContext.GetHeight() - capture->GetHeight(), capture->GetWidth(), capture->GetHeight(),
-               GL_RGBA, GL_UNSIGNED_BYTE, capture->GetRenderBuffer());
-
-  // OpenGLES returns in RGBA order but CRenderCapture needs BGRA order
-  // XOR Swap RGBA -> BGRA
-  unsigned char* pixels = (unsigned char*)capture->GetRenderBuffer();
-  for (int i = 0; i < capture->GetWidth() * capture->GetHeight(); i++, pixels+=4)
+#if defined(HAVE_VIDEOTOOLBOXDECODER)
+  if (m_renderMethod & RENDER_CVREF)
   {
-    std::swap(pixels[0], pixels[2]);
+    CVBufferRef cvBufferRef = m_captureBuffRef;
+    if (kCVReturnSuccess == CVPixelBufferLockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly)) 
+    {
+      uint8_t* pixels = (uint8_t*)capture->GetRenderBuffer();
+      uint8_t* pixelsGPU = (uint8_t*)CVPixelBufferGetBaseAddress(cvBufferRef);
+      //copy pixels from renderbuffer directly (already contains needed BGRA data)
+      fast_memcpy(pixels, pixelsGPU, capture->GetRenderBufferSize());
+      CVPixelBufferUnlockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
+    }
+  }
+  else
+#endif
+  {
+    // read pixels
+    glReadPixels(0, g_graphicsContext.GetHeight() - capture->GetHeight(), capture->GetWidth(), capture->GetHeight(),
+                GL_RGBA, GL_UNSIGNED_BYTE, capture->GetRenderBuffer());
+    // OpenGLES returns in RGBA order but CRenderCapture needs BGRA order
+    // XOR Swap RGBA -> BGRA
+    unsigned char* pixels = (unsigned char*)capture->GetRenderBuffer();
+    for (int i = 0; i < capture->GetWidth() * capture->GetHeight(); i++, pixels+=4)
+    {
+      std::swap(pixels[0], pixels[2]);
+    }
   }
 
   capture->EndRender();
@@ -1655,49 +1693,114 @@ void CLinuxRendererGLES::UploadCVRefTexture(int index)
 
   if (cvBufferRef)
   {
-    YUVPLANE &plane = m_buffers[index].fields[0][0];
-
-    CVPixelBufferLockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
-    #if !TARGET_OS_IPHONE
-      int rowbytes = CVPixelBufferGetBytesPerRow(cvBufferRef);
-    #endif
     int bufferWidth = CVPixelBufferGetWidth(cvBufferRef);
     int bufferHeight = CVPixelBufferGetHeight(cvBufferRef);
-    unsigned char *bufferBase = (unsigned char *)CVPixelBufferGetBaseAddress(cvBufferRef);
+    YUVPLANE &plane = m_buffers[index].fields[0][0];
 
+#if defined(__IPHONE_5_0)
+    if (GetIOSVersion() >= 5.0)
+    {
+      static bool dbgMessageShown = false;
+      if (!dbgMessageShown)
+      {
+        CLog::Log(LOGDEBUG, "IOS 5.0 deteted - using fast upload via CVOpenGLESTextureCacheCreateTextureFromImage");
+        dbgMessageShown = true;
+      }
+      CVOpenGLESTextureRef renderTexture;
+      CVReturn err = CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault,
+                                                                   m_textureCache, cvBufferRef,
+                                                                   NULL, // texture attributes
+                                                                   m_textureTarget,
+                                                                   GL_RGBA, // opengl format
+                                                                   bufferWidth,
+                                                                   bufferHeight,
+                                                                   GL_BGRA, // native iOS format
+                                                                   GL_UNSIGNED_BYTE,
+                                                                   0,
+                                                                   &renderTexture);
+      if (!renderTexture || err != kCVReturnSuccess)
+        CLog::Log(LOGERROR, "Error uploading texture (err: %d)", err);
+      glEnable(CVOpenGLESTextureGetTarget(renderTexture));
+      VerifyGLState();
+      plane.id = CVOpenGLESTextureGetName(renderTexture);
+      glBindTexture(CVOpenGLESTextureGetTarget(renderTexture), CVOpenGLESTextureGetName(renderTexture));
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+#if !TARGET_OS_IPHONE
+#ifdef GL_UNPACK_ROW_LENGTH
+      // Set row pixels
+      CVPixelBufferLockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
+      rowbytes = CVPixelBufferGetBytesPerRow(cvBufferRef);
+      CVPixelBufferUnlockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
+      glPixelStorei( GL_UNPACK_ROW_LENGTH, rowbytes);
+#endif
+#ifdef GL_TEXTURE_STORAGE_HINT_APPLE
+      // Set storage hint. Can also use GL_STORAGE_SHARED_APPLE see docs.
+      glTexParameteri(m_textureTarget, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_CACHED_APPLE);
+#endif
+#endif
+      CVOpenGLESTextureCacheFlush(m_textureCache, 0);
+#if !TARGET_OS_IPHONE
+#ifdef GL_UNPACK_ROW_LENGTH
+      // Unset row pixels
+      glPixelStorei( GL_UNPACK_ROW_LENGTH, 0);
+#endif
+#endif
+      glBindTexture(CVOpenGLESTextureGetTarget(renderTexture), 0);
+      glDisable(CVOpenGLESTextureGetTarget(renderTexture));
+      CFRelease(renderTexture);
+      VerifyGLState();
+    }
+    else
+#endif
+    {
+    CVPixelBufferLockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
+#if !TARGET_OS_IPHONE
+    int rowbytes = CVPixelBufferGetBytesPerRow(cvBufferRef);
+#endif
+    unsigned char *bufferBase = (unsigned char *)CVPixelBufferGetBaseAddress(cvBufferRef);
+    
     glEnable(m_textureTarget);
     VerifyGLState();
-
     glBindTexture(m_textureTarget, plane.id);
-    #if !TARGET_OS_IPHONE
-      #ifdef GL_UNPACK_ROW_LENGTH
-        // Set row pixels
-        glPixelStorei( GL_UNPACK_ROW_LENGTH, rowbytes);
-      #endif
-      #ifdef GL_TEXTURE_STORAGE_HINT_APPLE
-        // Set storage hint. Can also use GL_STORAGE_SHARED_APPLE see docs.
-        glTexParameteri(m_textureTarget, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_CACHED_APPLE);
-      #endif
-    #endif
-
+#if !TARGET_OS_IPHONE
+#ifdef GL_UNPACK_ROW_LENGTH
+    // Set row pixels
+    glPixelStorei( GL_UNPACK_ROW_LENGTH, rowbytes);
+#endif
+#ifdef GL_TEXTURE_STORAGE_HINT_APPLE
+    // Set storage hint. Can also use GL_STORAGE_SHARED_APPLE see docs.
+    glTexParameteri(m_textureTarget, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_CACHED_APPLE);
+#endif
+#endif
+    
     // Using BGRA extension to pull in video frame data directly
     glTexSubImage2D(m_textureTarget, 0, 0, 0, bufferWidth, bufferHeight, GL_BGRA_EXT, GL_UNSIGNED_BYTE, bufferBase);
-
-    #if !TARGET_OS_IPHONE
-      #ifdef GL_UNPACK_ROW_LENGTH
-        // Unset row pixels
-        glPixelStorei( GL_UNPACK_ROW_LENGTH, 0);
-      #endif
-    #endif
+    
+#if !TARGET_OS_IPHONE
+#ifdef GL_UNPACK_ROW_LENGTH
+    // Unset row pixels
+    glPixelStorei( GL_UNPACK_ROW_LENGTH, 0);
+#endif
+#endif
     glBindTexture(m_textureTarget, 0);
-
+    
     glDisable(m_textureTarget);
     VerifyGLState();
-
+    
     CVPixelBufferUnlockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
-    CVBufferRelease(m_buffers[index].cvBufferRef);
-    m_buffers[index].cvBufferRef = NULL;
+    }
 
+    //release previous captureBuffRef
+    if (m_captureBuffRef)
+      CVBufferRelease(m_captureBuffRef);
+    
+    m_captureBuffRef = m_buffers[index].cvBufferRef;
+    m_buffers[index].cvBufferRef = NULL;
+    
     plane.flipindex = m_buffers[index].flipindex;
   }
 
@@ -1716,6 +1819,10 @@ void CLinuxRendererGLES::DeleteCVRefTexture(int index)
   if(plane.id && glIsTexture(plane.id))
     glDeleteTextures(1, &plane.id);
   plane.id = 0;
+  
+  if (m_captureBuffRef)
+    CVBufferRelease(m_captureBuffRef);
+  m_captureBuffRef = NULL;
 #endif
 }
 bool CLinuxRendererGLES::CreateCVRefTexture(int index)

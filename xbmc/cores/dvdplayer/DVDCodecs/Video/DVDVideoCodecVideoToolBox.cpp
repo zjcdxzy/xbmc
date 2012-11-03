@@ -1558,6 +1558,15 @@ CDVDVideoCodecVideoToolBox::CreateVTSession(int width, int height, CMFormatDescr
     0,    // CFIndex capacity
     &kCFTypeDictionaryKeyCallBacks,
     &kCFTypeDictionaryValueCallBacks);
+  
+  // an IOSurface properties dictionary
+  CFDictionaryRef iosurfaceDictionary = CFDictionaryCreate(kCFAllocatorDefault,
+                                                           NULL, NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+  
+  CFDictionarySetValue(destinationPixelBufferAttributes,
+                       kCVPixelBufferIOSurfacePropertiesKey, iosurfaceDictionary);
+  
+  
 
   // The recommended pixel format choices are 
   //  kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange or kCVPixelFormatType_32BGRA.

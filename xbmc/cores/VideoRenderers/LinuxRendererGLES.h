@@ -32,6 +32,9 @@
 #include "guilib/GraphicContext.h"
 #include "BaseRenderer.h"
 #include "xbmc/cores/dvdplayer/DVDCodecs/Video/DVDVideoCodec.h"
+#if defined(__IPHONE_5_0)
+#include <CoreVideo/CVOpenGLESTextureCache.h>
+#endif
 
 class CRenderCapture;
 
@@ -127,6 +130,8 @@ public:
   virtual void SetupScreenshot() {};
 
   bool RenderCapture(CRenderCapture* capture);
+  static void SetEAGLContext(void *ctx){g_eaglCtx = ctx;}
+  static void *g_eaglCtx;
 
   // Player functions
   virtual bool Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, unsigned extended_formatunsigned, unsigned int orientation);
@@ -282,7 +287,12 @@ protected:
   unsigned int m_rgbBufferSize;
 
   CEvent* m_eventTexturesDone[NUM_BUFFERS];
-
+#ifdef HAVE_VIDEOTOOLBOXDECODER
+  struct __CVBuffer *m_captureBuffRef;
+#if defined(__IPHONE_5_0)
+  CVOpenGLESTextureCacheRef m_textureCache;
+#endif
+#endif
 };
 
 

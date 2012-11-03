@@ -32,6 +32,7 @@
 #include "filesystem/SpecialProtocol.h"
 #include "settings/Settings.h"
 #include "guilib/Texture.h"
+#include "cores/VideoRenderers/LinuxRendererGLES.h"
 #include <vector>
 #undef BOOL
 
@@ -83,6 +84,7 @@ bool CWinSystemIOS::CreateNewWindow(const CStdString& name, bool fullScreen, RES
   m_eglext += " ";
 
   CLog::Log(LOGDEBUG, "EGL_EXTENSIONS:%s", m_eglext.c_str());
+  CLinuxRendererGLES::SetEAGLContext([g_xbmcController getGLESContext]);
   return true;
 }
 
