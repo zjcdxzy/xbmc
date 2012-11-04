@@ -61,6 +61,7 @@
 @synthesize pause;
 @synthesize currentScreen;
 @synthesize framebufferResizeRequested;
+@synthesize context;
 
 // You must implement this method
 + (Class) layerClass

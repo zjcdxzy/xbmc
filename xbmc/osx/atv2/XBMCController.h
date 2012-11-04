@@ -58,6 +58,7 @@
 - (void) stopAnimation;
 - (bool) changeScreen: (unsigned int)screenIdx withMode:(UIScreenMode *)mode;
 - (void) activateScreen: (UIScreen *)screen;
+- (void*) getEAGLContextObj;
 
 
 @end

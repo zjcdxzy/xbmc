@@ -79,6 +79,7 @@
 - (bool) changeScreen: (unsigned int)screenIdx withMode:(UIScreenMode *)mode;
 - (void) activateScreen: (UIScreen *)screen;
 - (id)   initWithFrame:(CGRect)frame withScreen:(UIScreen *)screen;
+- (void*) getEAGLContextObj;
 @end
 
 extern XBMCController *g_xbmcController;

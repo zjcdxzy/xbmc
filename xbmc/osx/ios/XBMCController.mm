@@ -698,5 +698,9 @@ extern NSString* kBRScreenSaverDismissed;
 {
   //NSLog(@"default: %@", [notification name]);
 }
-
+//--------------------------------------------------------------
+- (void*) getEAGLContextObj
+{
+  return [m_glView getCurrentEAGLContext];
+}
 @end

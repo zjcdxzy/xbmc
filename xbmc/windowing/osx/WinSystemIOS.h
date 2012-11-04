@@ -61,6 +61,7 @@ public:
           void InitDisplayLink(void);
           void DeinitDisplayLink(void);
           double GetDisplayLinkFPS(void);
+          void* GetEAGLContextObj();
 
 protected:
   virtual bool PresentRenderImpl(const CDirtyRegionList &dirty);

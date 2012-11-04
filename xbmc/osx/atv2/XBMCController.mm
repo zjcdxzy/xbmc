@@ -1069,5 +1069,10 @@ extern NSString* kBRScreenSaverDismissed;
 - (void) activateScreen: (UIScreen *)screen
 {
 }
+//--------------------------------------------------------------
+- (void*) getEAGLContextObj
+{
+  return [m_glView getCurrentEAGLContext];
+}
 @end
 
