@@ -1522,9 +1522,16 @@ CDVDVideoCodecVideoToolBox::CreateVTSession(int width, int height, CMFormatDescr
   OSStatus status;
 
   #if defined(TARGET_DARWIN_IOS)
-    //TODO - remove the clamp for ipad3 when CVOpenGLESTextureCacheCreateTextureFromImage
-    //has been planted ...
-    //if (!DarwinIsIPad3())
+    bool bandwidthClampNeeded = true;
+  #if defined(__IPHONE_5_0)
+    // on ios >= 5.0 runtime - builts with ios >= 5 sdk
+    // we use CVOpenGLESTextureCacheCreateTextureFromImage
+    // for doing the texture upload which reduces the bandwidth
+    // pressure.
+    if (GetIOSVersion() >= 5.0) // && DarwinIsIPad3()?!?
+      bandwidthClampNeeded = false;
+  #endif
+    if (bandwidthClampNeeded)
     {
       // decoding, scaling and rendering above 1920 x 800 runs into
       // some bandwidth limit. detect and scale down to reduce
