@@ -112,6 +112,12 @@ CLinuxRendererGLES::CLinuxRendererGLES()
 
   m_dllSwScale = new DllSwScale;
   m_sw_context = NULL;
+  
+#ifdef HAVE_VIDEOTOOLBOXDECODER
+#if defined(__IPHONE_5_0)
+  m_textureCache = NULL;
+#endif
+#endif
 }
 
 CLinuxRendererGLES::~CLinuxRendererGLES()
@@ -133,6 +139,12 @@ CLinuxRendererGLES::~CLinuxRendererGLES()
   }
 
   delete m_dllSwScale;
+#if defined(HAVE_VIDEOTOOLBOXDECODER)
+#if defined(__IPHONE_5_0)
+  if (m_textureCache)
+    CFRelease(m_textureCache);
+#endif
+#endif
 }
 
 void CLinuxRendererGLES::ManageTextures()
@@ -686,9 +698,20 @@ void CLinuxRendererGLES::LoadShaders(int field)
   // Now that we now the render method, setup texture function handlers
   if (m_format == RENDER_FMT_CVBREF)
   {
-    m_textureUpload = &CLinuxRendererGLES::UploadCVRefTexture;
-    m_textureCreate = &CLinuxRendererGLES::CreateCVRefTexture;
-    m_textureDelete = &CLinuxRendererGLES::DeleteCVRefTexture;
+#if defined(__IPHONE_5_0)
+    if (GetIOSVersion() >= 5.0)
+    {
+      m_textureUpload = &CLinuxRendererGLES::UploadCVRefTextureWithCache;
+      m_textureCreate = &CLinuxRendererGLES::CreateCVRefTextureWithCache;
+      m_textureDelete = &CLinuxRendererGLES::DeleteCVRefTextureWithCache;
+    }
+    else
+#endif
+    {
+      m_textureUpload = &CLinuxRendererGLES::UploadCVRefTexture;
+      m_textureCreate = &CLinuxRendererGLES::CreateCVRefTexture;
+      m_textureDelete = &CLinuxRendererGLES::DeleteCVRefTexture;
+    }
   }
   else if (m_format == RENDER_FMT_BYPASS)
   {
@@ -1648,6 +1671,92 @@ bool CLinuxRendererGLES::CreateYV12Texture(int index)
 //********************************************************************************************************
 // CoreVideoRef Texture creation, deletion, copying + clearing
 //********************************************************************************************************
+void CLinuxRendererGLES::UploadCVRefTextureWithCache(int index)
+{
+#ifdef HAVE_VIDEOTOOLBOXDECODER
+#if defined(__IPHONE_5_0)
+  if (!m_textureCache)
+    return;
+
+  CVBufferRef cvBufferRef = m_buffers[index].cvBufferRef;
+  
+  if (cvBufferRef)
+  {
+    YUVPLANE &plane = m_buffers[index].fields[0][0];
+    CVOpenGLESTextureRef renderTexture = NULL;
+    
+    CVPixelBufferLockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
+#if !TARGET_OS_IPHONE
+    int rowbytes = CVPixelBufferGetBytesPerRow(cvBufferRef);
+#endif
+    int bufferWidth = CVPixelBufferGetWidth(cvBufferRef);
+    int bufferHeight = CVPixelBufferGetHeight(cvBufferRef);
+    
+    glEnable(m_textureTarget);
+    VerifyGLState();
+    
+    // use the lightning fast gpu2gpu upload if possible
+    CVReturn err = CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault,
+                                                                 m_textureCache,
+                                                                 cvBufferRef,
+                                                                 NULL, // texture attributes
+                                                                 m_textureTarget,
+                                                                 GL_RGBA, // opengl format
+                                                                 bufferWidth,
+                                                                 bufferHeight,
+                                                                 GL_BGRA, // native iOS format
+                                                                 GL_UNSIGNED_BYTE,
+                                                                 0,
+                                                                 &renderTexture);
+    if (!renderTexture || err != kCVReturnSuccess)
+      CLog::Log(LOGERROR, "Error uploading texture (err: %d)", err);
+    plane.id = CVOpenGLESTextureGetName(renderTexture);
+    
+    glBindTexture(m_textureTarget, plane.id);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // This is necessary for non-power-of-two textures
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    
+#if !TARGET_OS_IPHONE
+#ifdef GL_UNPACK_ROW_LENGTH
+    // Set row pixels
+    glPixelStorei( GL_UNPACK_ROW_LENGTH, rowbytes);
+#endif
+#ifdef GL_TEXTURE_STORAGE_HINT_APPLE
+    // Set storage hint. Can also use GL_STORAGE_SHARED_APPLE see docs.
+    glTexParameteri(m_textureTarget, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_CACHED_APPLE);
+#endif
+#endif
+    
+    CVOpenGLESTextureCacheFlush(m_textureCache, 0);
+
+#if !TARGET_OS_IPHONE
+#ifdef GL_UNPACK_ROW_LENGTH
+    // Unset row pixels
+    glPixelStorei( GL_UNPACK_ROW_LENGTH, 0);
+#endif
+#endif
+    glBindTexture(m_textureTarget, 0);
+    
+    glDisable(m_textureTarget);
+    VerifyGLState();
+    
+    CVPixelBufferUnlockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
+    CVBufferRelease(m_buffers[index].cvBufferRef);
+    m_buffers[index].cvBufferRef = NULL;
+    if (renderTexture)
+      CFRelease(renderTexture);
+    
+    plane.flipindex = m_buffers[index].flipindex;
+  }
+  
+  m_eventTexturesDone[index]->Set();
+#endif
+#endif
+}
 void CLinuxRendererGLES::UploadCVRefTexture(int index)
 {
 #ifdef HAVE_VIDEOTOOLBOXDECODER
@@ -1704,6 +1813,29 @@ void CLinuxRendererGLES::UploadCVRefTexture(int index)
   m_eventTexturesDone[index]->Set();
 #endif
 }
+
+void CLinuxRendererGLES::DeleteCVRefTextureWithCache(int index)
+{
+#ifdef HAVE_VIDEOTOOLBOXDECODER 
+  if (m_buffers[index].cvBufferRef)
+    CVBufferRelease(m_buffers[index].cvBufferRef);
+  m_buffers[index].cvBufferRef = NULL;
+
+#if defined(__IPHONE_5_0)
+  // there is only one texture cache for all planes
+  // so only delete cache on idx 0
+  if (m_textureCache && index == 0)
+  {
+    // this will free all existing textures
+    CFRelease(m_textureCache);
+    m_textureCache = NULL;
+  }
+  // so any saved id is invalid from here on
+  m_buffers[index].fields[0][0].id = 0;
+
+#endif
+#endif
+}
 void CLinuxRendererGLES::DeleteCVRefTexture(int index)
 {
 #ifdef HAVE_VIDEOTOOLBOXDECODER
@@ -1717,6 +1849,68 @@ void CLinuxRendererGLES::DeleteCVRefTexture(int index)
     glDeleteTextures(1, &plane.id);
   plane.id = 0;
 #endif
+}
+bool CLinuxRendererGLES::CreateCVRefTextureWithCache(int index)
+{
+#ifdef HAVE_VIDEOTOOLBOXDECODER
+  YV12Image &im     = m_buffers[index].image;
+  YUVFIELDS &fields = m_buffers[index].fields;
+  YUVPLANE  &plane  = fields[0][0];
+  
+  DeleteCVRefTextureWithCache(index);
+#if defined(__IPHONE_5_0)
+  // there is only one texture cache for all planes
+  // so only delete cache on idx 0
+  if (index == 0)
+  {
+    // uncomment this if we feel we need to diddle with the cache attributes
+    /*CFMutableDictionaryRef cacheAttributes = CFDictionaryCreateMutable(
+                                                                 NULL, // CFAllocatorRef allocator
+                                                                 1,    // CFIndex capacity
+                                                                 &kCFTypeDictionaryKeyCallBacks,
+                                                                 &kCFTypeDictionaryValueCallBacks);
+    int ageSecsInt = 0;
+    CFNumberRef ageSecs = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &ageSecsInt);
+    
+    CFDictionarySetValue(cacheAttributes,
+                         kCVOpenGLESTextureCacheMaximumTextureAgeKey, ageSecs);
+    CFRelease(ageSecs);
+    
+    CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, cacheAttributes, g_Windowing.GetEAGLContextObj(), NULL, &m_textureCache);*/
+
+    CVReturn err = CVOpenGLESTextureCacheCreate(kCFAllocatorDefault, NULL, g_Windowing.GetEAGLContextObj(), NULL, &m_textureCache);
+    if (err)
+    {
+      m_textureCache = NULL;
+      CLog::Log(LOGERROR, "Error at CVOpenGLESTextureCacheCreate, don't expect any rendering...");
+    }
+    else
+      CLog::Log(LOGDEBUG, "IOS >= 5.0 - we use fast texture upload on vtb via CVOpenGLESTextureCacheCreateTextureFromImage");
+  }
+#endif
+  
+  memset(&im    , 0, sizeof(im));
+  memset(&fields, 0, sizeof(fields));
+  
+  im.height = m_sourceHeight;
+  im.width  = m_sourceWidth;
+  
+  plane.texwidth  = im.width;
+  plane.texheight = im.height;
+  
+  if(m_renderMethod & RENDER_POT)
+  {
+    plane.texwidth  = NP2(plane.texwidth);
+    plane.texheight = NP2(plane.texheight);
+  }
+  
+  // we need an id != 0 for getting through RenderUpdate.
+  // But with cache our texture id is created during upload.
+  // so just init to invalid id here
+  plane.id = -1;
+  m_eventTexturesDone[index]->Set();
+#endif
+  return true;
 }
 bool CLinuxRendererGLES::CreateCVRefTexture(int index)
 {
@@ -1761,7 +1955,7 @@ bool CLinuxRendererGLES::CreateCVRefTexture(int index)
 
   glTexParameteri(m_textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(m_textureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// This is necessary for non-power-of-two textures
+  // This is necessary for non-power-of-two textures
   glTexParameteri(m_textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(m_textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);

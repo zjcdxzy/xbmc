@@ -116,6 +116,7 @@ class DllSwScale;
 struct SwsContext;
 
 class CEvent;
+struct __CVOpenGLESTextureCache;
 
 class CLinuxRendererGLES : public CBaseRenderer
 {
@@ -179,8 +180,11 @@ protected:
   bool CreateYV12Texture(int index);
 
   void UploadCVRefTexture(int index);
+  void UploadCVRefTextureWithCache(int index);
   void DeleteCVRefTexture(int index);
+  void DeleteCVRefTextureWithCache(int index);
   bool CreateCVRefTexture(int index);
+  bool CreateCVRefTextureWithCache(int index);
 
   void UploadBYPASSTexture(int index);
   void DeleteBYPASSTexture(int index);
@@ -282,7 +286,12 @@ protected:
   unsigned int m_rgbBufferSize;
 
   CEvent* m_eventTexturesDone[NUM_BUFFERS];
-
+  
+#if defined(HAVE_VIDEOTOOLBOXDECODER)
+#if defined(__IPHONE_5_0)
+  struct __CVOpenGLESTextureCache *m_textureCache;
+#endif
+#endif
 };
 
 
