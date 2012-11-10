@@ -57,6 +57,232 @@
 #include "VAAPI.h"
 #endif
 
+#if defined(TARGET_DARWIN_IOS) && defined(__IPHONE_5_0)
+#include <CoreVideo/CoreVideo.h>
+
+CVBufferHelper *CVBufferHelper::m_pSingleton = NULL;
+
+  CVBufferHelper::CVBufferHelper()
+  {
+    m_resetBufferCache = true;
+  }
+  
+  CVBufferHelper::~CVBufferHelper()
+  {
+    //clearCache();
+  }
+  
+  CVBufferHelper *CVBufferHelper::getInstance()
+  {
+    if (!m_pSingleton)
+    {
+      m_pSingleton = new CVBufferHelper();
+    }
+    return m_pSingleton;
+  }
+  
+  void CVBufferHelper::ResetBufferCache()
+  {
+    m_resetBufferCache = true;
+  }
+  
+  void CVBufferHelper::ClearPicture(DVDVideoPicture* pDvdVideoPicture)
+  {
+    if (pDvdVideoPicture && pDvdVideoPicture->cvBufferRef)
+      CVBufferRelease(pDvdVideoPicture->cvBufferRef);
+    pDvdVideoPicture->cvBufferRef = NULL;
+  }
+  
+  bool CVBufferHelper::GetCVBufferRef(DVDVideoPicture* pDvdVideoPicture)
+  {
+    static CVBufferRef bufferCache[3] = {NULL, NULL, NULL};
+    static int nextFreeBuffer = 0;
+
+    // fixup y-u-v format for making it compatible with GLES
+    CFDictionaryRef orig = CVPixelFormatDescriptionCreateWithPixelFormatType(kCFAllocatorDefault,
+                                                                             kCVPixelFormatType_420YpCbCr8PlanarFullRange);
+    CFMutableDictionaryRef pixelformat_attributes = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0,orig);
+    
+    CFDictionarySetValue(pixelformat_attributes, kCVPixelFormatOpenGLESCompatibility, kCFBooleanTrue);
+    
+    CVPixelFormatDescriptionRegisterDescriptionWithPixelFormatType(pixelformat_attributes, kCVPixelFormatType_420YpCbCr8PlanarFullRange);
+    
+    /* size_t planeWidths[3] = {pDvdVideoPicture->iWidth, pDvdVideoPicture->iWidth, pDvdVideoPicture->iWidth};
+     size_t planeHeights[3] = {pDvdVideoPicture->iHeight, pDvdVideoPicture->iHeight, pDvdVideoPicture->iHeight};
+     size_t planeRowSizes[3] = {pDvdVideoPicture->iLineSize[0], pDvdVideoPicture->iLineSize[1], pDvdVideoPicture->iLineSize[2]};
+     void * planeAdrs[3] = {pDvdVideoPicture->data[0],pDvdVideoPicture->data[1],pDvdVideoPicture->data[2]};
+     CVReturn ret =  CVPixelBufferCreateWithPlanarBytes (
+     kCFAllocatorDefault,
+     pDvdVideoPicture->iWidth,
+     pDvdVideoPicture->iHeight,
+     kCVPixelFormatType_420YpCbCr8PlanarFullRange,
+     NULL,
+     0,
+     3,
+     planeAdrs,
+     planeWidths,
+     planeHeights,
+     planeRowSizes,
+     NULL,
+     NULL,
+     buffer_attributes,
+     &pixelbuffer_ref
+     );
+    CFRelease(buffer_attributes);
+    CFRelease(io_surface_properties);
+    
+    if (ret != kCVReturnSuccess )
+      CLog::Log(LOGERROR, "Error creating CBufferRef %d", ret);
+    
+    pDvdVideoPicture->cvBufferRef = pixelbuffer_ref;
+    pDvdVideoPicture->format = RENDER_FMT_CVBREF;*/
+
+    if (m_resetBufferCache)
+    {
+      CFDictionaryRef io_surface_properties;
+      CFMutableDictionaryRef buffer_attributes;
+      
+      // our empty IOSurface properties dictionary
+      io_surface_properties = CFDictionaryCreate(kCFAllocatorDefault,
+                                                 NULL, NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+      
+      buffer_attributes = CFDictionaryCreateMutable(kCFAllocatorDefault,
+                                                    1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+      
+      // might need to setup kCVPixelBufferBytesPerRowAlignmentKey to match FFmpeg
+      CFDictionarySetValue(buffer_attributes, kCVPixelBufferIOSurfacePropertiesKey, io_surface_properties);
+      for (int i = 0; i < 3; i++)
+      {
+        if (bufferCache[i])
+          CVBufferRelease(bufferCache[i]);
+        
+        CVPixelBufferRef pixelbuffer_ref;
+        //CVPixelBufferCreate(kCFAllocatorDefault, pDvdVideoPicture->iWidth, pDvdVideoPicture->iHeight,
+        //                    kCVPixelFormatType_420YpCbCr8BiPlanarFullRange, buffer_attributes, &pixelbuffer_ref);
+        CVPixelBufferCreate(kCFAllocatorDefault, pDvdVideoPicture->iWidth, pDvdVideoPicture->iHeight,
+                            kCVPixelFormatType_420YpCbCr8PlanarFullRange, buffer_attributes, &pixelbuffer_ref);
+
+        bufferCache[i] = pixelbuffer_ref;
+        CLog::Log(LOGDEBUG, "CVREF: create cached buffer: %p", pixelbuffer_ref);
+      }
+      m_resetBufferCache = false;
+      CFRelease(buffer_attributes);
+      CFRelease(io_surface_properties);
+    }
+
+    if (nextFreeBuffer < 3)
+    {
+      //copyOutAs420YpCbCr8BiPlanarFullRange(bufferCache[nextFreeBuffer], pDvdVideoPicture);
+      copyOutAs420YpCbCr8PlanarFullRange(bufferCache[nextFreeBuffer], pDvdVideoPicture);
+      pDvdVideoPicture->cvBufferRef = bufferCache[nextFreeBuffer];
+      CVBufferRetain(pDvdVideoPicture->cvBufferRef);
+      pDvdVideoPicture->format = RENDER_FMT_CVBREF;
+      //CLog::Log(LOGDEBUG, "CVREF: use cached buffer: %p", pDvdVideoPicture->cvBufferRef);
+      nextFreeBuffer++;
+      if (nextFreeBuffer == 3)
+        nextFreeBuffer = 0;
+      
+    }
+    else
+      CLog::Log(LOGERROR, "CVREF: no free buffer in cache");
+    return true;
+  }
+
+  inline void JoinUV(uint8_t *dst_uv, uint8_t *src_u, uint8_t *src_v, int width)
+  {
+#if defined(__ARM_NEON__)
+    asm volatile (
+                  "1:                                          \n"
+                  "vld1.u8    {q0}, [%1]!                    \n"  // Load U
+                  "vld1.u8    {q1}, [%2]!                    \n"  // Load V
+                  "subs       %3, %3, #16                    \n"  // 16 processed per loop
+                  "vst2.u8    {q0,q1}, [%0]!                 \n"  // Store 16 pairs of UV
+                  "bgt        1b                             \n"
+                  : "+r"(dst_uv),  // %0
+                  "+r"(src_u),   // %1
+                  "+r"(src_v),   // %2
+                  "+r"(width)    // %3  // Output registers
+                  :                       // Input registers
+                  : "memory", "cc", "q0", "q1" // Clobber List
+                  );
+#endif
+  }
+  
+  void CVBufferHelper::copyOutAs420YpCbCr8BiPlanarFullRange(CVPixelBufferRef pixelbuffer, DVDVideoPicture* pDvdVideoPicture)
+  {
+    if (CVPixelBufferLockBaseAddress(pixelbuffer, 0) == kCVReturnSuccess)
+    {
+      // copy y
+      size_t   rowbytes = CVPixelBufferGetBytesPerRowOfPlane(pixelbuffer, 0);
+      uint8_t *buffer_ptr = (uint8_t*)CVPixelBufferGetBaseAddressOfPlane(pixelbuffer, 0);
+      for (int y = 0; y < pDvdVideoPicture->iHeight; y++)
+      {
+        uint8_t *dst_y = buffer_ptr + (y * rowbytes);
+        uint8_t *src_y = pDvdVideoPicture->data[0] + (y * pDvdVideoPicture->iLineSize[0]);
+        memcpy(dst_y, src_y, pDvdVideoPicture->iWidth);
+      }
+      
+      //copy u,v planes to uv packed (1/2 the width and 1/2 the height of y)
+      rowbytes = CVPixelBufferGetBytesPerRowOfPlane(pixelbuffer, 1);
+      buffer_ptr = (uint8_t*)CVPixelBufferGetBaseAddressOfPlane(pixelbuffer, 1);
+      for (int y = 0; y < pDvdVideoPicture->iHeight/2; y++)
+      {
+        uint8_t *dst_uv = buffer_ptr + (y * rowbytes);
+        uint8_t *src_u  = pDvdVideoPicture->data[1] + (y * pDvdVideoPicture->iLineSize[1]);
+        uint8_t *src_v  = pDvdVideoPicture->data[2] + (y * pDvdVideoPicture->iLineSize[2]);
+        
+        JoinUV(dst_uv, src_u, src_v, pDvdVideoPicture->iWidth/2);
+      }
+      
+      //end = CVGetCurrentHostTime() * 1000 / CVGetHostClockFrequency();
+      //NSLog(@"copyOut (%llu)", end-bgn);
+      
+      // unlock when done.
+      CVPixelBufferUnlockBaseAddress(pixelbuffer, 0);
+    }
+  }
+  
+  void CVBufferHelper::copyOutAs420YpCbCr8PlanarFullRange(CVPixelBufferRef pixelbuffer, DVDVideoPicture* pDvdVideoPicture)
+  {
+    if (CVPixelBufferLockBaseAddress(pixelbuffer, 0) == kCVReturnSuccess)
+    {
+      //uint64_t bgn, end;
+      //bgn = CVGetCurrentHostTime() * 1000 / CVGetHostClockFrequency();
+      
+      // copy y, u, v
+      size_t   num_planes = CVPixelBufferGetPlaneCount(pixelbuffer);
+      for (size_t i = 0; i < num_planes; i++)
+      {
+        size_t   rowbytes = CVPixelBufferGetBytesPerRowOfPlane(pixelbuffer, i);
+        uint8_t *buffer_ptr = (uint8_t*)CVPixelBufferGetBaseAddressOfPlane(pixelbuffer, i);
+        if (rowbytes == pDvdVideoPicture->iLineSize[i])
+          memcpy(buffer_ptr, pDvdVideoPicture->data[i], pDvdVideoPicture->iHeight * rowbytes);
+          else
+          {
+            int height = pDvdVideoPicture->iHeight;
+            if (i > 0)
+              height /= 2;
+            
+            int width  = pDvdVideoPicture->iLineSize[i];
+            if (width > rowbytes)
+              width = rowbytes;
+            
+            uint8_t *d_y = buffer_ptr;
+            uint8_t *s_y = pDvdVideoPicture->data[i];
+            for (int y = 0; y < height; y++, s_y += pDvdVideoPicture->iLineSize[i], d_y += rowbytes)
+              memcpy(d_y, s_y, width);
+              }
+      }
+      
+      //end = CVGetCurrentHostTime() * 1000 / CVGetHostClockFrequency();
+      //NSLog(@"copyOut (%llu)", end-bgn);
+      
+      // unlock when done.
+      CVPixelBufferUnlockBaseAddress(pixelbuffer, 0);
+    }
+  }
+#endif
+
 using namespace boost;
 
 enum PixelFormat CDVDVideoCodecFFmpeg::GetFormat( struct AVCodecContext * avctx
@@ -164,6 +390,9 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
 
   m_bSoftware     = hints.software;
   m_iOrientation  = hints.orientation;
+#if defined(TARGET_DARWIN_IOS) && defined(__IPHONE_5_0)
+  CVBufferHelper::getInstance()->ResetBufferCache();
+#endif
 
   for(std::vector<ERenderFormat>::iterator it = options.m_formats.begin(); it != options.m_formats.end(); ++it)
   {
@@ -645,6 +874,14 @@ bool CDVDVideoCodecFFmpeg::GetPictureCommon(DVDVideoPicture* pDvdVideoPicture)
   return true;
 }
 
+bool CDVDVideoCodecFFmpeg::ClearPicture(DVDVideoPicture* pDvdVideoPicture)
+{
+#if defined(TARGET_DARWIN_IOS) && defined(__IPHONE_5_0)
+  CVBufferHelper::getInstance()->ClearPicture(pDvdVideoPicture);
+#endif
+  return CDVDVideoCodec::ClearPicture(pDvdVideoPicture);
+}
+
 bool CDVDVideoCodecFFmpeg::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 {
   if(m_pHardware)
@@ -660,15 +897,20 @@ bool CDVDVideoCodecFFmpeg::GetPicture(DVDVideoPicture* pDvdVideoPicture)
       pDvdVideoPicture->iLineSize[i] = m_pFrame->linesize[i];
   }
 
+  
   pDvdVideoPicture->iFlags |= pDvdVideoPicture->data[0] ? 0 : DVP_FLAG_DROPPED;
   pDvdVideoPicture->extended_format = 0;
+  
+#if defined(TARGET_DARWIN_IOS) && defined(__IPHONE_5_0)
+  return CVBufferHelper::getInstance()->GetCVBufferRef(pDvdVideoPicture);
+#endif
 
   PixelFormat pix_fmt;
   if(m_pBufferRef)
     pix_fmt = (PixelFormat)m_pBufferRef->format;
   else
     pix_fmt = m_pCodecContext->pix_fmt;
-
+ 
   pDvdVideoPicture->format = CDVDCodecUtils::EFormatFromPixfmt(pix_fmt);
   return true;
 }

@@ -31,6 +31,28 @@
 class CVDPAU;
 class CCriticalSection;
 
+typedef struct __CVBuffer *CVPixelBufferRef;
+
+class CVBufferHelper
+{
+public:
+  
+  CVBufferHelper();
+  ~CVBufferHelper();
+  
+  static CVBufferHelper *getInstance();
+  void ResetBufferCache();
+  void ClearPicture(DVDVideoPicture* pDvdVideoPicture);
+  bool GetCVBufferRef(DVDVideoPicture* pDvdVideoPicture);
+  
+private:
+  void copyOutAs420YpCbCr8BiPlanarFullRange(CVPixelBufferRef pixelbuffer, DVDVideoPicture* pDvdVideoPicture);
+  void copyOutAs420YpCbCr8PlanarFullRange(CVPixelBufferRef pixelbuffer, DVDVideoPicture* pDvdVideoPicture);
+  
+  static CVBufferHelper *m_pSingleton;
+  bool m_resetBufferCache;
+};
+
 class CDVDVideoCodecFFmpeg : public CDVDVideoCodec
 {
 public:
@@ -56,6 +78,7 @@ public:
   virtual void Reset();
   bool GetPictureCommon(DVDVideoPicture* pDvdVideoPicture);
   virtual bool GetPicture(DVDVideoPicture* pDvdVideoPicture);
+  virtual bool ClearPicture(DVDVideoPicture* pDvdVideoPicture);
   virtual void SetDropState(bool bDrop);
   virtual unsigned int SetFilters(unsigned int filters);
   virtual const char* GetName() { return m_name.c_str(); }; // m_name is never changed after open
