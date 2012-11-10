@@ -32,12 +32,14 @@ CGUIShader::CGUIShader( const char *shader ) : CGLSLShaderProgram("guishader_ver
   // Initialise values
   m_hTex0   = 0;
   m_hTex1   = 0;
+  m_hTex2   = 0;
   m_hProj   = 0;
   m_hModel  = 0;
   m_hPos    = 0;
   m_hCol    = 0;
   m_hCord0  = 0;
   m_hCord1  = 0;
+  m_hCord2  = 0;
 
   m_proj   = NULL;
   m_model  = NULL;
@@ -50,6 +52,7 @@ void CGUIShader::OnCompiledAndLinked()
   // Variables passed directly to the Fragment shader
   m_hTex0   = glGetUniformLocation(ProgramHandle(), "m_samp0");
   m_hTex1   = glGetUniformLocation(ProgramHandle(), "m_samp1");
+  m_hTex2   = glGetUniformLocation(ProgramHandle(), "m_samp2");
   // Variables passed directly to the Vertex shader
   m_hProj   = glGetUniformLocation(ProgramHandle(), "m_proj");
   m_hModel  = glGetUniformLocation(ProgramHandle(), "m_model");
@@ -57,11 +60,13 @@ void CGUIShader::OnCompiledAndLinked()
   m_hCol    = glGetAttribLocation(ProgramHandle(),  "m_attrcol");
   m_hCord0  = glGetAttribLocation(ProgramHandle(),  "m_attrcord0");
   m_hCord1  = glGetAttribLocation(ProgramHandle(),  "m_attrcord1");
+  m_hCord2  = glGetAttribLocation(ProgramHandle(),  "m_attrcord2");
 
   // It's okay to do this only one time. Textures units never change.
   glUseProgram( ProgramHandle() );
   glUniform1i(m_hTex0, 0);
   glUniform1i(m_hTex1, 1);
+  glUniform1i(m_hTex2, 2);
   glUseProgram( 0 );
 }
 

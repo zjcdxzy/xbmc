@@ -41,7 +41,9 @@ static const char* ShaderNames[SM_ESHADERCOUNT] =
      "guishader_frag_texture_noblend.glsl",
      "guishader_frag_multi_blendcolor.glsl",
      "guishader_frag_rgba.glsl",
-     "guishader_frag_rgba_blendcolor.glsl"
+     "guishader_frag_rgba_blendcolor.glsl",
+      "420fToRGB.glsl",
+      "f420ToRGB.glsl"
     };
 
 CRenderSystemGLES::CRenderSystemGLES()
