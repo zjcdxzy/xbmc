@@ -33,6 +33,8 @@ class CCriticalSection;
 
 typedef struct __CVBuffer *CVPixelBufferRef;
 
+#include <queue>
+
 class CVBufferHelper
 {
 public:
@@ -41,16 +43,22 @@ public:
   ~CVBufferHelper();
   
   static CVBufferHelper *getInstance();
-  void ResetBufferCache();
+  void SetBufferCallbacks(AVCodecContext *pContext);
+  void AllocateBuffers(unsigned int width, unsigned int height);
   void ClearPicture(DVDVideoPicture* pDvdVideoPicture);
-  bool GetCVBufferRef(DVDVideoPicture* pDvdVideoPicture);
+  bool GetCVBufferRef(DVDVideoPicture* pDvdVideoPicture, AVFrame *pFrame);
+  CVPixelBufferRef GetNextBufferFromCache();
+  void GiveBufferBackToCache(CVPixelBufferRef buff);
   
 private:
   void copyOutAs420YpCbCr8BiPlanarFullRange(CVPixelBufferRef pixelbuffer, DVDVideoPicture* pDvdVideoPicture);
   void copyOutAs420YpCbCr8PlanarFullRange(CVPixelBufferRef pixelbuffer, DVDVideoPicture* pDvdVideoPicture);
+  void freeCache();
   
   static CVBufferHelper *m_pSingleton;
-  bool m_resetBufferCache;
+  int m_nextFreeBuffer;
+  CVPixelBufferRef m_bufferCache[3];
+  std::queue<CVPixelBufferRef> m_availableBuffers;
 };
 
 class CDVDVideoCodecFFmpeg : public CDVDVideoCodec
