@@ -1522,9 +1522,14 @@ CDVDVideoCodecVideoToolBox::CreateVTSession(int width, int height, CMFormatDescr
   OSStatus status;
 
   #if defined(TARGET_DARWIN_IOS)
-    //TODO - remove the clamp for ipad3 when CVOpenGLESTextureCacheCreateTextureFromImage
-    //has been planted ...
-    //if (!DarwinIsIPad3())
+  {
+    bool bandwidthClampNeeded = true;
+    #if defined(__IPHONE_5)
+    if (GetIOSVersion() >= 5.0 && DarwinIsIPad3())
+      bandwidthClampNeeded = false;
+    #endif
+
+    if (bandwidthClampNeeded)
     {
       // decoding, scaling and rendering above 1920 x 800 runs into
       // some bandwidth limit. detect and scale down to reduce
@@ -1552,6 +1557,7 @@ CDVDVideoCodecVideoToolBox::CreateVTSession(int width, int height, CMFormatDescr
         height = height * w_scaler;
       }
     }
+  }
   #endif
   destinationPixelBufferAttributes = CFDictionaryCreateMutable(
     NULL, // CFAllocatorRef allocator
