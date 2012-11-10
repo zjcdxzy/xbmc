@@ -1277,15 +1277,37 @@ void CLinuxRendererGLES::RenderOpenMax(int index, int field)
 void CLinuxRendererGLES::RenderCoreVideoRef(int index, int field)
 {
 #ifdef HAVE_VIDEOTOOLBOXDECODER
-  YUVPLANE &plane = m_buffers[index].fields[field][0];
-
+  YUVPLANES &planes = m_buffers[index].fields[field];
+  CVBufferRef cvBufferRef = m_buffers[index].cvBufferRef;
+  OSType pixelFormat = CVPixelBufferGetPixelFormatType(cvBufferRef);
+  int textureUnits[3] = {GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE2};
+  int numPlanes = CVPixelBufferGetPlaneCount(cvBufferRef);
+  bool isPlanar = CVPixelBufferIsPlanar(cvBufferRef);
+  
+  if (!isPlanar)
+    numPlanes = 1;
+  
   glDisable(GL_DEPTH_TEST);
 
-  glEnable(m_textureTarget);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(m_textureTarget, plane.id);
-
-  g_Windowing.EnableGUIShader(SM_TEXTURE_RGBA);
+  for (int i = 0; i < numPlanes; i++)
+  {
+    glActiveTexture(textureUnits[i]);
+    glEnable(m_textureTarget);
+    glBindTexture(m_textureTarget, planes[i].id);
+  }
+  
+  switch (pixelFormat)
+  {
+    case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+      g_Windowing.EnableGUIShader(SM_TEXTURE_YUV2);
+      break;
+    case kCVPixelFormatType_420YpCbCr8PlanarFullRange:
+      g_Windowing.EnableGUIShader(SM_TEXTURE_YUV3);
+      break;
+    default:
+      g_Windowing.EnableGUIShader(SM_TEXTURE_RGBA);
+      break;
+  }
 
   GLubyte idx[4] = {0, 1, 3, 2};        //determines order of triangle strip
   GLfloat ver[4][4];
@@ -1333,7 +1355,12 @@ void CLinuxRendererGLES::RenderCoreVideoRef(int index, int field)
   g_Windowing.DisableGUIShader();
   VerifyGLState();
 
-  glDisable(m_textureTarget);
+  for (int i = 0; i < numPlanes; i++)
+  {
+    glActiveTexture(textureUnits[i]);
+    glBindTexture(m_textureTarget, 0);
+    glDisable(m_textureTarget);
+  }
   VerifyGLState();
 #endif
 }
@@ -1681,6 +1708,93 @@ bool CLinuxRendererGLES::CreateYV12Texture(int index)
 //********************************************************************************************************
 // CoreVideoRef Texture creation, deletion, copying + clearing
 //********************************************************************************************************
+#ifdef HAVE_VIDEOTOOLBOXDECODER
+#if defined(__IPHONE_5_0)
+void FastUploadPlaneFromCvBuffer(CVOpenGLESTextureCacheRef texCache,
+                                 CVBufferRef cvBufferRef,
+                                 GLenum texTarget,
+                                 int glExtIn,
+                                 int glExtOut,
+                                 int plane,
+                                 GLuint &planeId)
+{
+  int numPlanes = CVPixelBufferGetPlaneCount(cvBufferRef);
+  bool isPlanar = CVPixelBufferIsPlanar(cvBufferRef);
+
+  if ((isPlanar && plane >= numPlanes) || plane >= 3)
+  {
+    CLog::Log(LOGERROR, "Upload of invalid plane requested (req: %d, avail: %d)", plane, numPlanes);
+    return;
+  }
+  int textureUnits[3] = {GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE2};
+  int bufferWidth = CVPixelBufferGetWidthOfPlane(cvBufferRef, plane);
+  int bufferHeight = CVPixelBufferGetHeightOfPlane(cvBufferRef, plane);
+  if (!isPlanar)
+  {
+    bufferWidth = CVPixelBufferGetWidth(cvBufferRef);
+    bufferHeight = CVPixelBufferGetHeight(cvBufferRef);
+  }
+
+#if !TARGET_OS_IPHONE
+  int rowbytes = CVPixelBufferGetBytesPerRow(cvBufferRef);
+#endif
+
+  CVOpenGLESTextureRef renderTexture = NULL;
+  
+  glActiveTexture(textureUnits[plane]);
+  glEnable(texTarget);
+  // use the lightning fast gpu2gpu upload if possible
+  CVReturn err = CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault,
+                                                               texCache,
+                                                               cvBufferRef,
+                                                               NULL, // texture attributes
+                                                               texTarget,
+                                                               glExtIn, // opengl format
+                                                               bufferWidth,
+                                                               bufferHeight,
+                                                               glExtOut, // native iOS format
+                                                               GL_UNSIGNED_BYTE,
+                                                               plane,
+                                                               &renderTexture);
+
+  if (!renderTexture || err != kCVReturnSuccess)
+    CLog::Log(LOGERROR, "Error uploading texture (err: %d)", err);
+  planeId = CVOpenGLESTextureGetName(renderTexture);
+  CFRelease(renderTexture);
+  
+  glBindTexture(texTarget, planeId);
+  glTexParameterf(texTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameterf(texTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(texTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(texTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  // This is necessary for non-power-of-two textures
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+  
+#if !TARGET_OS_IPHONE
+#ifdef GL_UNPACK_ROW_LENGTH
+  // Set row pixels
+  glPixelStorei( GL_UNPACK_ROW_LENGTH, rowbytes);
+#endif
+#ifdef GL_TEXTURE_STORAGE_HINT_APPLE
+  // Set storage hint. Can also use GL_STORAGE_SHARED_APPLE see docs.
+  glTexParameteri(texTarget, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_CACHED_APPLE);
+#endif
+#endif
+  
+#if !TARGET_OS_IPHONE
+#ifdef GL_UNPACK_ROW_LENGTH
+  // Unset row pixels
+  glPixelStorei( GL_UNPACK_ROW_LENGTH, 0);
+#endif
+#endif
+  glBindTexture(texTarget, 0);
+  
+  glDisable(texTarget);
+  VerifyGLState();
+  
+}
+#endif
+#endif
 void CLinuxRendererGLES::UploadCVRefTextureWithCache(int index)
 {
 #ifdef HAVE_VIDEOTOOLBOXDECODER
@@ -1692,76 +1806,40 @@ void CLinuxRendererGLES::UploadCVRefTextureWithCache(int index)
   
   if (cvBufferRef)
   {
-    YUVPLANE &plane = m_buffers[index].fields[0][0];
-    CVOpenGLESTextureRef renderTexture = NULL;
-    
+    YUVPLANES &planes = m_buffers[index].fields[m_currentField];   
     CVPixelBufferLockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
+
 #if !TARGET_OS_IPHONE
     int rowbytes = CVPixelBufferGetBytesPerRow(cvBufferRef);
 #endif
-    int bufferWidth = CVPixelBufferGetWidth(cvBufferRef);
-    int bufferHeight = CVPixelBufferGetHeight(cvBufferRef);
+    OSType format_type = CVPixelBufferGetPixelFormatType(cvBufferRef);
     
-    glEnable(m_textureTarget);
-    VerifyGLState();
-    
-    // use the lightning fast gpu2gpu upload if possible
-    CVReturn err = CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault,
-                                                                 m_textureCache,
-                                                                 cvBufferRef,
-                                                                 NULL, // texture attributes
-                                                                 m_textureTarget,
-                                                                 GL_RGBA, // opengl format
-                                                                 bufferWidth,
-                                                                 bufferHeight,
-                                                                 GL_BGRA, // native iOS format
-                                                                 GL_UNSIGNED_BYTE,
-                                                                 0,
-                                                                 &renderTexture);
-    if (!renderTexture || err != kCVReturnSuccess)
-      CLog::Log(LOGERROR, "Error uploading texture (err: %d)", err);
-    plane.id = CVOpenGLESTextureGetName(renderTexture);
-    
-    glBindTexture(m_textureTarget, plane.id);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // This is necessary for non-power-of-two textures
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    
-#if !TARGET_OS_IPHONE
-#ifdef GL_UNPACK_ROW_LENGTH
-    // Set row pixels
-    glPixelStorei( GL_UNPACK_ROW_LENGTH, rowbytes);
-#endif
-#ifdef GL_TEXTURE_STORAGE_HINT_APPLE
-    // Set storage hint. Can also use GL_STORAGE_SHARED_APPLE see docs.
-    glTexParameteri(m_textureTarget, GL_TEXTURE_STORAGE_HINT_APPLE , GL_STORAGE_CACHED_APPLE);
-#endif
-#endif
-    
-    CVOpenGLESTextureCacheFlush(m_textureCache, 0);
+    switch (format_type)
+    {
+      case kCVPixelFormatType_32BGRA:
+        // use the lightning fast gpu2gpu upload if possible
+        FastUploadPlaneFromCvBuffer(m_textureCache, cvBufferRef, m_textureTarget, GL_RGBA, GL_BGRA, 0, planes[0].id);
+        break;
 
-#if !TARGET_OS_IPHONE
-#ifdef GL_UNPACK_ROW_LENGTH
-    // Unset row pixels
-    glPixelStorei( GL_UNPACK_ROW_LENGTH, 0);
-#endif
-#endif
-    glBindTexture(m_textureTarget, 0);
-    
-    glDisable(m_textureTarget);
-    VerifyGLState();
-    
-    CVPixelBufferUnlockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
-    // we need to hold the cvbuffer until we don't need the attached
-    // texture anymore. We are sure that this is the case when flippage
-    // is called. So we release the buffer in FlipPage m_textureRelease
-    if (renderTexture)
-      CFRelease(renderTexture);
-    
-    plane.flipindex = m_buffers[index].flipindex;
+      case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+        // Y-plane
+        FastUploadPlaneFromCvBuffer(m_textureCache, cvBufferRef, m_textureTarget, GL_RED_EXT, GL_RED_EXT, 0, planes[0].id);
+        // UV-plane
+        FastUploadPlaneFromCvBuffer(m_textureCache, cvBufferRef, m_textureTarget, GL_RG_EXT, GL_RG_EXT, 1, planes[1].id);
+        break;
+
+      case kCVPixelFormatType_420YpCbCr8PlanarFullRange:
+        // Y-plane
+        FastUploadPlaneFromCvBuffer(m_textureCache, cvBufferRef, m_textureTarget, GL_RED_EXT, GL_RED_EXT, 0, planes[0].id);
+        // U-plane
+        FastUploadPlaneFromCvBuffer(m_textureCache, cvBufferRef, m_textureTarget, GL_RED_EXT, GL_RED_EXT, 1, planes[1].id);
+        // V-plane
+        FastUploadPlaneFromCvBuffer(m_textureCache, cvBufferRef, m_textureTarget, GL_RED_EXT, GL_RED_EXT, 2, planes[2].id);
+        break;
+    }
+   
+    CVOpenGLESTextureCacheFlush(m_textureCache, 0);
+    planes[0].flipindex = m_buffers[index].flipindex;
   }
   
   m_eventTexturesDone[index]->Set();
