@@ -106,6 +106,7 @@ CLinuxRendererGLES::CLinuxRendererGLES()
   m_textureUpload = &CLinuxRendererGLES::UploadYV12Texture;
   m_textureCreate = &CLinuxRendererGLES::CreateYV12Texture;
   m_textureDelete = &CLinuxRendererGLES::DeleteYV12Texture;
+  m_textureRelease = NULL;
 
   m_rgbBuffer = NULL;
   m_rgbBufferSize = 0;
@@ -504,6 +505,13 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
 
 void CLinuxRendererGLES::FlipPage(int source)
 {
+  // from here on we don't need the texture
+  // on idx m_iYV12RenderBuffer anymore
+  // if someone is interested in that
+  // call him...
+  if (m_textureRelease)
+    (this->*m_textureRelease)(m_iYV12RenderBuffer);
+  
   if( source >= 0 && source < m_NumYV12Buffers )
     m_iYV12RenderBuffer = source;
   else
@@ -696,6 +704,7 @@ void CLinuxRendererGLES::LoadShaders(int field)
     CLog::Log(LOGNOTICE, "GL: NPOT texture support detected");
 
   // Now that we now the render method, setup texture function handlers
+  m_textureRelease = NULL; // this one is optional - so init to null
   if (m_format == RENDER_FMT_CVBREF)
   {
 #if defined(__IPHONE_5_0)
@@ -704,6 +713,7 @@ void CLinuxRendererGLES::LoadShaders(int field)
       m_textureUpload = &CLinuxRendererGLES::UploadCVRefTextureWithCache;
       m_textureCreate = &CLinuxRendererGLES::CreateCVRefTextureWithCache;
       m_textureDelete = &CLinuxRendererGLES::DeleteCVRefTextureWithCache;
+      m_textureRelease =&CLinuxRendererGLES::ReleaseCVRefTextureWithCache;
     }
     else
 #endif
@@ -1745,8 +1755,9 @@ void CLinuxRendererGLES::UploadCVRefTextureWithCache(int index)
     VerifyGLState();
     
     CVPixelBufferUnlockBaseAddress(cvBufferRef, kCVPixelBufferLock_ReadOnly);
-    CVBufferRelease(m_buffers[index].cvBufferRef);
-    m_buffers[index].cvBufferRef = NULL;
+    // we need to hold the cvbuffer until we don't need the attached
+    // texture anymore. We are sure that this is the case when flippage
+    // is called. So we release the buffer in FlipPage m_textureRelease
     if (renderTexture)
       CFRelease(renderTexture);
     
@@ -1834,6 +1845,14 @@ void CLinuxRendererGLES::DeleteCVRefTextureWithCache(int index)
   m_buffers[index].fields[0][0].id = 0;
 
 #endif
+#endif
+}
+void CLinuxRendererGLES::ReleaseCVRefTextureWithCache(int index)
+{
+#ifdef HAVE_VIDEOTOOLBOXDECODER 
+  if (m_buffers[index].cvBufferRef)
+    CVBufferRelease(m_buffers[index].cvBufferRef);
+  m_buffers[index].cvBufferRef = NULL;
 #endif
 }
 void CLinuxRendererGLES::DeleteCVRefTexture(int index)

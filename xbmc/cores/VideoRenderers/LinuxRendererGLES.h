@@ -174,6 +174,11 @@ protected:
   void (CLinuxRendererGLES::*m_textureUpload)(int index);
   void (CLinuxRendererGLES::*m_textureDelete)(int index);
   bool (CLinuxRendererGLES::*m_textureCreate)(int index);
+  // optional - will be called in flippage
+  // should be implemented for gpu2gpu uploading were
+  // the texture or attached buffer has to be released
+  // after the texture is not needed anymore (vtb atm).
+  void (CLinuxRendererGLES::*m_textureRelease)(int index);
 
   void UploadYV12Texture(int index);
   void DeleteYV12Texture(int index);
@@ -185,6 +190,7 @@ protected:
   void DeleteCVRefTextureWithCache(int index);
   bool CreateCVRefTexture(int index);
   bool CreateCVRefTextureWithCache(int index);
+  void ReleaseCVRefTextureWithCache(int index);
 
   void UploadBYPASSTexture(int index);
   void DeleteBYPASSTexture(int index);
