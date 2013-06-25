@@ -1,0 +1,9 @@
+--- configure.ac.orig	2013-05-24 20:16:55.000000000 +0200
++++ configure.ac	2013-06-26 19:25:46.000000000 +0200
+@@ -1,5 +1,5 @@
+ # Initialization
+-AC_INIT([LibRaw], m4_esyscmd([./version.sh]), [info@libraw.org], [], [http://www.libraw.org])
++AC_INIT([LibRaw], [0.15.2], [info@libraw.org], [], [http://www.libraw.org])
+ AM_INIT_AUTOMAKE([foreign no-define])
+ #AM_SILENT_RULES([yes])
+ AC_CONFIG_MACRO_DIR([m4])
