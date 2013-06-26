@@ -403,6 +403,9 @@
 		DF404A3A16B9896C00D8023E /* imagefactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF404A3716B9896C00D8023E /* imagefactory.cpp */; };
 		DF448457140048A60069344B /* AirTunesServer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF448455140048A60069344B /* AirTunesServer.cpp */; };
 		DF44845E140048C80069344B /* PipesManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF44845B140048C80069344B /* PipesManager.cpp */; };
+		DF4C0FE0177A3117003968B6 /* RawPicture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF4C0FDE177A3117003968B6 /* RawPicture.cpp */; };
+		DF4C0FE1177A3117003968B6 /* RawPicture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF4C0FDE177A3117003968B6 /* RawPicture.cpp */; };
+		DF4C0FFB177A3513003968B6 /* RawPicture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF4C0FDE177A3117003968B6 /* RawPicture.cpp */; };
 		DF52566D1732C1890094A464 /* DVDDemuxCDDA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF52566B1732C1890094A464 /* DVDDemuxCDDA.cpp */; };
 		DF5276E1151BAEDA00B5B63B /* Base64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF52769A151BAEDA00B5B63B /* Base64.cpp */; };
 		DF5276E2151BAEDA00B5B63B /* HttpResponse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF52769C151BAEDA00B5B63B /* HttpResponse.cpp */; };
@@ -4014,6 +4017,9 @@
 		DF448456140048A60069344B /* AirTunesServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AirTunesServer.h; sourceTree = "<group>"; };
 		DF44845B140048C80069344B /* PipesManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PipesManager.cpp; sourceTree = "<group>"; };
 		DF44845C140048C80069344B /* PipesManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PipesManager.h; sourceTree = "<group>"; };
+		DF4C0FDD177A3117003968B6 /* DllLibRaw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DllLibRaw.h; sourceTree = "<group>"; };
+		DF4C0FDE177A3117003968B6 /* RawPicture.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RawPicture.cpp; sourceTree = "<group>"; };
+		DF4C0FDF177A3117003968B6 /* RawPicture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RawPicture.h; sourceTree = "<group>"; };
 		DF52566B1732C1890094A464 /* DVDDemuxCDDA.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DVDDemuxCDDA.cpp; sourceTree = "<group>"; };
 		DF52566C1732C1890094A464 /* DVDDemuxCDDA.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DVDDemuxCDDA.h; sourceTree = "<group>"; };
 		DF52769A151BAEDA00B5B63B /* Base64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Base64.cpp; sourceTree = "<group>"; };
@@ -6055,6 +6061,7 @@
 			children = (
 				E38E16860D25F9FA00618676 /* DllImageLib.h */,
 				E38E16870D25F9FA00618676 /* DllLibExif.h */,
+				DF4C0FDD177A3117003968B6 /* DllLibRaw.h */,
 				E38E17C60D25F9FA00618676 /* GUIDialogPictureInfo.cpp */,
 				E38E17C70D25F9FA00618676 /* GUIDialogPictureInfo.h */,
 				886328170E07B37200BB3DAB /* GUIViewStatePictures.cpp */,
@@ -6071,6 +6078,8 @@
 				E38E1DDC0D25F9FD00618676 /* PictureInfoTag.h */,
 				E38E1DDD0D25F9FD00618676 /* PictureThumbLoader.cpp */,
 				E38E1DDE0D25F9FD00618676 /* PictureThumbLoader.h */,
+				DF4C0FDE177A3117003968B6 /* RawPicture.cpp */,
+				DF4C0FDF177A3117003968B6 /* RawPicture.h */,
 				E38E1E090D25F9FD00618676 /* SlideShowPicture.cpp */,
 				E38E1E0A0D25F9FD00618676 /* SlideShowPicture.h */,
 			);
@@ -10518,6 +10527,7 @@
 				DFE4095B17417FDF00473BD9 /* LegacyPathTranslation.cpp in Sources */,
 				0E3036EC1760F68A00D93596 /* FavouritesDirectory.cpp in Sources */,
 				551C3A45175A12010051AAAD /* VDA.cpp in Sources */,
+				DF4C0FFB177A3513003968B6 /* RawPicture.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11537,6 +11547,7 @@
 				DF3C3C0F1752A7EE000989C3 /* IOSExternalTouchController.mm in Sources */,
 				DF3C3C101752A7EE000989C3 /* IOSScreenManager.mm in Sources */,
 				0E3036EE1760F68A00D93596 /* FavouritesDirectory.cpp in Sources */,
+				DF4C0FE1177A3117003968B6 /* RawPicture.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -12558,6 +12569,7 @@
 				E4991593174E707400741B6D /* cc_decoder.c in Sources */,
 				E4991596174E70BF00741B6D /* yuv2rgb.neon.S in Sources */,
 				0E3036ED1760F68A00D93596 /* FavouritesDirectory.cpp in Sources */,
+				DF4C0FE0177A3117003968B6 /* RawPicture.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
