@@ -3029,6 +3029,9 @@
     <ClCompile Include="..\..\xbmc\utils\LegacyPathTranslation.cpp">
       <Filter>utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\pictures\RawPicture.cpp">
+      <Filter>pictures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\xbmc\win32\pch.h">
@@ -5936,6 +5939,12 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\utils\LegacyPathTranslation.h">
       <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\pictures\RawPicture.h">
+      <Filter>pictures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\pictures\DllLibRaw.h">
+      <Filter>pictures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
