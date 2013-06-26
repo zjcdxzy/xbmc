@@ -157,6 +157,7 @@ libafpclient_not_found="== Could not find libafpclient. AFP client support disab
 libafpclient_disabled="== AFP support disabled. =="
 libshairport_not_found="== Could not find libshairport. =="
 libshairplay_not_found="== Could not find libshairplay. =="
+libraw_not_found"== Could not find libraw. =="
 samba_disabled="== SAMBA support disabled. =="
 libplist_not_found="== Could not find libplist. AirPlay support disabled. =="
 libplist_disabled="== AirPlay support disabled. =="
@@ -388,6 +389,12 @@ AC_ARG_ENABLE([airtunes],
   [enable AirTunes support(default is auto)])],
   [use_airtunes=$enableval],
   [use_airtunes=auto])
+
+AC_ARG_ENABLE([libraw],
+  [AS_HELP_STRING([--enable-libraw],
+  [enable raw image support via libraw(default is auto)])],
+  [use_libraw=$enableval],
+  [use_libraw=auto])
 
 AC_ARG_ENABLE([upnp],
   [AS_HELP_STRING([--disable-upnp],
@@ -1476,6 +1483,25 @@ if test "$use_airplay" != "no"; then
   fi
 fi
 
+# libraw for raw decoding
+USE_LIBRAW=0
+if test "x$use_libraw" != "xno"; then
+  AC_CHECK_HEADERS([libraw/libraw.h],,
+   [if test "x$use_libraw" = "xyes"; then
+      AC_MSG_ERROR($libraw_not_found)
+    elif test "x$use_libraw" != "xno"; then
+      AC_MSG_NOTICE($libraw_not_found)
+      use_libraw="no"
+    fi
+   ])
+
+  if test "x$use_libraw" != "xno"; then
+    XB_FIND_SONAME([RAW_R], [raw_r], [use_libraw])
+    USE_LIBRAW=1
+    AC_DEFINE([HAVE_LIBRAW],[1],["Define to 1 if you have libraw."])
+  fi
+fi
+
 # libshairplay for AirTunes (prefered lib)
 USE_AIRTUNES=0
 if test "x$use_airtunes" != "xno"; then
@@ -2229,6 +2255,10 @@ else
   final_message="$final_message\n  AirPLay support:\tNo"
 fi
 
+if test "x$use_libraw" != "xno"; then
+  final_message="$final_message\n  Raw image support (libraw):\tYes"
+fi
+
 if test "x$use_airtunes" != "xno"; then
   if test "x$USE_LIBSHAIRPORT" == "x1"; then
     final_message="$final_message\n  AirTunes support (libshairplay):\tYes"  
@@ -2397,7 +2427,8 @@ OUTPUT_FILES="Makefile \
     xbmc/android/loader/Makefile \
     xbmc/android/jni/Makefile \
     xbmc/utils/Makefile \
-    xbmc/main/Makefile"
+    xbmc/main/Makefile \
+    xbmc/pictures/Makefile"
 
 if test "$use_skin_touched" = "yes"; then
 OUTPUT_FILES="$OUTPUT_FILES addons/skin.touched/media/Makefile"
@@ -2458,6 +2489,7 @@ AC_SUBST(USE_TEXTUREPACKER)
 AC_SUBST(USE_TEXTUREPACKER_NATIVE)
 AC_SUBST(USE_TEXTUREPACKER_NATIVE_ROOT)
 AC_SUBST(USE_AIRTUNES)
+AC_SUBST(USE_LIBRAW)
 AC_SUBST(USE_LIBUDEV)
 AC_SUBST(USE_LIBUSB)
 AC_SUBST(USE_LIBCEC)
