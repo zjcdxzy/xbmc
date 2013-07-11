@@ -429,8 +429,8 @@ void fadeOutDisplay(NSScreen *theScreen, double fadeTime)
 }
 
 // try to find mode that matches the desired size, refreshrate
-// non interlaced, nonstretched, safe for hardware
-CFDictionaryRef GetMode(int width, int height, double refreshrate, int screenIdx)
+// nonstretched, safe for hardware
+CFDictionaryRef GetMode(int width, int height, double refreshrate, int screenIdx, bool requestInterlaced)
 {
   if ( screenIdx >= (signed)[[NSScreen screens] count])
     return NULL;
@@ -470,9 +470,9 @@ CFDictionaryRef GetMode(int width, int height, double refreshrate, int screenIdx
     if ((bitsperpixel == 32)      &&
         (safeForHardware == YES)  &&
         (stretched == NO)         &&
-        (interlaced == NO)        &&
         (w == width)              &&
         (h == height)             &&
+        (interlaced == requestInterlaced) &&
         (rate == refreshrate || rate == 0))
     {
       CLog::Log(LOGDEBUG, "GetMode found a match!");
@@ -750,7 +750,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
         CheckDisplayChanging(kCGDisplayBeginConfigurationFlag);
 
       // switch videomode
-      SwitchToVideoMode(res.iWidth, res.iHeight, res.fRefreshRate, res.iScreen);
+      SwitchToVideoMode(res.iWidth, res.iHeight, res.fRefreshRate, res.iScreen, res.dwFlags & D3DPRESENTFLAG_INTERLACED != 0);
       lastDisplayNr = res.iScreen;
     }
   }
@@ -1135,7 +1135,7 @@ void CWinSystemOSX::EnableVSync(bool enable)
   [[NSOpenGLContext currentContext] setValues:&swapInterval forParameter:NSOpenGLCPSwapInterval];
 }
 
-bool CWinSystemOSX::SwitchToVideoMode(int width, int height, double refreshrate, int screenIdx)
+bool CWinSystemOSX::SwitchToVideoMode(int width, int height, double refreshrate, int screenIdx, bool requestInterlaced)
 {
   // SwitchToVideoMode will not return until the display has actually switched over.
   // This can take several seconds.
@@ -1148,8 +1148,8 @@ bool CWinSystemOSX::SwitchToVideoMode(int width, int height, double refreshrate,
   CGDirectDisplayID display_id = GetDisplayID(screenIdx);
 
   // find mode that matches the desired size, refreshrate
-  // non interlaced, nonstretched, safe for hardware
-  dispMode = GetMode(width, height, refreshrate, screenIdx);
+  // nonstretched, safe for hardware
+  dispMode = GetMode(width, height, refreshrate, screenIdx, requestInterlaced);
 
   //not found - fallback to bestemdeforparameters
   if (!dispMode)
@@ -1212,8 +1212,7 @@ void CWinSystemOSX::FillInVideoModes()
 
       if ((bitsperpixel == 32)      &&
           (safeForHardware == YES)  &&
-          (stretched == NO)         &&
-          (interlaced == NO))
+          (stretched == NO))
       {
         w = GetDictionaryInt(displayMode, kCGDisplayWidth);
         h = GetDictionaryInt(displayMode, kCGDisplayHeight);
@@ -1225,7 +1224,7 @@ void CWinSystemOSX::FillInVideoModes()
         }
         CLog::Log(LOGNOTICE, "Found possible resolution for display %d with %d x %d @ %f Hz\n", disp, w, h, refreshrate);
 
-        UpdateDesktopResolution(res, disp, w, h, refreshrate);
+        UpdateDesktopResolution(res, disp, w, h, refreshrate, interlaced ? D3DPRESENTFLAG_INTERLACED : 0);
 
         // overwrite the mode str because  UpdateDesktopResolution adds a
         // "Full Screen". Since the current resolution is there twice
@@ -1237,7 +1236,7 @@ void CWinSystemOSX::FillInVideoModes()
         // mode str by doing it without appending "Full Screen".
         // this is what linux does - though it feels that there shouldn't be
         // the same resolution twice... - thats why i add a FIXME here.
-        res.strMode.Format("%dx%d @ %.2f", w, h, refreshrate);
+        res.strMode.Format("%dx%d%s @ %.2f", w, h, res.dwFlags & D3DPRESENTFLAG_INTERLACED?"i":"", refreshrate);
         g_graphicsContext.ResetOverscan(res);
         CDisplaySettings::Get().AddResolutionInfo(res);
       }

@@ -74,7 +74,7 @@ protected:
   void* CreateFullScreenContext(int screen_index, void* shareCtx);
   void  GetScreenResolution(int* w, int* h, double* fps, int screenIdx);
   void  EnableVSync(bool enable); 
-  bool  SwitchToVideoMode(int width, int height, double refreshrate, int screenIdx);
+  bool  SwitchToVideoMode(int width, int height, double refreshrate, int screenIdx, bool requestInterlaced);
   void  FillInVideoModes();
   bool  FlushBuffer(void);
   bool  IsObscured(void);
