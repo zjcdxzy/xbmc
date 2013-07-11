@@ -460,7 +460,7 @@ CFDictionaryRef GetMode(int width, int height, double refreshrate, int screenIdx
     stretched = GetDictionaryBoolean(displayMode, kCGDisplayModeIsStretched);
     interlaced = GetDictionaryBoolean(displayMode, kCGDisplayModeIsInterlaced);
     bitsperpixel = GetDictionaryInt(displayMode, kCGDisplayBitsPerPixel);
-    safeForHardware = GetDictionaryBoolean(displayMode, kCGDisplayModeIsSafeForHardware) || CSettings::Get().GetBool("videscreen.allowunsafe");
+    safeForHardware = GetDictionaryBoolean(displayMode, kCGDisplayModeIsSafeForHardware) || CSettings::Get().GetBool("videoscreen.allowunsafe");
     televisionoutput = GetDictionaryBoolean(displayMode, kCGDisplayModeIsTelevisionOutput);
     w = GetDictionaryInt(displayMode, kCGDisplayWidth);
     h = GetDictionaryInt(displayMode, kCGDisplayHeight);
@@ -750,7 +750,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
         CheckDisplayChanging(kCGDisplayBeginConfigurationFlag);
 
       // switch videomode
-      SwitchToVideoMode(res.iWidth, res.iHeight, res.fRefreshRate, res.iScreen, res.dwFlags & D3DPRESENTFLAG_INTERLACED != 0);
+      SwitchToVideoMode(res.iWidth, res.iHeight, res.fRefreshRate, res.iScreen, (res.dwFlags & D3DPRESENTFLAG_INTERLACED) != 0);
       lastDisplayNr = res.iScreen;
     }
   }
@@ -1207,12 +1207,12 @@ void CWinSystemOSX::FillInVideoModes()
       stretched = GetDictionaryBoolean(displayMode, kCGDisplayModeIsStretched);
       interlaced = GetDictionaryBoolean(displayMode, kCGDisplayModeIsInterlaced);
       bitsperpixel = GetDictionaryInt(displayMode, kCGDisplayBitsPerPixel);
-      safeForHardware = GetDictionaryBoolean(displayMode, kCGDisplayModeIsSafeForHardware) || CSettings::Get().GetBool("videscreen.allowunsafe");
+      safeForHardware = GetDictionaryBoolean(displayMode, kCGDisplayModeIsSafeForHardware) || CSettings::Get().GetBool("videoscreen.allowunsafe");
       televisionoutput = GetDictionaryBoolean(displayMode, kCGDisplayModeIsTelevisionOutput);
 
       if ((bitsperpixel == 32)      &&
           (safeForHardware == YES)  &&
-          (interlaced == NO || CSettings::Get().GetBool("videscreen.allowinterlaced")) &&
+          (interlaced == NO || CSettings::Get().GetBool("videoscreen.allowinterlaced")) &&
           (stretched == NO))
       {
         w = GetDictionaryInt(displayMode, kCGDisplayWidth);

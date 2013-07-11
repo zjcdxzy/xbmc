@@ -235,13 +235,22 @@ bool CDisplaySettings::OnSettingChanging(const CSetting *setting)
     }
   }
   
+  return true;
+}
+
+void CDisplaySettings::OnSettingChanged(const CSetting *setting)
+{
+  if (setting == NULL)
+    return;
+    
+  const std::string &settingId = setting->GetId();
+
   if (settingId == "videoscreen.allowinterlaced" || settingId == "videoscreen.allowunsafe")
   {
+    m_resolutions.clear();
+    m_resolutions.insert(m_resolutions.begin(), RES_CUSTOM, RESOLUTION_INFO());
     g_Windowing.UpdateResolutions();
   }
-  
-  
-  return true;
 }
 
 bool CDisplaySettings::OnSettingUpdate(CSetting* &setting, const char *oldSettingId, const TiXmlNode *oldSettingNode)

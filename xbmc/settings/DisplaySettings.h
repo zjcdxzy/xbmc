@@ -42,6 +42,7 @@ public:
   virtual void Clear();
 
   virtual bool OnSettingChanging(const CSetting *setting);
+  virtual void OnSettingChanged(const CSetting *setting);
   virtual bool OnSettingUpdate(CSetting* &setting, const char *oldSettingId, const TiXmlNode *oldSettingNode);
 
   /*!
