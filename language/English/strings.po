@@ -4987,7 +4987,17 @@ msgctxt "#13132"
 msgid "Blank displays"
 msgstr ""
 
-#empty strings from id 13133 to 13139
+#: system/settings/settings.xml
+msgctxt "#13133"
+msgid "Allow interlaced"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#13134"
+msgid "Allow unsafe"
+msgstr ""
+
+#empty strings from id 13135 to 13139
 
 msgctxt "#13140"
 msgid "Active connections detected!"

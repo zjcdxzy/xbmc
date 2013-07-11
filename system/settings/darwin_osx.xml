@@ -8,6 +8,21 @@
         </setting>
       </group>
     </category>
+    <category id="videoscreen">
+      <group id="1">
+        <setting id="videoscreen.allowinterlaced" label="13133" type="boolean">
+          <level>1</level>
+          <default>false</default>
+        </setting>
+        <setting id="videoscreen.allowunsafe" label="13134" type="boolean">
+          <level>1</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="enable" setting="videoscreen.allowinterlaced">true</dependency>
+          </dependencies>
+        </setting>
+      </group>
+    </category>
   </section>
   <section id="videos">
     <category id="videoplayer">

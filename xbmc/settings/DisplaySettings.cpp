@@ -234,7 +234,13 @@ bool CDisplaySettings::OnSettingChanging(const CSetting *setting)
         m_resolutionChangeAborted = false;
     }
   }
-
+  
+  if (settingId == "videoscreen.allowinterlaced" || settingId == "videoscreen.allowunsafe")
+  {
+    g_Windowing.UpdateResolutions();
+  }
+  
+  
   return true;
 }
 
