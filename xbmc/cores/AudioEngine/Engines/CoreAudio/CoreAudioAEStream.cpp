@@ -332,7 +332,11 @@ unsigned int CCoreAudioAEStream::AddData(void *data, unsigned int size)
   unsigned int channelsInBuffer = m_chLayoutCountStream;
 
   if (!m_valid || size == 0 || data == NULL || !m_Buffer)
+  {
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: Exitpoint 1 - m_valid: %i, size: %d, data: %p, m_Buffer: %p", m_valid?1:0,size,data,m_Buffer);
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: size: %d, frames: %d, samples: %d, addsize: %d", size, frames, samples, addsize);
     return 0;
+  }
 
   // if the stream is draining
   if (m_draining)
@@ -341,7 +345,11 @@ unsigned int CCoreAudioAEStream::AddData(void *data, unsigned int size)
     if (m_Buffer && m_Buffer->GetReadSize() == 0)
       m_draining = false;
     else
+    {
+      CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: Exitpoint 2 - m_Buffer: %p", m_Buffer);
+      CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: size: %d, frames: %d, samples: %d, addsize: %d", size, frames, samples, addsize);      
       return 0;
+    }
   }
 
   // convert the data if we need to
@@ -362,7 +370,11 @@ unsigned int CCoreAudioAEStream::AddData(void *data, unsigned int size)
   }
 
   if (samples == 0)
+  {
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: Exitpoint 3 - m_valid: %i, size: %d, data: %p, m_Buffer: %p", m_valid?1:0,size,data,m_Buffer);
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: size: %d, frames: %d, samples: %d, addsize: %d", size, frames, samples, addsize);
     return 0;
+  }
 
   // resample it if we need to
   /*
@@ -418,7 +430,11 @@ unsigned int CCoreAudioAEStream::AddData(void *data, unsigned int size)
   {
     // we got deleted
     if (!m_valid || !m_Buffer || m_draining )
+    {
+      CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: Exitpoint 4 - m_valid: %i, m_Buffer: %p, m_draining: %i", m_valid?1:0,m_Buffer, m_draining);
+      CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: size: %d, frames: %d, samples: %d, addsize: %d, room: %d", size, frames, samples, addsize, room);
       return 0;
+    }
 
     unsigned int ms_sleep_time = (1000 * room) / m_AvgBytesPerSec;
     if (ms_sleep_time == 0)
@@ -432,9 +448,19 @@ unsigned int CCoreAudioAEStream::AddData(void *data, unsigned int size)
   }
 
   if (addsize > room)
+  {
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: Exitpoint 5");
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: size: %d, frames: %d, samples: %d, addsize: %d, room: %d, total_ms_sleep: %d", size, frames, samples, addsize, room, total_ms_sleep);
     size = 0;
+  }
   else
     m_Buffer->Write(adddata, addsize);
+  
+  if (size == 0)
+  {
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: Exitpoint 6");
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::AddData: size: %d, frames: %d, samples: %d, addsize: %d, room: %d, total_ms_sleep: %d", size, frames, samples, addsize, room, total_ms_sleep);
+  }
 
   return size;
 }
@@ -443,7 +469,11 @@ unsigned int CCoreAudioAEStream::GetFrames(uint8_t *buffer, unsigned int size)
 {
   // if we have been deleted
   if (!m_valid || m_delete || !m_Buffer || m_paused)
+  {
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::GetFrames: Exitpoint 6");    
+    CLog::Log(LOGERROR, "CCoreAudioAEStream::GetFrames: m_valid: %d, m_delete %d, m_Buffer: %p, m_paused: %d", m_valid?1:0, m_delete?1:0, m_Buffer, m_paused?1:0);        
     return 0;
+  }
 
   unsigned int readsize = std::min(m_Buffer->GetReadSize(), size);
   m_Buffer->Read(buffer, readsize);
