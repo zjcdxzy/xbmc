@@ -295,7 +295,7 @@ bool CDVDVideoCodecAndroidMediaCodec::Open(CDVDStreamInfo &hints, CDVDCodecOptio
   // odroid platform throws trying to updateTexImage with a 'error creating EGLImage' and
   // 'unsupported native buffer format (0x13)', sw render them until we figure out why.
   if (!m_render_sw)
-    m_render_sw = g_cpuInfo.getCPUHardware().find("ODROID") != std::string::npos;
+    m_render_sw = true;//g_cpuInfo.getCPUHardware().find("ODROID") != std::string::npos;
 
 
   // CJNIMediaCodec::createDecoderByXXX doesn't handle errors nicely,
