@@ -318,7 +318,7 @@ bool CWinEventsSDL::MessagePump()
         newEvent.button.x = event.button.x;
         newEvent.button.y = event.button.y;
 
-        ret |= g_application.OnEvent(newEvent);
+        //ret |= g_application.OnEvent(newEvent);
         break;
       }
 
@@ -333,7 +333,7 @@ bool CWinEventsSDL::MessagePump()
         newEvent.button.x = event.button.x;
         newEvent.button.y = event.button.y;
 
-        ret |= g_application.OnEvent(newEvent);
+        //ret |= g_application.OnEvent(newEvent);
         break;
       }
 
@@ -359,7 +359,7 @@ bool CWinEventsSDL::MessagePump()
         newEvent.motion.x = event.motion.x;
         newEvent.motion.y = event.motion.y;
 
-        ret |= g_application.OnEvent(newEvent);
+        //ret |= g_application.OnEvent(newEvent);
         break;
       }
       case SDL_VIDEORESIZE:

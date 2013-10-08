@@ -27,4 +27,8 @@ class CWinEventsOSX : public CWinEventsSDL
 public:
   CWinEventsOSX();
   ~CWinEventsOSX();
+
+  void MessagePush(XBMC_Event *newEvent);
+  bool MessagePump();
+  virtual size_t  GetQueueSize();
 };
