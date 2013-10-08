@@ -254,15 +254,6 @@ bool CWinEventsSDL::MessagePump()
 
       case SDL_KEYDOWN:
       {
-        // process any platform specific shortcuts before handing off to XBMC
-#ifdef TARGET_DARWIN_OSX
-        if (ProcessOSXShortcuts(event))
-        {
-          ret = true;
-          break;
-        }
-#endif
-
         XBMC_Event newEvent;
         newEvent.type = XBMC_KEYDOWN;
         newEvent.key.keysym.scancode = event.key.keysym.scancode;
@@ -287,7 +278,9 @@ bool CWinEventsSDL::MessagePump()
 
         // don't handle any more messages in the queue until we've handled keydown,
         // if a keyup is in the queue it will reset the keypress before it is handled.
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
+#endif
         break;
       }
 
@@ -302,8 +295,9 @@ bool CWinEventsSDL::MessagePump()
         newEvent.key.state = event.key.state;
         newEvent.key.type = event.key.type;
         newEvent.key.which = event.key.which;
-
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
+#endif
         break;
       }
 
@@ -317,8 +311,9 @@ bool CWinEventsSDL::MessagePump()
         newEvent.button.which = event.button.which;
         newEvent.button.x = event.button.x;
         newEvent.button.y = event.button.y;
-
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
+#endif
         break;
       }
 
@@ -332,8 +327,9 @@ bool CWinEventsSDL::MessagePump()
         newEvent.button.which = event.button.which;
         newEvent.button.x = event.button.x;
         newEvent.button.y = event.button.y;
-
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
+#endif
         break;
       }
 
@@ -358,8 +354,9 @@ bool CWinEventsSDL::MessagePump()
         newEvent.motion.which = event.motion.which;
         newEvent.motion.x = event.motion.x;
         newEvent.motion.y = event.motion.y;
-
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
+#endif
         break;
       }
       case SDL_VIDEORESIZE:
@@ -411,58 +408,7 @@ size_t CWinEventsSDL::GetQueueSize()
   return ret;
 }
 
-#ifdef TARGET_DARWIN_OSX
-bool CWinEventsSDL::ProcessOSXShortcuts(SDL_Event& event)
-{
-  static bool shift = false, cmd = false;
-
-  cmd   = !!(SDL_GetModState() & (KMOD_LMETA  | KMOD_RMETA ));
-  shift = !!(SDL_GetModState() & (KMOD_LSHIFT | KMOD_RSHIFT));
-
-  if (cmd && event.key.type == SDL_KEYDOWN)
-  {
-    switch(event.key.keysym.sym)
-    {
-    case SDLK_q:  // CMD-q to quit
-      if (!g_application.m_bStop)
-        CApplicationMessenger::Get().Quit();
-      return true;
-
-    case SDLK_f: // CMD-f to toggle fullscreen
-      g_application.OnAction(CAction(ACTION_TOGGLE_FULLSCREEN));
-      return true;
-
-    case SDLK_s: // CMD-3 to take a screenshot
-      g_application.OnAction(CAction(ACTION_TAKE_SCREENSHOT));
-      return true;
-
-    case SDLK_h: // CMD-h to hide (but we minimize for now)
-    case SDLK_m: // CMD-m to minimize
-      CApplicationMessenger::Get().Minimize();
-      return true;
-
-    case SDLK_v: // CMD-v to paste clipboard text
-      if (g_Windowing.IsTextInputEnabled())
-      {
-        const char *szStr = Cocoa_Paste();
-        if (szStr)
-        {
-          CGUIMessage msg(GUI_MSG_INPUT_TEXT, 0, 0);
-          msg.SetLabel(szStr);
-          g_windowManager.SendMessage(msg, g_windowManager.GetFocusedWindow());
-        }
-      }
-      return true;
-
-    default:
-      return false;
-    }
-  }
-
-  return false;
-}
-
-#elif defined(TARGET_POSIX)
+#if defined(TARGET_POSIX)
 
 bool CWinEventsSDL::ProcessLinuxShortcuts(SDL_Event& event)
 {
