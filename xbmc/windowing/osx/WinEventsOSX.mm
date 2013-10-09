@@ -130,6 +130,13 @@ CGEventRef InputEventHandler(CGEventTapProxy proxy, CGEventType type,
   bool passEvent = false;
   CWinEventsOSX *winEvents = (CWinEventsOSX *)refcon;
   
+  if (type == kCGEventTapDisabledByTimeout)
+  {
+    if (winEvents->GetEventTap())
+      CGEventTapEnable((CFMachPortRef)winEvents->GetEventTap(), true);
+    return NULL;
+  }
+  
   // if we are not focused - pass the event along...
   if (!g_application.m_AppFocused)
     return event;
@@ -293,7 +300,6 @@ CGEventRef InputEventHandler(CGEventTapProxy proxy, CGEventType type,
 
 CWinEventsOSX::CWinEventsOSX()
 {
-  CFMachPortRef      eventTap;
   CGEventMask        eventMask;
   
   // Create an event tap. We are interested in mouse and keyboard events.
@@ -312,33 +318,30 @@ CWinEventsOSX::CWinEventsOSX()
   eventMask |= CGEventMaskBit(kCGEventKeyDown) |
                CGEventMaskBit(kCGEventKeyUp);
   
-  eventTap = CGEventTapCreate(
+  mEventTap = CGEventTapCreate(
                               kCGSessionEventTap, kCGTailAppendEventTap,
                               kCGEventTapOptionDefault, eventMask, InputEventHandler, this);
-  if (!eventTap) 
+  if (!mEventTap) 
   {
     CLog::Log(LOGERROR, "failed to create event tap\n");
   }
   
   // Create a run loop source.
   mRunLoopSource = CFMachPortCreateRunLoopSource(
-                                                kCFAllocatorDefault, eventTap, 0);
-  CFRelease(eventTap);
-  
+                                                kCFAllocatorDefault, (CFMachPortRef)mEventTap, 0); 
   // Add to the current run loop.
   CFRunLoopAddSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource,
                      kCFRunLoopCommonModes);
   CFRelease(mRunLoopSource);
   
   // Enable the event tap.
-  //CGEventTapEnable(eventTap, true);
-  
-  // Set it all running.
-  //CFRunLoopRun();  
+  CGEventTapEnable((CFMachPortRef)mEventTap, true);
+  CFRelease((CFMachPortRef)mEventTap);
 }
 
 CWinEventsOSX::~CWinEventsOSX()
 {
+  mEventTap = NULL;
   CFRunLoopRemoveSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource, kCFRunLoopCommonModes);
 }
 
