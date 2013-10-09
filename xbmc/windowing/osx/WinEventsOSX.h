@@ -31,4 +31,6 @@ public:
   void MessagePush(XBMC_Event *newEvent);
   bool MessagePump();
   virtual size_t  GetQueueSize();
+private:
+  void *mRunLoopSource;
 };

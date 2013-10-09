@@ -287,7 +287,7 @@ bool CWinEventsSDL::MessagePump()
 
         // don't handle any more messages in the queue until we've handled keydown,
         // if a keyup is in the queue it will reset the keypress before it is handled.
-        ret |= g_application.OnEvent(newEvent);
+        //ret |= g_application.OnEvent(newEvent);
         break;
       }
 
@@ -303,7 +303,7 @@ bool CWinEventsSDL::MessagePump()
         newEvent.key.type = event.key.type;
         newEvent.key.which = event.key.which;
 
-        ret |= g_application.OnEvent(newEvent);
+        //ret |= g_application.OnEvent(newEvent);
         break;
       }
 
