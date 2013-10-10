@@ -34,6 +34,12 @@
 #undef BOOL
 
 #include <ApplicationServices/ApplicationServices.h>
+#include <Cocoa/Cocoa.h>
+#import <IOKit/hidsystem/ev_keymap.h>
+
+#define NX_KEYSTATE_DOWN    0x0A
+#define NX_KEYSTATE_UP      0x0B
+
 
 bool ProcessOSXShortcuts(XBMC_Event& event)
 {
@@ -124,6 +130,157 @@ XBMCMod OsxMod2XbmcMod(CGEventFlags appleModifier)
 }
 
 // place holder for future native osx event handler
+
+void toggleKey(CWinEventsOSX *winEvents, XBMCKey key)
+{
+  XBMC_Event newEvent;
+  memset(&newEvent, 0, sizeof(newEvent));
+  newEvent.key.keysym.sym = key;
+  newEvent.type = XBMC_KEYDOWN;
+  winEvents->MessagePush(&newEvent);
+  newEvent.type = XBMC_KEYUP;
+  winEvents->MessagePush(&newEvent);
+  
+}
+
+// former hotkeycontroller stuff is handled here
+// WARNING: do not debugger breakpoint in this routine.
+// It's a system level call back that taps ALL Events
+// and you WILL lose all key control :)
+CGEventRef HotKeyEventHandler(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon)
+{
+  bool passEvent = false;
+  CWinEventsOSX *winEvents = (CWinEventsOSX *)refcon;
+  XBMC_Event newEvent;
+  memset(&newEvent, 0, sizeof(newEvent));
+ 
+  NSEvent *nsEvent = [NSEvent eventWithCGEvent:event];
+  if (!nsEvent || [nsEvent subtype] != 8) 
+    return event;
+  
+  int data = [nsEvent data1];
+  int keyCode  = (data & 0xFFFF0000) >> 16;
+  int keyFlags = (data & 0xFFFF);
+  int keyState = (keyFlags & 0xFF00) >> 8;
+  BOOL keyIsRepeat = (keyFlags & 0x1) > 0;
+  
+  // allow repeated keypresses for volume buttons
+  // all other repeated keypresses are handled by the os (is this really good?)
+  if (keyIsRepeat && keyCode != NX_KEYTYPE_SOUND_UP && keyCode != NX_KEYTYPE_SOUND_DOWN) 
+    return event;
+  
+  // hotkeys mostly only fire a down event - we add the up event ourselves...
+  switch (keyCode)
+  {
+    case NX_POWER_KEY:
+      if (!winEvents->TapPowerKey() || (keyState != NX_KEYSTATE_UP && keyState != NX_KEYSTATE_DOWN))
+      {
+        passEvent = true;
+      }
+      else
+      {
+        if (keyState == NX_KEYSTATE_DOWN)
+          toggleKey(winEvents, XBMCK_SLEEP);
+      }
+      break;
+    case NX_KEYTYPE_MUTE:
+      if (!winEvents->TapVolumeKeys() || (keyState != NX_KEYSTATE_UP && keyState != NX_KEYSTATE_DOWN))
+      {
+        passEvent = true;
+      }
+      else
+      {
+        if (keyState == NX_KEYSTATE_DOWN)
+          toggleKey(winEvents, XBMCK_VOLUME_MUTE);
+      }
+      break;
+    case NX_KEYTYPE_SOUND_UP:
+      if (!winEvents->TapVolumeKeys() || (keyState != NX_KEYSTATE_UP && keyState != NX_KEYSTATE_DOWN))
+      {
+        passEvent = true;
+      }
+      else
+      {
+        if (keyState == NX_KEYSTATE_DOWN)
+          toggleKey(winEvents, XBMCK_VOLUME_UP);
+      }
+      break;
+    case NX_KEYTYPE_SOUND_DOWN:
+      if (!winEvents->TapVolumeKeys() || (keyState != NX_KEYSTATE_UP && keyState != NX_KEYSTATE_DOWN))
+      {
+        passEvent = true;
+      }
+      else
+      {
+        if (keyState == NX_KEYSTATE_DOWN)
+          toggleKey(winEvents, XBMCK_VOLUME_DOWN);
+      }
+      break;
+    case NX_KEYTYPE_PLAY:
+      if (keyState != NX_KEYSTATE_UP && keyState != NX_KEYSTATE_DOWN)
+      {
+        passEvent = true;
+      }
+      else
+      {
+        if (keyState == NX_KEYSTATE_DOWN)
+          toggleKey(winEvents, XBMCK_MEDIA_PLAY_PAUSE);
+      }
+      break;
+    case NX_KEYTYPE_FAST:
+      if (keyState != NX_KEYSTATE_UP && keyState != NX_KEYSTATE_DOWN)
+      {
+        passEvent = true;
+      }
+      else
+      {
+        if (keyState == NX_KEYSTATE_DOWN)
+          toggleKey(winEvents, XBMCK_FASTFORWARD);
+      }
+      break;
+    case NX_KEYTYPE_REWIND:
+      if (keyState != NX_KEYSTATE_UP && keyState != NX_KEYSTATE_DOWN)
+      {
+        passEvent = true;
+      }
+      else
+      {
+        if (keyState == NX_KEYSTATE_DOWN)
+          toggleKey(winEvents, XBMCK_REWIND);
+      }
+      break;
+    case NX_KEYTYPE_NEXT:
+      if (keyState != NX_KEYSTATE_UP && keyState != NX_KEYSTATE_DOWN)
+      {
+        passEvent = true;
+      }
+      else
+      {
+        if (keyState == NX_KEYSTATE_DOWN)
+          toggleKey(winEvents, XBMCK_MEDIA_NEXT_TRACK);
+      }
+      break;
+    case NX_KEYTYPE_PREVIOUS:
+      if (keyState != NX_KEYSTATE_UP && keyState != NX_KEYSTATE_DOWN)
+      {
+        passEvent = true;
+      }
+      else
+      {
+        if (keyState == NX_KEYSTATE_DOWN)
+          toggleKey(winEvents, XBMCK_MEDIA_PREV_TRACK);
+      }
+      break;
+    default:
+      passEvent = true;
+  }
+  
+  if (passEvent)
+    return event;
+  else
+    return NULL;
+}
+
 CGEventRef InputEventHandler(CGEventTapProxy proxy, CGEventType type,
                   CGEventRef event, void *refcon)
 {
@@ -132,22 +289,27 @@ CGEventRef InputEventHandler(CGEventTapProxy proxy, CGEventType type,
   
   if (type == kCGEventTapDisabledByTimeout)
   {
-    if (winEvents->GetEventTap())
+    if (winEvents->GetEventTap() && winEvents->IsEnabled())
       CGEventTapEnable((CFMachPortRef)winEvents->GetEventTap(), true);
     return NULL;
   }
   
-  // if we are not focused - pass the event along...
-  if (!g_application.m_AppFocused)
+  // if we are not focused or disabled - pass the event along...
+  if (!g_application.m_AppFocused || !winEvents->IsEnabled())
     return event;
+  
+  // handle hot keys first
+  if (type == NX_SYSDEFINED)
+    return HotKeyEventHandler(proxy, type, event, refcon);
   
   // The incoming mouse position.
   CGPoint location = CGEventGetLocation(event);
   UniChar unicodeString[10];
   UniCharCount actualStringLength;
   CGKeyCode keycode;
-
   XBMC_Event newEvent;
+  memset(&newEvent, 0, sizeof(newEvent));
+  
   switch (type)
   {
     // handle mouse events and transform them into the xbmc event world
@@ -300,49 +462,14 @@ CGEventRef InputEventHandler(CGEventTapProxy proxy, CGEventType type,
 
 CWinEventsOSX::CWinEventsOSX()
 {
-  CGEventMask        eventMask;
-  
-  // Create an event tap. We are interested in mouse and keyboard events.
-  eventMask = CGEventMaskBit(kCGEventLeftMouseDown) |
-              CGEventMaskBit(kCGEventMouseMoved) |
-              CGEventMaskBit(kCGEventLeftMouseUp) |
-              CGEventMaskBit(kCGEventRightMouseUp) |
-              CGEventMaskBit(kCGEventRightMouseDown) |
-              CGEventMaskBit(kCGEventOtherMouseDown) |
-              CGEventMaskBit(kCGEventOtherMouseUp) |
-              CGEventMaskBit(kCGEventOtherMouseDragged) |
-              CGEventMaskBit(kCGEventRightMouseDragged) |
-              CGEventMaskBit(kCGEventLeftMouseDragged) |
-              CGEventMaskBit(kCGEventScrollWheel);
-  
-  eventMask |= CGEventMaskBit(kCGEventKeyDown) |
-               CGEventMaskBit(kCGEventKeyUp);
-  
-  mEventTap = CGEventTapCreate(
-                              kCGSessionEventTap, kCGTailAppendEventTap,
-                              kCGEventTapOptionDefault, eventMask, InputEventHandler, this);
-  if (!mEventTap) 
-  {
-    CLog::Log(LOGERROR, "failed to create event tap\n");
-  }
-  
-  // Create a run loop source.
-  mRunLoopSource = CFMachPortCreateRunLoopSource(
-                                                kCFAllocatorDefault, (CFMachPortRef)mEventTap, 0); 
-  // Add to the current run loop.
-  CFRunLoopAddSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource,
-                     kCFRunLoopCommonModes);
-  CFRelease(mRunLoopSource);
-  
-  // Enable the event tap.
-  CGEventTapEnable((CFMachPortRef)mEventTap, true);
-  CFRelease((CFMachPortRef)mEventTap);
+  mTapPowerKey = true;// we tap the power key (but can't prevent the os from evaluating is aswell
+  mTapVolumeKeys = true;// we don't tap the volume keys - they control system volume
+  enableTap();
 }
 
 CWinEventsOSX::~CWinEventsOSX()
 {
-  mEventTap = NULL;
-  CFRunLoopRemoveSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource, kCFRunLoopCommonModes);
+  disableTap();
 }
 
 static CCriticalSection g_inputCond;
@@ -386,4 +513,77 @@ size_t CWinEventsOSX::GetQueueSize()
   CSingleLock lock(g_inputCond);
   return events.size();
 }
+
+/*
+ //TODO from hotkeycontroller - tapping events in its own thread?
+void CWinEventsOSX::eventTapThread()
+{
+  mRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorSystemDefault, (CFMachPortRef)mEventTap, 0);
+  CFRunLoopAddSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource, kCFRunLoopCommonModes);
+  // Enable the event tap.
+  CGEventTapEnable((CFMachPortRef)mEventTap, TRUE);
+  
+  CFRunLoopRun();
+  disableTap(); 
+}*/
+
+void CWinEventsOSX::enableTap()
+{
+  if (!mEnabled)
+  {
+    CGEventMask        eventMask;
+    
+    // Create an event tap. We are interested in mouse and keyboard events.
+    eventMask = CGEventMaskBit(kCGEventLeftMouseDown) |
+                CGEventMaskBit(kCGEventMouseMoved) |
+                CGEventMaskBit(kCGEventLeftMouseUp) |
+                CGEventMaskBit(kCGEventRightMouseUp) |
+                CGEventMaskBit(kCGEventRightMouseDown) |
+                CGEventMaskBit(kCGEventOtherMouseDown) |
+                CGEventMaskBit(kCGEventOtherMouseUp) |
+                CGEventMaskBit(kCGEventOtherMouseDragged) |
+                CGEventMaskBit(kCGEventRightMouseDragged) |
+                CGEventMaskBit(kCGEventLeftMouseDragged) |
+                CGEventMaskBit(kCGEventScrollWheel);
+    
+    eventMask |= CGEventMaskBit(kCGEventKeyDown) |
+                 CGEventMaskBit(kCGEventKeyUp);
+    
+    // tap former hotkeycontroller stuff
+    eventMask |= CGEventMaskBit(NX_SYSDEFINED);
+    
+    // check runtime, we only allow this on 10.5+
+    mEventTap = CGEventTapCreate(kCGSessionEventTap,
+                                   kCGHeadInsertEventTap, kCGEventTapOptionDefault,
+                                   eventMask, InputEventHandler, this);
+    if (mEventTap != NULL)
+    {
+      // Create a run loop source.
+      mRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, (CFMachPortRef)mEventTap, 0); 
+      // Add to the current run loop.
+      CFRunLoopAddSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource,
+                         kCFRunLoopCommonModes);
+      CFRelease(mRunLoopSource);
+      
+      // Enable the event tap.
+      CGEventTapEnable((CFMachPortRef)mEventTap, true);
+      CFRelease((CFMachPortRef)mEventTap);
+      mEnabled = true;
+    }
+  }
+}
+
+void CWinEventsOSX::disableTap()
+{
+  // Disable the event tap.
+  if (mEventTap)
+    CGEventTapEnable((CFMachPortRef)mEventTap, FALSE);
+
+  mEventTap = NULL;
+  if (mRunLoopSource)
+    CFRunLoopRemoveSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource, kCFRunLoopCommonModes);
+  mRunLoopSource = NULL;
+  mEnabled = false;
+}
+
 

@@ -31,8 +31,22 @@ public:
   void MessagePush(XBMC_Event *newEvent);
   bool MessagePump();
   virtual size_t  GetQueueSize();
+
   void *GetEventTap(){return mEventTap;}
+  bool TapVolumeKeys(){return mTapVolumeKeys;}
+  bool TapPowerKey(){return mTapPowerKey;}
+  void SetEnabled(bool enable){mEnabled = enable;}
+  bool IsEnabled(){return mEnabled;}
+
 private:
+  
   void *mRunLoopSource;
   void *mEventTap;
+  bool mEnabled;
+  bool mTapVolumeKeys;
+  bool mTapPowerKey;
+  
+  void enableTap();
+  void disableTap();
+
 };
