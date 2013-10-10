@@ -463,7 +463,7 @@ CGEventRef InputEventHandler(CGEventTapProxy proxy, CGEventType type,
 CWinEventsOSX::CWinEventsOSX()
 {
   mTapPowerKey = true;// we tap the power key (but can't prevent the os from evaluating is aswell
-  mTapVolumeKeys = true;// we don't tap the volume keys - they control system volume
+  mTapVolumeKeys = false;// we don't tap the volume keys - they control system volume
   enableTap();
 }
 
