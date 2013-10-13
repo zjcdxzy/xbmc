@@ -24,6 +24,7 @@
 
 #include "windowing/WinSystem.h"
 #include "threads/CriticalSection.h"
+#include <SDL2/SDL_video.h>
 
 typedef struct SDL_Surface SDL_Surface;
 
@@ -68,6 +69,7 @@ public:
   void CheckDisplayChanging(u_int32_t flags);
   
   void* GetCGLContextObj();
+  CWinEventsOSX *GetEvents(){ return m_osx_events; }
 
   std::string GetClipboardText(void);
 
@@ -85,7 +87,7 @@ protected:
 
   void* m_glContext;
   static void* m_lastOwnedContext;
-  SDL_Surface* m_SDLSurface;
+  SDL_Window* m_SDLWindow;
   CWinEventsOSX *m_osx_events;
   bool                         m_obscured;
   unsigned int                 m_obscured_timecheck;

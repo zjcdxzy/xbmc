@@ -33,7 +33,11 @@
   #include "Util.h"
   // SDL redefines main as SDL_main 
   #ifdef HAS_SDL
-    #include <SDL/SDL.h>
+    #ifdef TARGET_DARWIN_OSX
+      #include <SDL2/SDL.h>
+    #else
+      #include <SDL/SDL.h>
+    #endif
   #endif
 #endif
 #ifdef HAS_LIRC
@@ -41,7 +45,11 @@
 #endif
 #include "XbmcContext.h"
 
+#if defined(TARGET_DARWIN_OSX)
+int OSX_main(int argc, char* argv[])
+#else
 int main(int argc, char* argv[])
+#endif
 {
   // set up some xbmc specific relationships
   XBMC::Context context;

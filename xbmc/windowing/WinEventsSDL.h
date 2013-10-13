@@ -25,7 +25,11 @@
 #include "system.h"
 
 #ifdef HAS_SDL
+#ifdef TARGET_DARWIN_OSX
+#include <SDL2/SDL_events.h>
+#else
 #include <SDL/SDL_events.h>
+#endif
 
 #include "WinEvents.h"
 
@@ -36,9 +40,7 @@ public:
   virtual size_t GetQueueSize();
 
 private:
-#ifdef TARGET_DARWIN
-  static bool ProcessOSXShortcuts(SDL_Event& event);
-#elif defined(TARGET_POSIX)
+#if defined(TARGET_POSIX)
   static bool ProcessLinuxShortcuts(SDL_Event& event);
 #endif
 };

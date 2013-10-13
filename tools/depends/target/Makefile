@@ -29,7 +29,7 @@ ifeq ($(OS),ios)
 endif
 
 ifeq ($(OS),osx)
-  DEPENDS += libGLEW libsdl libcrystalhd
+  DEPENDS += libGLEW libsdl2 libcrystalhd
   EXCLUDED_DEPENDS = libusb
 endif
 
@@ -90,7 +90,10 @@ openssl: $(ZLIB)
 gnutls: nettle $(ZLIB)
 nettle: gmp
 pythonmodule-pil: $(ZLIB) libjpeg-turbo libpng freetype2 python26
+ifneq ($(OS),osx)
 libsdl: $(LINUX_SYSTEM_LIBS)
+endif
+libsdl2: $(LINUX_SYSTEM_LIBS)
 
 .installed-$(PLATFORM): $(DEPENDS)
 	touch $@

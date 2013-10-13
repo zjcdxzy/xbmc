@@ -103,7 +103,11 @@
 #include "input/MouseStat.h"
 
 #ifdef HAS_SDL
+#ifdef TARGET_DARWIN_OSX
+#include <SDL2/SDL.h>
+#else
 #include <SDL/SDL.h>
+#endif
 #endif
 
 #if defined(FILESYSTEM) && !defined(TARGET_POSIX)

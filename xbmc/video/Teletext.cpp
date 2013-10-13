@@ -35,7 +35,11 @@
 #include "cores/IPlayer.h"
 
 #ifdef HAS_SDL
+#ifdef TARGET_DARWIN_OSX
+#include <SDL2/SDL_stdinc.h>
+#else
 #include <SDL/SDL_stdinc.h>
+#endif
 #else
 #define SDL_memset4(dst, val, len)		\
 do {						\

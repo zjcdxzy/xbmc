@@ -238,6 +238,53 @@ bool CWinEventsSDL::MessagePump()
         break;
 #endif
 
+#if defined(TARGET_DARWIN_OSX)
+      case SDL_WINDOWEVENT:
+        switch(event.window.event)
+        {
+          case SDL_WINDOWEVENT_SIZE_CHANGED:
+            printf("SDL_WINDOWEVENT_SIZE_CHANGED\n");
+            // Under linux returning from fullscreen, SDL sends an extra event to resize to the desktop
+            // resolution causing the previous window dimensions to be lost. This is needed to rectify
+            // that problem.
+            if(!g_Windowing.IsFullScreen())
+            {
+              int RES_SCREEN = g_Windowing.DesktopResolution(g_Windowing.GetCurrentScreen());
+              if((event.window.data1 == CDisplaySettings::Get().GetResolutionInfo(RES_SCREEN).iWidth) &&
+                 (event.window.data1 == CDisplaySettings::Get().GetResolutionInfo(RES_SCREEN).iHeight))
+                break;
+            }
+            XBMC_Event newEvent;
+            newEvent.type = XBMC_VIDEORESIZE;
+            newEvent.resize.w = event.window.data1;
+            newEvent.resize.h = event.window.data2;
+            ret |= g_application.OnEvent(newEvent);
+            g_windowManager.MarkDirty();
+            break;
+          case SDL_WINDOWEVENT_EXPOSED:
+            printf("SDL_WINDOWEVENT_EXPOSED\n");
+            g_windowManager.MarkDirty();
+            break;
+          case SDL_WINDOWEVENT_RESTORED:
+            printf("SDL_WINDOWEVENT_RESTORED\n");
+            g_application.SetRenderGUI(true);
+            g_Windowing.NotifyAppActiveChange(g_application.GetRenderGUI());
+            break;
+          case SDL_WINDOWEVENT_FOCUS_GAINED:
+            printf("SDL_WINDOWEVENT_FOCUS_GAINED\n");
+            g_Mouse.SetActive(false);
+            Cocoa_ShowMouse();
+            g_application.m_AppFocused = true;
+            g_Windowing.NotifyAppFocusChange(g_application.m_AppFocused);
+            break;
+          case SDL_WINDOWEVENT_FOCUS_LOST:
+            printf("SDL_WINDOWEVENT_FOCUS_LOST\n");
+            g_application.m_AppFocused = false;
+            g_Windowing.NotifyAppFocusChange(g_application.m_AppFocused);
+            break;
+        }
+        break;
+#else
       case SDL_ACTIVEEVENT:
         //If the window was inconified or restored
         if( event.active.state & SDL_APPACTIVE )
@@ -246,23 +293,37 @@ bool CWinEventsSDL::MessagePump()
           g_Windowing.NotifyAppActiveChange(g_application.GetRenderGUI());
         }
         else if (event.active.state & SDL_APPINPUTFOCUS)
+        {
+          g_application.m_AppFocused = event.active.gain != 0;
+          g_Windowing.NotifyAppFocusChange(g_application.m_AppFocused);
+        }
+        break;
+      case SDL_VIDEOEXPOSE:
+        g_windowManager.MarkDirty();
+        break;
+      case SDL_VIDEORESIZE:
       {
-        g_application.m_AppFocused = event.active.gain != 0;
-        g_Windowing.NotifyAppFocusChange(g_application.m_AppFocused);
+        // Under linux returning from fullscreen, SDL sends an extra event to resize to the desktop
+        // resolution causing the previous window dimensions to be lost. This is needed to rectify
+        // that problem.
+        if(!g_Windowing.IsFullScreen())
+        {
+          int RES_SCREEN = g_Windowing.DesktopResolution(g_Windowing.GetCurrentScreen());
+          if((event.resize.w == CDisplaySettings::Get().GetResolutionInfo(RES_SCREEN).iWidth) &&
+              (event.resize.h == CDisplaySettings::Get().GetResolutionInfo(RES_SCREEN).iHeight))
+            break;
+        }
+        XBMC_Event newEvent;
+        newEvent.type = XBMC_VIDEORESIZE;
+        newEvent.resize.w = event.resize.w;
+        newEvent.resize.h = event.resize.h;
+        ret |= g_application.OnEvent(newEvent);
+        g_windowManager.MarkDirty();
+        break;
       }
-      break;
 
       case SDL_KEYDOWN:
       {
-        // process any platform specific shortcuts before handing off to XBMC
-#ifdef TARGET_DARWIN_OSX
-        if (ProcessOSXShortcuts(event))
-        {
-          ret = true;
-          break;
-        }
-#endif
-
         XBMC_Event newEvent;
         newEvent.type = XBMC_KEYDOWN;
         newEvent.key.keysym.scancode = event.key.keysym.scancode;
@@ -287,7 +348,9 @@ bool CWinEventsSDL::MessagePump()
 
         // don't handle any more messages in the queue until we've handled keydown,
         // if a keyup is in the queue it will reset the keypress before it is handled.
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
+#endif
         break;
       }
 
@@ -302,8 +365,9 @@ bool CWinEventsSDL::MessagePump()
         newEvent.key.state = event.key.state;
         newEvent.key.type = event.key.type;
         newEvent.key.which = event.key.which;
-
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
+#endif
         break;
       }
 
@@ -317,8 +381,9 @@ bool CWinEventsSDL::MessagePump()
         newEvent.button.which = event.button.which;
         newEvent.button.x = event.button.x;
         newEvent.button.y = event.button.y;
-
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
+#endif
         break;
       }
 
@@ -332,8 +397,9 @@ bool CWinEventsSDL::MessagePump()
         newEvent.button.which = event.button.which;
         newEvent.button.x = event.button.x;
         newEvent.button.y = event.button.y;
-
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
+#endif
         break;
       }
 
@@ -358,28 +424,9 @@ bool CWinEventsSDL::MessagePump()
         newEvent.motion.which = event.motion.which;
         newEvent.motion.x = event.motion.x;
         newEvent.motion.y = event.motion.y;
-
+#if !defined(TARGET_DARWIN_OSX)
         ret |= g_application.OnEvent(newEvent);
-        break;
-      }
-      case SDL_VIDEORESIZE:
-      {
-        // Under linux returning from fullscreen, SDL sends an extra event to resize to the desktop
-        // resolution causing the previous window dimensions to be lost. This is needed to rectify
-        // that problem.
-        if(!g_Windowing.IsFullScreen())
-        {
-          int RES_SCREEN = g_Windowing.DesktopResolution(g_Windowing.GetCurrentScreen());
-          if((event.resize.w == CDisplaySettings::Get().GetResolutionInfo(RES_SCREEN).iWidth) &&
-              (event.resize.h == CDisplaySettings::Get().GetResolutionInfo(RES_SCREEN).iHeight))
-            break;
-        }
-        XBMC_Event newEvent;
-        newEvent.type = XBMC_VIDEORESIZE;
-        newEvent.resize.w = event.resize.w;
-        newEvent.resize.h = event.resize.h;
-        ret |= g_application.OnEvent(newEvent);
-        g_windowManager.MarkDirty();
+#endif
         break;
       }
       case SDL_USEREVENT:
@@ -390,9 +437,7 @@ bool CWinEventsSDL::MessagePump()
         ret |= g_application.OnEvent(newEvent);
         break;
       }
-      case SDL_VIDEOEXPOSE:
-        g_windowManager.MarkDirty();
-        break;
+#endif
     }
     memset(&event, 0, sizeof(SDL_Event));
   }
@@ -405,64 +450,17 @@ size_t CWinEventsSDL::GetQueueSize()
   int ret;
   SDL_Event event;
 
+#ifdef TARGET_DARWIN_OSX
+  if (-1 == (ret = SDL_PeepEvents(&event, 0, SDL_PEEKEVENT, 0, 0)))
+#else
   if (-1 == (ret = SDL_PeepEvents(&event, 0, SDL_PEEKEVENT, ~0)))
+#endif
     ret = 0;
 
   return ret;
 }
 
-#ifdef TARGET_DARWIN_OSX
-bool CWinEventsSDL::ProcessOSXShortcuts(SDL_Event& event)
-{
-  static bool shift = false, cmd = false;
-
-  cmd   = !!(SDL_GetModState() & (KMOD_LMETA  | KMOD_RMETA ));
-  shift = !!(SDL_GetModState() & (KMOD_LSHIFT | KMOD_RSHIFT));
-
-  if (cmd && event.key.type == SDL_KEYDOWN)
-  {
-    switch(event.key.keysym.sym)
-    {
-    case SDLK_q:  // CMD-q to quit
-      if (!g_application.m_bStop)
-        CApplicationMessenger::Get().Quit();
-      return true;
-
-    case SDLK_f: // CMD-f to toggle fullscreen
-      g_application.OnAction(CAction(ACTION_TOGGLE_FULLSCREEN));
-      return true;
-
-    case SDLK_s: // CMD-3 to take a screenshot
-      g_application.OnAction(CAction(ACTION_TAKE_SCREENSHOT));
-      return true;
-
-    case SDLK_h: // CMD-h to hide (but we minimize for now)
-    case SDLK_m: // CMD-m to minimize
-      CApplicationMessenger::Get().Minimize();
-      return true;
-
-    case SDLK_v: // CMD-v to paste clipboard text
-      if (g_Windowing.IsTextInputEnabled())
-      {
-        const char *szStr = Cocoa_Paste();
-        if (szStr)
-        {
-          CGUIMessage msg(GUI_MSG_INPUT_TEXT, 0, 0);
-          msg.SetLabel(szStr);
-          g_windowManager.SendMessage(msg, g_windowManager.GetFocusedWindow());
-        }
-      }
-      return true;
-
-    default:
-      return false;
-    }
-  }
-
-  return false;
-}
-
-#elif defined(TARGET_POSIX)
+#if defined(TARGET_POSIX)
 
 bool CWinEventsSDL::ProcessLinuxShortcuts(SDL_Event& event)
 {

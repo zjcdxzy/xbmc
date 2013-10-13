@@ -9,8 +9,11 @@
   public domain.
 */
 #if !defined(__arm__)
-
-#import "SDL/SDL.h"
+#define BOOL XBMC_BOOL 
+#include "windowing/WindowingFactory.h"
+#include "windowing/osx/WinEventsOSX.h"
+#undef BOOL
+#import "SDL2/SDL.h"
 #import "SDLMain.h"
 #import <sys/param.h> /* for MAXPATHLEN */
 #import <unistd.h>
@@ -25,7 +28,6 @@
 #import "storage/osx/DarwinStorageProvider.h"
 #undef BOOL
 
-#import "osx/HotKeyController.h"
 
 // For some reaon, Apple removed setAppleMenu from the headers in 10.4,
 // but the method still is there and works. To avoid warnings, we declare
@@ -230,34 +232,16 @@ static void setupWindowMenu(void)
 
   [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:self
     name:NSWorkspaceDidUnmountNotification object:nil];
-
-  NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
-
-  [center removeObserver:self name:MediaKeyPower object:nil];
-  [center removeObserver:self name:MediaKeySoundMute object:nil];
-  [center removeObserver:self name:MediaKeySoundUp object:nil];
-  [center removeObserver:self name:MediaKeySoundDown object:nil];
-  [center removeObserver:self name:MediaKeyPlayPauseNotification object:nil];
-  [center removeObserver:self name:MediaKeyFastNotification object:nil];
-  [center removeObserver:self name:MediaKeyRewindNotification object:nil];
-  [center removeObserver:self name:MediaKeyNextNotification object:nil];
-  [center removeObserver:self name:MediaKeyPreviousNotification object:nil];
-
-  [[HotKeyController sharedController] disableTap];
 }
 
 - (void) applicationWillResignActive:(NSNotification *) note
 {
-  //[[HotKeyController sharedController] sysPower:NO];
-  //[[HotKeyController sharedController] sysVolume:NO];
-  [[HotKeyController sharedController] setActive:NO];
+  //g_Windowing.GetEvents()->SetEnabled(false);
 }
 
 - (void) applicationWillBecomeActive:(NSNotification *) note
 {
-  //[[HotKeyController sharedController] sysPower:YES];
-  //[[HotKeyController sharedController] sysVolume:YES];
-  [[HotKeyController sharedController] setActive:YES];
+  //g_Windowing.GetEvents()->SetEnabled(true);
 }
 
 // To use Cocoa on secondary POSIX threads, your application must first detach
@@ -289,39 +273,6 @@ static void setupWindowMenu(void)
     selector:@selector(deviceDidUnMountNotification:)
     name:NSWorkspaceDidUnmountNotification
     object:nil];
-
-  NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
-
-  // create media key handler singlton
-  [[HotKeyController sharedController] enableTap];
-  // add media key notifications
-  [center addObserver:self
-    selector:@selector(powerKeyNotification)
-    name:MediaKeyPower object:nil];
-  [center addObserver:self
-    selector:@selector(muteKeyNotification)
-    name:MediaKeySoundMute object:nil];
-  [center addObserver:self
-    selector:@selector(soundUpKeyNotification)
-    name:MediaKeySoundUp object:nil];
-  [center addObserver:self
-    selector:@selector(soundDownKeyNotification)
-    name:MediaKeySoundDown object:nil];
-  [center addObserver:self
-    selector:@selector(playPauseKeyNotification)
-    name:MediaKeyPlayPauseNotification object:nil];
-  [center addObserver:self
-    selector:@selector(fastKeyNotification)
-    name:MediaKeyFastNotification object:nil];
-  [center addObserver:self
-    selector:@selector(rewindKeyNotification)
-    name:MediaKeyRewindNotification object:nil];
-  [center addObserver:self
-    selector:@selector(nextKeyNotification)
-    name:MediaKeyNextNotification object:nil];
-  [center addObserver:self
-    selector:@selector(previousKeyNotification)
-    name:MediaKeyPreviousNotification object:nil];
 
   // We're going to manually manage the screensaver.
   setenv("SDL_VIDEO_ALLOW_SCREENSAVER", "1", true);
@@ -417,101 +368,13 @@ static void setupWindowMenu(void)
   [pool release];
 }
 
-#define VK_SLEEP            0x143
-#define VK_VOLUME_MUTE      0xAD
-#define VK_VOLUME_DOWN      0xAE
-#define VK_VOLUME_UP        0xAF
-#define VK_MEDIA_NEXT_TRACK 0xB0
-#define VK_MEDIA_PREV_TRACK 0xB1
-#define VK_MEDIA_STOP       0xB2
-#define VK_MEDIA_PLAY_PAUSE 0xB3
-#define VK_REWIND           0x9D
-#define VK_FAST_FWD         0x9E
-
-- (void)powerKeyNotification
-{
-  SDL_Event event;
-  memset(&event, 0, sizeof(event));
-  event.type = SDL_KEYDOWN;
-  event.key.keysym.sym = (SDLKey)VK_SLEEP;
-  SDL_PushEvent(&event);
-}
-
-- (void)muteKeyNotification
-{
-  SDL_Event event;
-  memset(&event, 0, sizeof(event));
-  event.type = SDL_KEYDOWN;
-  event.key.keysym.sym = (SDLKey)VK_VOLUME_MUTE;
-  SDL_PushEvent(&event);
-}
-- (void)soundUpKeyNotification
-{
-  SDL_Event event;
-  memset(&event, 0, sizeof(event));
-  event.type = SDL_KEYDOWN;
-  event.key.keysym.sym = (SDLKey)VK_VOLUME_UP;
-  SDL_PushEvent(&event);
-}
-- (void)soundDownKeyNotification
-{
-  SDL_Event event;
-  memset(&event, 0, sizeof(event));
-  event.type = SDL_KEYDOWN;
-  event.key.keysym.sym = (SDLKey)VK_VOLUME_DOWN;
-  SDL_PushEvent(&event);
-}
-
-- (void)playPauseKeyNotification
-{
-  SDL_Event event;
-  memset(&event, 0, sizeof(event));
-  event.type = SDL_KEYDOWN;
-  event.key.keysym.sym = (SDLKey)VK_MEDIA_PLAY_PAUSE;
-  SDL_PushEvent(&event);
-}
-
-- (void)fastKeyNotification
-{
-  SDL_Event event;
-  memset(&event, 0, sizeof(event));
-  event.type = SDL_KEYDOWN;
-  event.key.keysym.sym = (SDLKey)VK_FAST_FWD;
-  SDL_PushEvent(&event);
-}
-
-- (void)rewindKeyNotification
-{
-  SDL_Event event;
-  memset(&event, 0, sizeof(event));
-  event.type = SDL_KEYDOWN;
-  event.key.keysym.sym = (SDLKey)VK_REWIND;
-  SDL_PushEvent(&event);
-}
-
-- (void)nextKeyNotification
-{
-  SDL_Event event;
-  memset(&event, 0, sizeof(event));
-  event.type = SDL_KEYDOWN;
-  event.key.keysym.sym = (SDLKey)VK_MEDIA_NEXT_TRACK;
-  SDL_PushEvent(&event);
-}
-
-- (void)previousKeyNotification
-{
-  SDL_Event event;
-  memset(&event, 0, sizeof(event));
-  event.type = SDL_KEYDOWN;
-  event.key.keysym.sym = (SDLKey)VK_MEDIA_PREV_TRACK;
-  SDL_PushEvent(&event);
-}
-
 @end
 
-#ifdef main
-#  undef main
-#endif
+extern int OSX_main(int argc, char* argv[]);
+
+//#ifdef main
+//#  undef main
+//#endif
 /* Main entry point to executable - should *not* be SDL_main! */
 int main(int argc, char *argv[])
 {
@@ -572,7 +435,8 @@ int main(int argc, char *argv[])
   // call SDL_main which calls our real main in xbmc.cpp
   // see http://lists.libsdl.org/pipermail/sdl-libsdl.org/2008-September/066542.html
   int status;
-  status = SDL_main(gArgc, gArgv);
+  SDL_Init(SDL_INIT_VIDEO);
+  status = OSX_main(gArgc, gArgv);
   SDL_Quit();
 
   [xbmc_delegate applicationWillTerminate:NULL];

@@ -40,8 +40,8 @@
 #include "osx/DarwinUtils.h"
 #undef BOOL
 
-#import <SDL/SDL_video.h>
-#import <SDL/SDL_events.h>
+#import <SDL2/SDL_video.h>
+#import <SDL2/SDL_events.h>
 
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
@@ -525,7 +525,7 @@ CWinSystemOSX::CWinSystemOSX() : CWinSystemBase()
 {
   m_eWindowSystem = WINDOW_SYSTEM_OSX;
   m_glContext = 0;
-  m_SDLSurface = NULL;
+  m_SDLWindow = NULL;
   m_osx_events = NULL;
   m_obscured   = false;
   m_obscured_timecheck = XbmcThreads::SystemClockMillis() + 1000;
@@ -540,11 +540,11 @@ CWinSystemOSX::~CWinSystemOSX()
 
 bool CWinSystemOSX::InitWindowSystem()
 {
-  SDL_EnableUNICODE(1);
+  //SDL_EnableUNICODE(1);
 
   // set repeat to 10ms to ensure repeat time < frame time
   // so that hold times can be reliably detected
-  SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, 10);
+  //SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, 10);
 
   if (!CWinSystemBase::InitWindowSystem())
     return false;
@@ -588,6 +588,7 @@ bool CWinSystemOSX::DestroyWindowSystem()
   UnblankDisplays();
   if (m_glContext)
   {
+    //SDL_GL_DeleteContext(m_glContext);
     NSOpenGLContext* oldContext = (NSOpenGLContext*)m_glContext;
     [oldContext release];
     m_glContext = NULL;
@@ -608,15 +609,25 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
   // Enable vertical sync to avoid any tearing.
-  SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 1);
+  SDL_GL_SetSwapInterval(1);
 
-  m_SDLSurface = SDL_SetVideoMode(m_nWidth, m_nHeight, 0, SDL_OPENGL | SDL_RESIZABLE);
-  if (!m_SDLSurface)
+  m_SDLWindow = SDL_CreateWindow("XBMC",
+                                  SDL_WINDOWPOS_UNDEFINED,
+                                  SDL_WINDOWPOS_UNDEFINED,
+                                  m_nWidth, m_nHeight,
+                                  SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+  //SDL_SetVideoMode(m_nWidth, m_nHeight, 0, SDL_OPENGL | SDL_RESIZABLE);
+  
+  if (!m_SDLWindow)
     return false;
 
   // the context SDL creates isn't full screen compatible, so we create new one
   // first, find the current contect and make sure a view is attached
-  NSOpenGLContext* cur_context = [NSOpenGLContext currentContext];
+  NSOpenGLContext* cur_context = (NSOpenGLContext*)SDL_GL_GetCurrentContext();
+  
+  if(!cur_context)
+    cur_context = (NSOpenGLContext*)SDL_GL_CreateContext(m_SDLWindow);
+  
   NSView* view = [cur_context view];
   if (!view)
     return false;
@@ -664,7 +675,7 @@ bool CWinSystemOSX::DestroyWindow()
   return true;
 }
 
-extern "C" void SDL_SetWidthHeight(int w, int h);
+//extern "C" void SDL_SetWidthHeight(int w, int h);
 bool CWinSystemOSX::ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop)
 {
   if (!m_glContext)
@@ -690,7 +701,7 @@ bool CWinSystemOSX::ResizeWindow(int newWidth, int newHeight, int newLeft, int n
   // HACK: resize SDL's view manually so that mouse bounds are correctly updated.
   // there are two parts to this, the internal SDL (current_video->screen) and
   // the cocoa view ( handled in SetFullScreen).
-  SDL_SetWidthHeight(newWidth, newHeight);
+  //SDL_SetWidthHeight(newWidth, newHeight);
 
   [context makeCurrentContext];
 
