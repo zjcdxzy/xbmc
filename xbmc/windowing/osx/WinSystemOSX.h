@@ -88,6 +88,7 @@ public:
   CWinEventsOSX *GetEvents(){ return m_osx_events; }
 
   std::string GetClipboardText(void);
+  float FlipY(float y);
 
 protected:
   void* CreateWindowedContext(void* shareCtx);
