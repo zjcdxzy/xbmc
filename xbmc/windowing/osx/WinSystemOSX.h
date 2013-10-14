@@ -26,10 +26,15 @@
 #include "threads/CriticalSection.h"
 #include "threads/Timer.h"
 
-typedef struct SDL_Surface SDL_Surface;
-
 class IDispResource;
 class CWinEventsOSX;
+
+typedef struct WindowData {
+  void *nswindow;
+  void *listener;
+  void *glcontext;
+  bool created;
+} WindowData;
 
 class CWinSystemOSX : public CWinSystemBase, public ITimerCallback
 {
@@ -97,7 +102,7 @@ protected:
 
   void* m_glContext;
   static void* m_lastOwnedContext;
-  SDL_Surface* m_SDLSurface;
+  void* m_SDLWindow;
   CWinEventsOSX *m_osx_events;
   bool                         m_obscured;
   unsigned int                 m_obscured_timecheck;
@@ -113,6 +118,7 @@ protected:
   CCriticalSection             m_resourceSection;
   std::vector<IDispResource*>  m_resources;
   CTimer                       m_lostDeviceTimer;
+  WindowData                   *m_windowData;
 };
 
 #endif

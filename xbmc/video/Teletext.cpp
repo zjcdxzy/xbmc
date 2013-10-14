@@ -34,7 +34,7 @@
 #include "guilib/GraphicContext.h"
 #include "cores/IPlayer.h"
 
-#if SDL_VERSION == 1
+#if SDL_VERSION == 1 && !defined(TARGET_DARWIN_OSX)
 #include <SDL/SDL_stdinc.h>
 #elif SDL_VERSION == 2
 #include <SDL2/SDL_stdinc.h>
