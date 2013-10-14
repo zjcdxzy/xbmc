@@ -85,6 +85,7 @@ public:
   void        StopLostDeviceTimer();
   
   void* GetCGLContextObj();
+  CWinEventsOSX *GetEvents(){ return m_osx_events; }
 
   std::string GetClipboardText(void);
 
