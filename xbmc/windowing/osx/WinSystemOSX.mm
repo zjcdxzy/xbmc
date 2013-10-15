@@ -60,7 +60,6 @@ typedef struct WindowData {
   bool             created;
   NSWindow        *nswindow;
   WindowListener  *listener;
-  NSOpenGLContext *glcontext;
 } WindowData;
 
 
@@ -93,9 +92,7 @@ typedef struct WindowData {
 -(void) mouseUp:(NSEvent *) theEvent;
 -(void) rightMouseUp:(NSEvent *) theEvent;
 -(void) otherMouseUp:(NSEvent *) theEvent;
-
 -(void) mouseMoved:(NSEvent *) theEvent;
-
 -(void) mouseDragged:(NSEvent *) theEvent;
 -(void) rightMouseDragged:(NSEvent *) theEvent;
 -(void) otherMouseDragged:(NSEvent *) theEvent;
@@ -146,9 +143,9 @@ typedef struct WindowData {
    * minimizing, so DidMiniaturize doesn't work. (e.g. -[NSWindow orderOut:])
    */
   [window addObserver:self
-           forKeyPath:@"visible"
-              options:NSKeyValueObservingOptionNew
-              context:NULL];
+          forKeyPath:@"visible"
+          options:NSKeyValueObservingOptionNew
+          context:NULL];
 
   [window setNextResponder:self];
   [window setAcceptsMouseMovedEvents:YES];
@@ -162,20 +159,26 @@ typedef struct WindowData {
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath
-                      ofObject:(id)object
-                        change:(NSDictionary *)change
-                       context:(void *)context
+                            ofObject:(id)object
+                            change:(NSDictionary *)change
+                            context:(void *)context
 {
   NSLog(@"observeValueForKeyPath");
   if (!observingVisible) {
     return;
   }
 
-  if (object == m_windowData->nswindow && [keyPath isEqualToString:@"visible"]) {
+  if (object == m_windowData->nswindow && [keyPath isEqualToString:@"visible"])
+  {
     int newVisibility = [[change objectForKey:@"new"] intValue];
-    if (newVisibility) {
+    if (newVisibility)
+    {
+      NSLog(@"observeValueForKeyPath WINDOWEVENT_SHOWN");
       //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_SHOWN, 0, 0);
-    } else {
+    }
+    else
+    {
+      NSLog(@"observeValueForKeyPath WINDOWEVENT_HIDDEN");
       //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_HIDDEN, 0, 0);
     }
   }
@@ -197,10 +200,12 @@ typedef struct WindowData {
   {
     if (isVisible)
     {
+      NSLog(@"resumeVisibleObservation WINDOWEVENT_SHOWN");
       //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_SHOWN, 0, 0);
     }
     else
     {
+      NSLog(@"resumeVisibleObservation WINDOWEVENT_HIDDEN");
       //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_HIDDEN, 0, 0);
     }
     
@@ -333,7 +338,7 @@ typedef struct WindowData {
 
 - (void)windowDidBecomeKey:(NSNotification *)aNotification
 {
-  NSLog(@"windowDidMiniaturize");
+  NSLog(@"windowDidBecomeKey");
   //SDL_Window *window = _data->window;
   //SDL_Mouse *mouse = SDL_GetMouse();
   
@@ -363,6 +368,7 @@ typedef struct WindowData {
 - (void)windowDidResignKey:(NSNotification *)aNotification
 {
   NSLog(@"windowDidResignKey");
+  Cocoa_HideMouse();
   /* Some other window will get mouse events, since we're not key. */
   //if (SDL_GetMouseFocus() == _data->window) {
   //  SDL_SetMouseFocus(NULL);
@@ -374,10 +380,15 @@ typedef struct WindowData {
   //}
 }
 
-/*- (void)mouseMoved:(NSEvent *)theEvent
+/*
+- (void)mouseMoved:(NSEvent *)theEvent
 {
   NSLog(@"mouseMoved");
-}*/
+
+  NSView *view = [m_windowData->nswindow contentView];
+  return [view mouseMoved: theEvent];
+}
+*/
 
 @end
 
@@ -720,31 +731,12 @@ NSString* screenNameForDisplay(CGDirectDisplayID displayID)
   return [screenName autorelease];
 }
 
-void ShowHideNSWindow(WindowData *windowData, bool show)
+void ShowHideNSWindow(NSWindow *wind, bool show)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  NSWindow *nswindow = windowData->nswindow;
-  
-  if ( show )
-  {
-    [windowData->listener pauseVisibleObservation];
-    [nswindow makeKeyAndOrderFront:nil];
-    [windowData->listener resumeVisibleObservation];
-  }
-  else
-  {
-    [windowData->listener pauseVisibleObservation];
-    [nswindow orderOut:nil];
-    [windowData->listener resumeVisibleObservation];
-  }
-  [pool release];
-
-  /*
   if (show)
     [wind orderFront:nil];
   else
     [wind orderOut:nil];
-  */
 }
 
 static NSWindow *curtainWindow;
@@ -927,6 +919,7 @@ CWinSystemOSX::CWinSystemOSX() : CWinSystemBase(), m_lostDeviceTimer(this)
   m_osx_events = NULL;
   m_obscured   = false;
   m_windowData = NULL;
+  m_appWindow = NULL;
   m_obscured_timecheck = XbmcThreads::SystemClockMillis() + 1000;
   m_use_system_screensaver = true;
   // check runtime, we only allow this on 10.5+
@@ -1011,6 +1004,10 @@ bool CWinSystemOSX::DestroyWindowSystem()
     [oldContext release];
     m_glContext = NULL;
   }
+  
+  if ( m_appWindow )
+    [m_appWindow close];
+  
   return true;
 }
 
@@ -1055,12 +1052,13 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
   
   m_windowData->created = m_bWindowCreated;
   m_windowData->nswindow  = appWindow;
-  m_windowData->glcontext = (NSOpenGLContext*)m_glContext;
   m_windowData->listener  = [[WindowListener alloc] init];
   [m_windowData->listener listen:m_windowData];
   
-  [pool release];
+  m_appWindow = appWindow;
   
+  [pool release];
+
   return true;
 }
 
@@ -1074,20 +1072,6 @@ bool CWinSystemOSX::DestroyWindow()
     [m_windowData->listener close];
     [m_windowData->listener release];
     
-    // release the context
-    if ( m_glContext )
-    {
-      [ NSOpenGLContext clearCurrentContext ];
-      [ (NSOpenGLContext *)m_glContext clearDrawable ];
-      [ (NSOpenGLContext *)m_glContext release ];
-      m_glContext = NULL;
-    }
-    
-    if (m_windowData->created)
-    {
-      [(NSWindow *)m_windowData->nswindow close];
-    }
-
     free(m_windowData);
     m_windowData = NULL;
   }
@@ -1101,7 +1085,7 @@ bool CWinSystemOSX::ResizeWindow(int newWidth, int newHeight, int newLeft, int n
   if (!m_glContext)
     return false;
 
-  NSOpenGLContext* context = [NSOpenGLContext currentContext];
+  NSOpenGLContext *context = [NSOpenGLContext currentContext];
   NSView* view;
   NSWindow* window;
 
@@ -1160,7 +1144,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   if (was_fullscreen && fullScreen)
   {
     needtoshowme = false;
-    ShowHideNSWindow(m_windowData, needtoshowme);
+    ShowHideNSWindow([last_view window], needtoshowme);
     RESOLUTION_INFO& window = CDisplaySettings::Get().GetResolutionInfo(RES_WINDOW);
     CWinSystemOSX::SetFullScreen(false, window, blankOtherDisplays);
     needtoshowme = true;
@@ -1198,6 +1182,9 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
     windowedFullScreenwindow = NULL;
   }
 
+  // close responder
+  [m_windowData->listener close];
+    
   if (m_bFullScreen)
   {
     // FullScreen Mode
@@ -1253,6 +1240,10 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
       newContext = (NSOpenGLContext*)CreateWindowedContext((void* )cur_context);
       [newContext setView:blankView];
 
+      // register responder
+      m_windowData->nswindow  = windowedFullScreenwindow;
+      [m_windowData->listener listen:m_windowData];
+
       // Hide the menu bar.
       if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay || CDarwinUtils::IsMavericks() )
         SetMenuBarVisible(false);
@@ -1280,6 +1271,10 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
 
       // set fullscreen
       [newContext setFullScreen];
+
+      // register responder
+      m_windowData->nswindow  = [last_view window];
+      [m_windowData->listener listen:m_windowData];
 
       // Capture the display before going fullscreen.
       if (blankOtherDisplays == true)
@@ -1369,11 +1364,15 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
     // Activate context.
     [newContext makeCurrentContext];
     m_glContext = newContext;
+    
+    // register responder
+    m_windowData->nswindow  = (NSWindow *)m_appWindow;
+    [m_windowData->listener listen:m_windowData];
   }
 
   DisplayFadeFromBlack(fade_token, needtoshowme);
 
-  ShowHideNSWindow(m_windowData, needtoshowme);
+  ShowHideNSWindow([last_view window], needtoshowme);
   // need to make sure SDL tracks any window size changes
   ResizeWindowInternal(m_nWidth, m_nHeight, -1, -1, last_view);
 
@@ -2083,9 +2082,9 @@ std::string CWinSystemOSX::GetClipboardText(void)
 float CWinSystemOSX::FlipY(float y)
 {
   // TODO hook height and width up to resize events of window and cache them as member
-  if (m_windowData && m_windowData->nswindow)
+  if (m_windowData && m_appWindow)
   {
-    NSWindow *win = (NSWindow *)m_windowData->nswindow;
+    NSWindow *win = (NSWindow *)m_appWindow;
     NSRect frame = [[win contentView] frame];
     y = frame.size.height - y;
   }

@@ -100,6 +100,7 @@ protected:
   void  StopTextInput();
 
   void                        *m_glContext;
+  void                        *m_appWindow;
   static void                 *m_lastOwnedContext;
   CWinEventsOSX               *m_osx_events;
   bool                         m_obscured;
