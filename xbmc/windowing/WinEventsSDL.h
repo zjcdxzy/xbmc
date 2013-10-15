@@ -24,7 +24,7 @@
 
 #include "system.h"
 
-#if defined(HAS_SDL) && !defined(TARGET_DARWIN_OSX)
+#ifdef HAS_SDL
 #if SDL_VERSION == 1
 #include <SDL/SDL_events.h>
 #elif SDL_VERSION == 2
