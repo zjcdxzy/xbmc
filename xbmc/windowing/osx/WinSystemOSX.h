@@ -26,15 +26,10 @@
 #include "threads/CriticalSection.h"
 #include "threads/Timer.h"
 
+struct WindowData;
+
 class IDispResource;
 class CWinEventsOSX;
-
-typedef struct WindowData {
-  void *nswindow;
-  void *listener;
-  void *glcontext;
-  bool created;
-} WindowData;
 
 class CWinSystemOSX : public CWinSystemBase, public ITimerCallback
 {
@@ -83,12 +78,14 @@ public:
   void        AnnounceOnResetDevice();
   void        StartLostDeviceTimer();
   void        StopLostDeviceTimer();
-  
-  void* GetCGLContextObj();
-  CWinEventsOSX *GetEvents(){ return m_osx_events; }
 
-  std::string GetClipboardText(void);
-  float FlipY(float y);
+  void         CheckDisplayChanging(u_int32_t flags);
+  
+  void*        GetCGLContextObj();
+  CWinEventsOSX* GetEvents();
+
+  std::string  GetClipboardText(void);
+  float        FlipY(float y);
 
 protected:
   void* CreateWindowedContext(void* shareCtx);
@@ -102,10 +99,9 @@ protected:
   void  StartTextInput();
   void  StopTextInput();
 
-  void* m_glContext;
-  static void* m_lastOwnedContext;
-  void* m_SDLWindow;
-  CWinEventsOSX *m_osx_events;
+  void                        *m_glContext;
+  static void                 *m_lastOwnedContext;
+  CWinEventsOSX               *m_osx_events;
   bool                         m_obscured;
   unsigned int                 m_obscured_timecheck;
 
