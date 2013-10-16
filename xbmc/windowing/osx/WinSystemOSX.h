@@ -88,8 +88,6 @@ public:
   float        FlipY(float y);
 
 protected:
-  void* CreateWindowedContext(void* shareCtx);
-  void* CreateFullScreenContext(int screen_index, void* shareCtx);
   void  GetScreenResolution(int* w, int* h, double* fps, int screenIdx);
   void  EnableVSync(bool enable); 
   bool  SwitchToVideoMode(int width, int height, double refreshrate, int screenIdx);

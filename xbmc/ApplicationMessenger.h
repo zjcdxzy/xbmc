@@ -221,6 +221,7 @@ public:
   bool CECToggleState();
   void CECActivateSource();
   void CECStandby();
+  void ToggleFullScreenRoot();
 
   CStdString GetResponse();
   int SetResponse(CStdString response);

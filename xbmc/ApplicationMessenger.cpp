@@ -1412,3 +1412,10 @@ void CApplicationMessenger::CECStandby()
   ThreadMessage tMsg = {TMSG_CECSTANDBY};
   SendMessage(tMsg, false);
 }
+
+void CApplicationMessenger::ToggleFullScreenRoot()
+{
+  ThreadMessage tMsg = {TMSG_TOGGLEFULLSCREEN};
+  SendMessage(tMsg, false);
+}
+

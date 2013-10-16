@@ -57,7 +57,8 @@ bool ProcessOSXShortcuts(XBMC_Event& event)
         return true;
         
       case XBMCK_f: // CMD-f to toggle fullscreen
-        g_application.OnAction(CAction(ACTION_TOGGLE_FULLSCREEN));
+        //g_application.OnAction(CAction(ACTION_TOGGLE_FULLSCREEN));        
+        CApplicationMessenger::Get().ToggleFullScreenRoot();
         return true;
         
       case XBMCK_s: // CMD-s to take a screenshot
