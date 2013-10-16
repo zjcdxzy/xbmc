@@ -487,7 +487,8 @@ typedef struct WindowData {
     [glcontext update];
     
   }
-  //[glcontext makeCurrentContext];
+  
+  [glcontext makeCurrentContext];
 }
 
 - (void)reshape
