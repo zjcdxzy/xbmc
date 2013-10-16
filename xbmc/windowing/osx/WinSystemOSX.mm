@@ -279,8 +279,8 @@ typedef struct WindowData {
 - (void)windowDidMove:(NSNotification *)aNotification
 {
   NSLog(@"windowDidMove");
-  NSWindow *nswindow = m_windowData->nswindow;
-  NSRect rect = [nswindow contentRectForFrameRect:[nswindow frame]];
+  //NSWindow *nswindow = m_windowData->nswindow;
+  //NSRect rect = [nswindow contentRectForFrameRect:[nswindow frame]];
   //ConvertNSRect(&rect);
   
   //int x = (int)rect.origin.x;
@@ -875,6 +875,7 @@ NSString* screenNameForDisplay(CGDirectDisplayID displayID)
   return [screenName autorelease];
 }
 
+/*
 void ShowHideNSWindow(NSWindow *wind, bool show)
 {
   if (show)
@@ -882,6 +883,7 @@ void ShowHideNSWindow(NSWindow *wind, bool show)
   else
     [wind orderOut:nil];
 }
+*/
 
 static NSWindow *curtainWindow;
 void fadeInDisplay(NSScreen *theScreen, double fadeTime)
@@ -1256,11 +1258,13 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   static NSSize last_view_size;
   static NSPoint last_view_origin;
   static NSInteger last_window_level = NSNormalWindowLevel;
-  bool was_fullscreen = m_bFullScreen;
+  //bool was_fullscreen = m_bFullScreen;
   
   if (m_lastDisplayNr == -1)
     m_lastDisplayNr = res.iScreen;
+
   GLView *view = [(NSWindow *)m_appWindow contentView];
+  NSWindow *window = (NSWindow *)m_appWindow;
 
   // Fade to black to hide resolution-switching flicker and garbage.
   //CGDisplayFadeReservationToken fade_token = DisplayFadeToBlack(needtoshowme);
@@ -1269,14 +1273,16 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   // or if we are still on the same display - it might be only a refreshrate/resolution
   // change request.
   // Recurse to reset fullscreen mode and then continue.
+  /*
   if (was_fullscreen && fullScreen)
   {
     needtoshowme = false;
-    ShowHideNSWindow([last_view window], needtoshowme);
+    //ShowHideNSWindow([last_view window], needtoshowme);
     RESOLUTION_INFO& window = CDisplaySettings::Get().GetResolutionInfo(RES_WINDOW);
     CWinSystemOSX::SetFullScreen(false, window, blankOtherDisplays);
     needtoshowme = true;
   }
+  */
 
   m_nWidth      = res.iWidth;
   m_nHeight     = res.iHeight;
@@ -1299,14 +1305,15 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   if (m_bFullScreen)
   {
     // FullScreen Mode
-    [(NSWindow *)m_appWindow setStyleMask:NSBorderlessWindowMask];
+    //NSUInteger windowStyleMask = NSBorderlessWindowMask;
+    //[window setStyleMask:windowStyleMask];
 
     // Save info about the windowed context so we can restore it when returning to windowed.
     last_view_size = [view frame].size;
     last_view_origin = [view frame].origin;
-    last_window_screen = [(NSWindow *)m_appWindow  screen];
-    last_window_origin = [(NSWindow *)m_appWindow  frame].origin;
-    last_window_level = [(NSWindow *)m_appWindow  level];
+    last_window_screen = [window  screen];
+    last_window_origin = [window  frame].origin;
+    last_window_level = [window  level];
     
     if (CSettings::Get().GetBool("videoscreen.fakefullscreen"))
     {
@@ -1318,8 +1325,8 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
       // remove frame origin offset of orginal display
       screenRect.origin = NSZeroPoint;
 
-      [(NSWindow *)m_appWindow makeKeyAndOrderFront:nil];
-      [(NSWindow *)m_appWindow setLevel:NSNormalWindowLevel];
+      [window makeKeyAndOrderFront:nil];
+      [window setLevel:NSNormalWindowLevel];
       
       // ...and the original one beneath it and on the same screen.
       //[[view window] setLevel:NSNormalWindowLevel-1];
@@ -1369,10 +1376,10 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
 
     if (CSettings::Get().GetBool("videoscreen.fakefullscreen"))
     {
-      NSUInteger windowStyleMask = NSTitledWindowMask|NSResizableWindowMask|NSClosableWindowMask|NSMiniaturizableWindowMask;
-      [(NSWindow *)m_appWindow setStyleMask:windowStyleMask];
+      //NSUInteger windowStyleMask = NSTitledWindowMask|NSResizableWindowMask|NSClosableWindowMask|NSMiniaturizableWindowMask;
+      //[window setStyleMask:windowStyleMask];
       
-      last_window_screen = [(NSWindow *)m_appWindow  screen];
+      last_window_screen = [window  screen];
 
       // Unblank.
       // Force the unblank when returning from fullscreen, we get called with blankOtherDisplays set false.
@@ -1396,12 +1403,12 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   }
   
   // register responder
-  m_windowData->nswindow  = (NSWindow *)m_appWindow;
+  m_windowData->nswindow  = window;
   [m_windowData->listener listen:m_windowData];
 
   //DisplayFadeFromBlack(fade_token, needtoshowme);
 
-  ShowHideNSWindow([last_view window], needtoshowme);
+  //ShowHideNSWindow([last_view window], needtoshowme);
   // need to make sure SDL tracks any window size changes
   ResizeWindowInternal(m_nWidth, m_nHeight, -1, -1, last_view);
 
@@ -1440,85 +1447,6 @@ void CWinSystemOSX::UpdateResolutions()
   }
 }
 
-void* CWinSystemOSX::CreateWindowedContext(void* shareCtx)
-{
-  NSOpenGLContext* newContext = NULL;
-  GLint swapInterval = 1;
-
-  
-  NSOpenGLPixelFormatAttribute wattrs[] =
-  {
-    NSOpenGLPFADoubleBuffer,
-    NSOpenGLPFAWindow,
-    NSOpenGLPFANoRecovery,
-    NSOpenGLPFAAccelerated,
-    NSOpenGLPFADepthSize,
-   (NSOpenGLPixelFormatAttribute)8,
-   (NSOpenGLPixelFormatAttribute)0
-  };
-
-  NSOpenGLPixelFormat* pixFmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:wattrs];
-
-  newContext = [[NSOpenGLContext alloc] initWithFormat:(NSOpenGLPixelFormat*)pixFmt
-    shareContext:(NSOpenGLContext*)shareCtx];
-  [pixFmt release];
-
-  if (!newContext)
-  {
-    // bah, try again for non-accelerated renderer
-    NSOpenGLPixelFormatAttribute wattrs2[] =
-    {
-      NSOpenGLPFADoubleBuffer,
-      NSOpenGLPFAWindow,
-      NSOpenGLPFANoRecovery,
-      NSOpenGLPFADepthSize,
-     (NSOpenGLPixelFormatAttribute)8,
-     (NSOpenGLPixelFormatAttribute)0
-    };
-    NSOpenGLPixelFormat* pixFmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:wattrs2];
-
-    newContext = [[NSOpenGLContext alloc] initWithFormat:(NSOpenGLPixelFormat*)pixFmt
-      shareContext:(NSOpenGLContext*)shareCtx];
-    [pixFmt release];
-  }
-  
-  [newContext setValues:&swapInterval forParameter:NSOpenGLCPSwapInterval];
-
-  return newContext;
-}
-
-void* CWinSystemOSX::CreateFullScreenContext(int screen_index, void* shareCtx)
-{
-  CGDirectDisplayID displayArray[MAX_DISPLAYS];
-  CGDisplayCount    numDisplays;
-  CGDirectDisplayID displayID;
-
-  // Get the list of displays.
-  CGGetActiveDisplayList(MAX_DISPLAYS, displayArray, &numDisplays);
-  displayID = displayArray[screen_index];
-
-  NSOpenGLPixelFormatAttribute fsattrs[] =
-  {
-    NSOpenGLPFADoubleBuffer,
-    NSOpenGLPFAFullScreen,
-    NSOpenGLPFANoRecovery,
-    NSOpenGLPFAAccelerated,
-    NSOpenGLPFADepthSize,  (NSOpenGLPixelFormatAttribute)8,
-    NSOpenGLPFAScreenMask, (NSOpenGLPixelFormatAttribute)CGDisplayIDToOpenGLDisplayMask(displayID),
-   (NSOpenGLPixelFormatAttribute)0
-  };
-
-  NSOpenGLPixelFormat* pixFmt = [[NSOpenGLPixelFormat alloc] initWithAttributes:fsattrs];
-  if (!pixFmt)
-    return nil;
-
-  NSOpenGLContext* newContext = [[NSOpenGLContext alloc] initWithFormat:(NSOpenGLPixelFormat*)pixFmt
-    shareContext:(NSOpenGLContext*)shareCtx];
-  [pixFmt release];
-
-  return newContext;
-}
-
 void CWinSystemOSX::GetScreenResolution(int* w, int* h, double* fps, int screenIdx)
 {
   // Figure out the screen size. (default to main screen)
@@ -1526,20 +1454,10 @@ void CWinSystemOSX::GetScreenResolution(int* w, int* h, double* fps, int screenI
     return;
 
   CGDirectDisplayID display_id = (CGDirectDisplayID)GetDisplayID(screenIdx);
-
-  NSOpenGLContext* context = [NSOpenGLContext currentContext];
-  if (context)
+ 
+  if (m_appWindow)
   {
-    NSView* view;
-
-    view = [context view];
-    if (view)
-    {
-      NSWindow* window;
-      window = [view window];
-      if (window)
-        display_id = GetDisplayIDFromScreen( [window screen] );
-    }
+    display_id = GetDisplayIDFromScreen( [(NSWindow *)m_appWindow screen] );
   }
   CGDisplayModeRef mode  = CGDisplayCopyDisplayMode(display_id);
   *w = CGDisplayModeGetWidth(mode);
@@ -1672,6 +1590,7 @@ void CWinSystemOSX::FillInVideoModes()
 
 bool CWinSystemOSX::FlushBuffer(void)
 {
+  if(m_glContext)
   [ (NSOpenGLContext*)m_glContext flushBuffer ];
 
   return true;
