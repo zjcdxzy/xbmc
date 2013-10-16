@@ -151,7 +151,7 @@ NSEvent* InputEventHandler(NSEvent *nsevent);
 // and you WILL lose all key control :)
 CGEventRef HotKeyEventHandler(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon)
 {
-  bool passEvent = false;
+  bool passEvent = true;
   CWinEventsOSX *winEvents = (CWinEventsOSX *)refcon;
   XBMC_Event newEvent;
   memset(&newEvent, 0, sizeof(newEvent));
@@ -296,7 +296,7 @@ CGEventRef HotKeyEventHandler(CGEventTapProxy proxy, CGEventType type, CGEventRe
 
 NSEvent* InputEventHandler(NSEvent *nsevent)
 {
-  bool passEvent = false;
+  bool passEvent = true;
   CGEventRef event = [nsevent CGEvent];
   CGEventType type = [nsevent type];
   CWinEventsOSX *winEvents = g_Windowing.GetEvents();
