@@ -38,6 +38,7 @@ public:
   void SetHotKeysEnabled(bool enable){mHotKeysEnabled = enable;}
   bool AreHotKeysEnabled(){return mHotKeysEnabled;}
   void EnableInput();
+  void DisableInput();
 
 private:
   

@@ -482,6 +482,12 @@ void CWinEventsOSX::EnableInput()
   enableInputEvents();  
 }
 
+void CWinEventsOSX::DisableInput()
+{
+  disableHotKeyTap();
+  disableInputEvents();
+}
+
 void CWinEventsOSX::MessagePush(XBMC_Event *newEvent)
 {
   CSingleLock lock(g_inputCond);
