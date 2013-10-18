@@ -1284,7 +1284,7 @@ bool CWinSystemOSX::ResizeWindow(int newWidth, int newHeight, int newLeft, int n
   return true;
 }
 
-static bool needtoshowme = true;
+//static bool needtoshowme = true;
 
 bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
@@ -1310,6 +1310,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   // or if we are still on the same display - it might be only a refreshrate/resolution
   // change request.
   // Recurse to reset fullscreen mode and then continue.
+  /*
   if (was_fullscreen && fullScreen)
   {
     needtoshowme = false;
@@ -1318,6 +1319,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
     CWinSystemOSX::SetFullScreen(false, window, blankOtherDisplays);
     needtoshowme = true;
   }
+   */
 
   m_nWidth      = res.iWidth;
   m_nHeight     = res.iHeight;
