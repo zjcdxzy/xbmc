@@ -97,12 +97,13 @@ protected:
   void  StartTextInput();
   void  StopTextInput();
 
-  void                        *m_glContext;
   void                        *m_appWindow;
+  void                        *m_glView;
   static void                 *m_lastOwnedContext;
   CWinEventsOSX               *m_osx_events;
   bool                         m_obscured;
   unsigned int                 m_obscured_timecheck;
+  std::string                  m_name;
 
   bool                         m_use_system_screensaver;
   bool                         m_can_display_switch;
@@ -116,6 +117,7 @@ protected:
   std::vector<IDispResource*>  m_resources;
   CTimer                       m_lostDeviceTimer;
   WindowData                   *m_windowData;
+  CCriticalSection             m_critSection;
 };
 
 #endif

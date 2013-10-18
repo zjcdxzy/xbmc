@@ -1015,23 +1015,23 @@ bool CApplication::CreateGUI()
 
 bool CApplication::InitWindow()
 {
-#ifdef TARGET_DARWIN_OSX
+//#ifdef TARGET_DARWIN_OSX
   // force initial window creation to be windowed, if fullscreen, it will switch to it below
   // fixes the white screen of death if starting fullscreen and switching to windowed.
-  bool bFullScreen = false;
-  if (!g_Windowing.CreateNewWindow(CSysInfo::GetAppName(), bFullScreen, CDisplaySettings::Get().GetResolutionInfo(RES_WINDOW), OnEvent))
-  {
-    CLog::Log(LOGFATAL, "CApplication::Create: Unable to create window");
-    return false;
-  }
-#else
+//  bool bFullScreen = false;
+//  if (!g_Windowing.CreateNewWindow(CSysInfo::GetAppName(), bFullScreen, CDisplaySettings::Get().GetResolutionInfo(RES_WINDOW), OnEvent))
+//  {
+//    CLog::Log(LOGFATAL, "CApplication::Create: Unable to create window");
+//    return false;
+//  }
+//#else
   bool bFullScreen = CDisplaySettings::Get().GetCurrentResolution() != RES_WINDOW;
   if (!g_Windowing.CreateNewWindow(CSysInfo::GetAppName(), bFullScreen, CDisplaySettings::Get().GetCurrentResolutionInfo(), OnEvent))
   {
     CLog::Log(LOGFATAL, "CApplication::Create: Unable to create window");
     return false;
   }
-#endif
+//#endif
 
   if (!g_Windowing.InitRenderSystem())
   {
