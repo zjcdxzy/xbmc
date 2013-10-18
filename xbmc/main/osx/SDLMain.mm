@@ -10,9 +10,24 @@
 */
 #if !defined(__arm__)
 #define BOOL XBMC_BOOL 
+#include "system.h"
+#include "AppParamParser.h"
+#include "settings/AdvancedSettings.h"
+#include "FileItem.h"
+#include "PlayListPlayer.h"
+#include "utils/log.h"
+#include "xbmc.h"
+#include <sys/resource.h>
+#include <signal.h>
+#include "Util.h"
+#ifdef HAS_LIRC
+#include "input/linux/LIRC.h"
+#endif
+#include "XbmcContext.h"
 #include "windowing/WindowingFactory.h"
 #include "windowing/osx/WinEventsOSX.h"
 #undef BOOL
+
 #import <sys/param.h> /* for MAXPATHLEN */
 #import <unistd.h>
 
@@ -39,8 +54,7 @@
 @end
 
 // Use this flag to determine whether we use CPS (docking) or not
-#define		SDL_USE_CPS		1
-#ifdef SDL_USE_CPS
+
 // Portions of CPS.h
 typedef struct CPSProcessSerNum
 {
@@ -53,7 +67,6 @@ extern OSErr	CPSGetCurrentProcess(CPSProcessSerNum *psn);
 extern OSErr 	CPSEnableForegroundOperation(CPSProcessSerNum *psn, UInt32 _arg2, UInt32 _arg3, UInt32 _arg4, UInt32 _arg5);
 extern OSErr	CPSSetFrontProcess(CPSProcessSerNum *psn);
 }
-#endif /* SDL_USE_CPS */
 
 static int    gArgc;
 static char  **gArgv;
@@ -76,6 +89,7 @@ static NSString *getApplicationName(void)
 
   return appName;
 }
+
 static void setupApplicationMenu(void)
 {
   // warning: this code is very odd
@@ -263,13 +277,40 @@ static void setupWindowMenu(void)
   [pool release];
 }
 
-extern int OSX_main(int argc, char* argv[]);
-
 - (void) mainLoopThread:(id)arg
 {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   // empty
-  gStatus = OSX_main(gArgc, gArgv);
+
+  // set up some xbmc specific relationships
+  XBMC::Context context;
+
+  bool renderGUI = true;
+  //this can't be set from CAdvancedSettings::Initialize() because it will overwrite
+  //the loglevel set with the --debug flag
+#ifdef _DEBUG
+  g_advancedSettings.m_logLevel     = LOG_LEVEL_DEBUG;
+  g_advancedSettings.m_logLevelHint = LOG_LEVEL_DEBUG;
+#else
+  g_advancedSettings.m_logLevel     = LOG_LEVEL_NORMAL;
+  g_advancedSettings.m_logLevelHint = LOG_LEVEL_NORMAL;
+#endif
+  CLog::SetLogLevel(g_advancedSettings.m_logLevel);
+
+#if defined(DEBUG)
+  struct rlimit rlim;
+  rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
+  if (setrlimit(RLIMIT_CORE, &rlim) == -1)
+    CLog::Log(LOGDEBUG, "Failed to set core size limit (%s)", strerror(errno));
+#endif
+
+  setlocale(LC_NUMERIC, "C");
+  g_advancedSettings.Initialize();
+
+  CAppParamParser appParamParser;
+  appParamParser.Parse((const char **)gArgv, (int)gArgc);
+
+  gStatus = XBMC_Run(renderGUI);
   [pool release];
   [self performSelectorOnMainThread:@selector(closeNsApp) withObject:nil waitUntilDone:false];
 }
@@ -312,9 +353,6 @@ extern int OSX_main(int argc, char* argv[]);
     selector:@selector(deviceDidUnMountNotification:)
     name:NSWorkspaceDidUnmountNotification
     object:nil];
-
-  // We're going to manually manage the screensaver.
-  setenv("SDL_VIDEO_ALLOW_SCREENSAVER", "1", true);
 
   // Hand off to main application code
   gCalledAppMainline = TRUE;
@@ -457,16 +495,12 @@ int main(int argc, char *argv[])
   // Ensure the application object is initialised
   [XBMCApplication sharedApplication];
 
-#ifdef SDL_USE_CPS
-  {
-    CPSProcessSerNum PSN;
-    /* Tell the dock about us */
-    if (!CPSGetCurrentProcess(&PSN))
-      if (!CPSEnableForegroundOperation(&PSN,0x03,0x3C,0x2C,0x1103))
-        if (!CPSSetFrontProcess(&PSN))
-          [XBMCApplication sharedApplication];
-  }
-#endif
+  CPSProcessSerNum PSN;
+  /* Tell the dock about us */
+  if (!CPSGetCurrentProcess(&PSN))
+    if (!CPSEnableForegroundOperation(&PSN,0x03,0x3C,0x2C,0x1103))
+      if (!CPSSetFrontProcess(&PSN))
+        [XBMCApplication sharedApplication];
 
   // Set up the menubars
   [NSApp setMainMenu:[[NSMenu alloc] init]];
