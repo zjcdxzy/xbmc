@@ -56,28 +56,16 @@
 // turn off deprecated warning spew.
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-@class WindowListener;
+CWinEventsOSX   g_osx_events;
 
-typedef struct WindowData {
-  bool             created;
-  NSWindow        *nswindow;
-  WindowListener  *listener;
-  CWinEventsOSX   *winEvents;
-} WindowData;
+//@class Window;
 
-
-@interface WindowListener : NSResponder <NSWindowDelegate>
+@interface Window : NSWindow <NSWindowDelegate>
 {
-  WindowData *m_windowData;
-  BOOL observingVisible;
-  BOOL wasVisible;
 }
 
--(void) listen:(WindowData *) windowData;
--(void) pauseVisibleObservation;
--(void) resumeVisibleObservation;
--(void) close;
-
+-(id) initWithContentRect:(NSRect)box styleMask:(uint)style;
+-(void) dealloc;
 -(BOOL) windowShouldClose:(id) sender;
 -(void) windowDidExpose:(NSNotification *) aNotification;
 -(void) windowDidMove:(NSNotification *) aNotification;
@@ -109,179 +97,39 @@ typedef struct WindowData {
 
 @end
 
-@implementation WindowListener
+@implementation Window
 
-- (void)listen:(WindowData *)windowData
+-(id) initWithContentRect:(NSRect)box styleMask:(uint)style
 {
-  NSLog(@"listen");
-  NSNotificationCenter *center;
-  NSWindow *window = windowData->nswindow;
-  NSView *view = [window contentView];
-  
-  m_windowData = windowData;
-  observingVisible = YES;
-  wasVisible = [window isVisible];
-  
-  center = [NSNotificationCenter defaultCenter];
-  
-  if ([window delegate] != nil)
-  {
-    NSLog(@"listen no delegate");
+  self = [super initWithContentRect:box styleMask:style backing:NSBackingStoreBuffered defer:YES];
 
-    [center addObserver:self selector:@selector(windowDidExpose:) name:NSWindowDidExposeNotification object:window];
-    [center addObserver:self selector:@selector(windowDidMove:) name:NSWindowDidMoveNotification object:window];
-    [center addObserver:self selector:@selector(windowDidResize:) name:NSWindowDidResizeNotification object:window];
-    [center addObserver:self selector:@selector(windowDidMiniaturize:) name:NSWindowDidMiniaturizeNotification object:window];
-    [center addObserver:self selector:@selector(windowDidDeminiaturize:) name:NSWindowDidDeminiaturizeNotification object:window];
-    [center addObserver:self selector:@selector(windowDidBecomeKey:) name:NSWindowDidBecomeKeyNotification object:window];
-    [center addObserver:self selector:@selector(windowDidResignKey:) name:NSWindowDidResignKeyNotification object:window];
-  }
-  else
-  {
-    NSLog(@"listen delegate");
-    [window setDelegate:self];
-  }
+  [self setDelegate:self];
   
-  /* Haven't found a delegate / notification that triggers when the window is
-   * ordered out (is not visible any more). You can be ordered out without
-   * minimizing, so DidMiniaturize doesn't work. (e.g. -[NSWindow orderOut:])
-   */
-  [window addObserver:self
-          forKeyPath:@"visible"
-          options:NSKeyValueObservingOptionNew
-          context:NULL];
+  [self setAcceptsMouseMovedEvents:YES];
 
-  [window setNextResponder:self];
-  [window setAcceptsMouseMovedEvents:YES];
-  
-  [view setNextResponder:self];
-  
-  if ([view respondsToSelector:@selector(setAcceptsTouchEvents:)])
-  {
-    [view setAcceptsTouchEvents:YES];
-  }
+  return self;
 }
 
-- (void)observeValueForKeyPath:(NSString *)keyPath
-                            ofObject:(id)object
-                            change:(NSDictionary *)change
-                            context:(void *)context
+-(void) dealloc
 {
-  NSLog(@"observeValueForKeyPath");
-  if (!observingVisible) {
-    return;
-  }
-
-  if (object == m_windowData->nswindow && [keyPath isEqualToString:@"visible"])
-  {
-    int newVisibility = [[change objectForKey:@"new"] intValue];
-    if (newVisibility)
-    {
-      NSLog(@"observeValueForKeyPath WINDOWEVENT_SHOWN");
-      //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_SHOWN, 0, 0);
-    }
-    else
-    {
-      NSLog(@"observeValueForKeyPath WINDOWEVENT_HIDDEN");
-      //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_HIDDEN, 0, 0);
-    }
-  }
-}
-
--(void) pauseVisibleObservation
-{
-  NSLog(@"pauseVisibleObservation");
-  observingVisible = NO;
-  wasVisible = [m_windowData->nswindow isVisible];
-}
-
--(void) resumeVisibleObservation
-{
-  NSLog(@"resumeVisibleObservation");
-  BOOL isVisible = [m_windowData->nswindow isVisible];
-  observingVisible = YES;
-  if (wasVisible != isVisible)
-  {
-    if (isVisible)
-    {
-      NSLog(@"resumeVisibleObservation WINDOWEVENT_SHOWN");
-      //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_SHOWN, 0, 0);
-    }
-    else
-    {
-      NSLog(@"resumeVisibleObservation WINDOWEVENT_HIDDEN");
-      //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_HIDDEN, 0, 0);
-    }
-    
-    wasVisible = isVisible;
-  }
-}
-
-- (void)close
-{
-  NSLog(@"close");
-  NSNotificationCenter *center;
-  NSWindow *window = m_windowData->nswindow;
-  NSView *view = [window contentView];
-  NSArray *windows = nil;
-  
-  center = [NSNotificationCenter defaultCenter];
-  
-  if ([window delegate] != self) {
-    [center removeObserver:self name:NSWindowDidExposeNotification object:window];
-    [center removeObserver:self name:NSWindowDidMoveNotification object:window];
-    [center removeObserver:self name:NSWindowDidResizeNotification object:window];
-    [center removeObserver:self name:NSWindowDidMiniaturizeNotification object:window];
-    [center removeObserver:self name:NSWindowDidDeminiaturizeNotification object:window];
-    [center removeObserver:self name:NSWindowDidBecomeKeyNotification object:window];
-    [center removeObserver:self name:NSWindowDidResignKeyNotification object:window];
-  } else {
-    [window setDelegate:nil];
-  }
-  
-  [window removeObserver:self
-              forKeyPath:@"visible"];
-  
-  if ([window nextResponder] == self) {
-    [window setNextResponder:nil];
-  }
-  if ([view nextResponder] == self) {
-    [view setNextResponder:nil];
-  }
-  
-  /* Make the next window in the z-order Key. If we weren't the foreground
-   when closed, this is a no-op.
-   !!! FIXME: Note that this is a hack, and there are corner cases where
-   !!! FIXME:  this fails (such as the About box). The typical nib+RunLoop
-   !!! FIXME:  handles this for Cocoa apps, but we bypass all that in SDL.
-   !!! FIXME:  We should remove this code when we find a better way to
-   !!! FIXME:  have the system do this for us. See discussion in
-   !!! FIXME:   http://bugzilla.libsdl.org/show_bug.cgi?id=1825
-   */
-  windows = [NSApp orderedWindows];
-  if ([windows count] > 0) {
-    NSWindow *win = (NSWindow *) [windows objectAtIndex:0];
-    [win makeKeyAndOrderFront:self];
-  }
+  [self setDelegate:nil];
+  [super dealloc];
 }
 
 - (BOOL)windowShouldClose:(id)sender
 {
   NSLog(@"windowShouldClose");
-  //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_CLOSE, 0, 0);
   return NO;
 }
 
 - (void)windowDidExpose:(NSNotification *)aNotification
 {
   NSLog(@"windowDidExpose");
-  //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_EXPOSED, 0, 0);
 }
 
 - (void)windowDidMove:(NSNotification *)aNotification
 {
   NSLog(@"windowDidMove");
-  
   NSOpenGLContext* context = [NSOpenGLContext currentContext];
   if (context)
   {
@@ -302,8 +150,7 @@ typedef struct WindowData {
 {
   NSLog(@"windowDidResize");
 
-  NSWindow *nswindow = m_windowData->nswindow;
-  NSRect rect = [nswindow contentRectForFrameRect:[nswindow frame]];
+  NSRect rect = [self contentRectForFrameRect:[self frame]];
 
   if(!g_Windowing.IsFullScreen())
   {
@@ -335,14 +182,14 @@ typedef struct WindowData {
 - (void)windowDidBecomeKey:(NSNotification *)aNotification
 {
   NSLog(@"windowDidBecomeKey");
-  m_windowData->winEvents->EnableInput();
+  g_osx_events.EnableInput();
 }
 
 - (void)windowDidResignKey:(NSNotification *)aNotification
 {
   NSLog(@"windowDidResignKey");
   
-  m_windowData->winEvents->DisableInput();
+  g_osx_events.DisableInput();
 }
 
 /*
@@ -709,6 +556,26 @@ typedef struct WindowData {
 - (void)mouseMoved:(NSEvent *)theEvent
 {
   //NSLog(@"mouseMoved");
+  /*
+  XBMC_Event newEvent;
+  memset(&newEvent, 0, sizeof(newEvent));
+  
+  // The incoming mouse position.
+  NSPoint location = [theEvent locationInWindow];
+  // cocoa world is upside down ...
+  location.y = g_Windowing.FlipY(location.y);
+  
+  newEvent.type = XBMC_MOUSEMOTION;
+  newEvent.motion.type = XBMC_MOUSEMOTION;
+  newEvent.motion.xrel = 0; //CGEventGetIntegerValueField(event, kCGMouseEventDeltaX);
+  newEvent.motion.yrel = 0; //CGEventGetIntegerValueField(event, kCGMouseEventDeltaY);
+  newEvent.motion.state = 0;
+  newEvent.motion.which = 0;
+  newEvent.motion.x = location.x;
+  newEvent.motion.y = location.y;
+  g_osx_events.MessagePush(&newEvent);
+  */
+  
   [self displayIfNeeded];
 }
 
@@ -1278,9 +1145,7 @@ static void DisplayReconfigured(CGDirectDisplayID display,
 CWinSystemOSX::CWinSystemOSX() : CWinSystemBase(), m_lostDeviceTimer(this)
 {
   m_eWindowSystem = WINDOW_SYSTEM_OSX;
-  m_osx_events = NULL;
   m_obscured   = false;
-  m_windowData = NULL;
   m_appWindow  = NULL;
   m_glView     = NULL;
   m_obscured_timecheck = XbmcThreads::SystemClockMillis() + 1000;
@@ -1318,8 +1183,7 @@ bool CWinSystemOSX::InitWindowSystem()
   if (!CWinSystemBase::InitWindowSystem())
     return false;
 
-  m_osx_events = new CWinEventsOSX();
-  m_osx_events->EnableInput();
+  g_osx_events.EnableInput();
 
   if (m_can_display_switch)
     CGDisplayRegisterReconfigurationCallback(DisplayReconfigured, (void*)this);
@@ -1365,9 +1229,8 @@ bool CWinSystemOSX::DestroyWindowSystem()
     [(GLView *)m_glView release];
     m_glView = NULL;
   }
-  
-  delete m_osx_events;
-  m_osx_events = NULL;
+
+  g_osx_events.DisableInput();
 
   UnblankDisplays();
   
@@ -1385,8 +1248,6 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
   m_bFullScreen = fullScreen;
   m_name        = name;
 
-  m_windowData = (WindowData *)calloc(1, sizeof(WindowData));
-
   NSUInteger windowStyleMask;
   if( fullScreen )
   {
@@ -1397,8 +1258,7 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
     windowStyleMask = NSTitledWindowMask|NSResizableWindowMask|NSClosableWindowMask|NSMiniaturizableWindowMask;
   }
   
-  NSWindow *appWindow = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0,
-                            m_nWidth, m_nHeight) styleMask:windowStyleMask backing:NSBackingStoreBuffered defer:YES];
+  NSWindow *appWindow = [[Window alloc] initWithContentRect:NSMakeRect(0, 0, m_nWidth, m_nHeight) styleMask:windowStyleMask];
   appWindow.backgroundColor = [NSColor blackColor];
   NSString *title = [NSString stringWithFormat:@"%s" , m_name.c_str()];
   appWindow.title = title;
@@ -1419,14 +1279,6 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
   
   m_bWindowCreated = true;
   
-  m_windowData = (WindowData *)calloc(1, sizeof(WindowData));
-  
-  m_windowData->created = m_bWindowCreated;
-  m_windowData->winEvents = m_osx_events;
-  m_windowData->nswindow  = appWindow;
-  m_windowData->listener  = [[WindowListener alloc] init];
-  [m_windowData->listener listen:m_windowData];
-  
   m_appWindow = appWindow;
   
   [appWindow makeKeyWindow];
@@ -1439,18 +1291,6 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
 bool CWinSystemOSX::DestroyWindow()
 {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  
-  if(m_windowData)
-  {
-    if(m_windowData->listener)
-    {
-      [m_windowData->listener close];
-      [m_windowData->listener release];
-    }
-    
-    free(m_windowData);
-    m_windowData = NULL;
-  }
   
   if(m_appWindow)
   {
@@ -1500,7 +1340,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   static NSSize last_view_size;
   static NSPoint last_view_origin;
   static NSInteger last_window_level = NSNormalWindowLevel;
-  bool was_fullscreen = m_bFullScreen;
+  //bool was_fullscreen = m_bFullScreen;
   
   if (m_lastDisplayNr == -1)
     m_lastDisplayNr = res.iScreen;
@@ -1541,9 +1381,6 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
       m_lastDisplayNr = res.iScreen;
     }
   }
-  
-  // close responder
-  //[m_windowData->listener close];
   
   [window setAllowsConcurrentViewDrawing:NO];
 
@@ -1656,10 +1493,6 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
 
   [window setAllowsConcurrentViewDrawing:YES];
 
-  // register responder
-  //m_windowData->nswindow  = window;
-  //[m_windowData->listener listen:m_windowData];
-  
   //DisplayFadeFromBlack(fade_token, needtoshowme);
 
   //ShowHideNSWindow([last_view window], needtoshowme);
@@ -2296,7 +2129,7 @@ void* CWinSystemOSX::GetCGLContextObj()
 
 CWinEventsOSX* CWinSystemOSX::GetEvents()
 {
-  return m_osx_events;
+  return &g_osx_events;
 }
 
 std::string CWinSystemOSX::GetClipboardText(void)
@@ -2313,7 +2146,7 @@ std::string CWinSystemOSX::GetClipboardText(void)
 float CWinSystemOSX::FlipY(float y)
 {
   // TODO hook height and width up to resize events of window and cache them as member
-  if (m_windowData && m_appWindow)
+  if (m_appWindow)
   {
     NSWindow *win = (NSWindow *)m_appWindow;
     NSRect frame = [[win contentView] frame];

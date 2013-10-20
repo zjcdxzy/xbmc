@@ -26,8 +26,6 @@
 #include "threads/CriticalSection.h"
 #include "threads/Timer.h"
 
-struct WindowData;
-
 class IDispResource;
 class CWinEventsOSX;
 
@@ -100,7 +98,6 @@ protected:
   void                        *m_appWindow;
   void                        *m_glView;
   static void                 *m_lastOwnedContext;
-  CWinEventsOSX               *m_osx_events;
   bool                         m_obscured;
   unsigned int                 m_obscured_timecheck;
   std::string                  m_name;
@@ -116,7 +113,6 @@ protected:
   CCriticalSection             m_resourceSection;
   std::vector<IDispResource*>  m_resources;
   CTimer                       m_lostDeviceTimer;
-  WindowData                   *m_windowData;
   CCriticalSection             m_critSection;
 };
 
