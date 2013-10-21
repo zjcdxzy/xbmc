@@ -106,6 +106,8 @@ CWinEventsOSX   g_osx_events;
   [self setDelegate:self];
   
   [self setAcceptsMouseMovedEvents:YES];
+  
+  g_application.m_AppFocused = true;
 
   return self;
 }
@@ -125,6 +127,7 @@ CWinEventsOSX   g_osx_events;
 - (void)windowDidExpose:(NSNotification *)aNotification
 {
   NSLog(@"windowDidExpose");
+  g_application.m_AppFocused = true;
 }
 
 - (void)windowDidMove:(NSNotification *)aNotification
@@ -170,267 +173,97 @@ CWinEventsOSX   g_osx_events;
 - (void)windowDidMiniaturize:(NSNotification *)aNotification
 {
   NSLog(@"windowDidMiniaturize");
-  //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_MINIMIZED, 0, 0);
+  g_application.m_AppFocused = false;
 }
 
 - (void)windowDidDeminiaturize:(NSNotification *)aNotification
 {
   NSLog(@"windowDidDeminiaturize");
-  //SDL_SendWindowEvent(_data->window, SDL_WINDOWEVENT_RESTORED, 0, 0);
+  g_application.m_AppFocused = true;
 }
 
 - (void)windowDidBecomeKey:(NSNotification *)aNotification
 {
   NSLog(@"windowDidBecomeKey");
+
+  g_application.m_AppFocused = true;
   g_osx_events.EnableInput();
 }
 
 - (void)windowDidResignKey:(NSNotification *)aNotification
 {
   NSLog(@"windowDidResignKey");
-  
+
+  g_application.m_AppFocused = false;
   g_osx_events.DisableInput();
 }
 
-/*
+
 -(void) mouseDown:(NSEvent *) theEvent
 {
   NSLog(@"mouseDown");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-
-  newEvent.type = XBMC_MOUSEBUTTONDOWN;
-  newEvent.button.button = XBMC_BUTTON_LEFT;
-  newEvent.button.state = XBMC_PRESSED;
-  newEvent.button.type = XBMC_MOUSEBUTTONDOWN;
-  newEvent.button.which = 0;
-  newEvent.button.x = location.x;
-  newEvent.button.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) rightMouseDown:(NSEvent *) theEvent
 {
   NSLog(@"rightMouseDown");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-  
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEBUTTONDOWN;
-  newEvent.button.button = XBMC_BUTTON_RIGHT;
-  newEvent.button.state = XBMC_PRESSED;
-  newEvent.button.type = XBMC_MOUSEBUTTONDOWN;
-  newEvent.button.which = 0;
-  newEvent.button.x = location.x;
-  newEvent.button.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) otherMouseDown:(NSEvent *) theEvent
 {
   NSLog(@"otherMouseDown");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-  
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEBUTTONDOWN;
-  newEvent.button.button = XBMC_BUTTON_MIDDLE;
-  newEvent.button.state = XBMC_PRESSED;
-  newEvent.button.type = XBMC_MOUSEBUTTONDOWN;
-  newEvent.button.which = 0;
-  newEvent.button.x = location.x;
-  newEvent.button.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) mouseUp:(NSEvent *) theEvent
 {
   NSLog(@"mouseUp");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-  
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEBUTTONUP;
-  newEvent.button.button = XBMC_BUTTON_LEFT;
-  newEvent.button.state = XBMC_RELEASED;
-  newEvent.button.type = XBMC_MOUSEBUTTONUP;
-  newEvent.button.which = 0;
-  newEvent.button.x = location.x;
-  newEvent.button.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) rightMouseUp:(NSEvent *) theEvent
 {
   NSLog(@"rightMouseUp");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-    
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEBUTTONUP;
-  newEvent.button.button = XBMC_BUTTON_RIGHT;
-  newEvent.button.state = XBMC_RELEASED;
-  newEvent.button.type = XBMC_MOUSEBUTTONUP;
-  newEvent.button.which = 0;
-  newEvent.button.x = location.x;
-  newEvent.button.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) otherMouseUp:(NSEvent *) theEvent
 {
   NSLog(@"otherMouseUp");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-  
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEBUTTONUP;
-  newEvent.button.button = XBMC_BUTTON_MIDDLE;
-  newEvent.button.state = XBMC_RELEASED;
-  newEvent.button.type = XBMC_MOUSEBUTTONUP;
-  newEvent.button.which = 0;
-  newEvent.button.x = location.x;
-  newEvent.button.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) mouseMoved:(NSEvent *) theEvent
 {
   //NSLog(@"mouseMoved");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-  
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEMOTION;
-  newEvent.motion.type = XBMC_MOUSEMOTION;
-  newEvent.motion.xrel = 0; //CGEventGetIntegerValueField(event, kCGMouseEventDeltaX);
-  newEvent.motion.yrel = 0; //CGEventGetIntegerValueField(event, kCGMouseEventDeltaY);
-  newEvent.motion.state = 0;
-  newEvent.motion.which = 0;
-  newEvent.motion.x = location.x;
-  newEvent.motion.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) mouseDragged:(NSEvent *) theEvent
 {
   NSLog(@"mouseDragged");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-  
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEMOTION;
-  newEvent.motion.type = XBMC_MOUSEMOTION;
-  newEvent.motion.xrel = 0; //CGEventGetIntegerValueField(event, kCGMouseEventDeltaX);
-  newEvent.motion.yrel = 0; //CGEventGetIntegerValueField(event, kCGMouseEventDeltaY);
-  newEvent.motion.state = 0;
-  newEvent.motion.which = 0;
-  newEvent.motion.x = location.x;
-  newEvent.motion.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) rightMouseDragged:(NSEvent *) theEvent
 {
   NSLog(@"rightMouseDragged");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-  
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEMOTION;
-  newEvent.motion.type = XBMC_MOUSEMOTION;
-  newEvent.motion.xrel = 0; //C CGEventGetIntegerValueField(event, kCGMouseEventDeltaX);
-  newEvent.motion.yrel =  0; //CCGEventGetIntegerValueField(event, kCGMouseEventDeltaY);
-  newEvent.motion.state = 0;
-  newEvent.motion.which = 0;
-  newEvent.motion.x = location.x;
-  newEvent.motion.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) otherMouseDragged:(NSEvent *) theEvent
 {
   NSLog(@"otherMouseDragged");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-  
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEMOTION;
-  newEvent.motion.type = XBMC_MOUSEMOTION;
-  newEvent.motion.xrel =  0; //CCGEventGetIntegerValueField(event, kCGMouseEventDeltaX);
-  newEvent.motion.yrel =  0; //CCGEventGetIntegerValueField(event, kCGMouseEventDeltaY);
-  newEvent.motion.state = 0;
-  newEvent.motion.which = 0;
-  newEvent.motion.x = location.x;
-  newEvent.motion.y = location.y;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) scrollWheel:(NSEvent *) theEvent
 {
   NSLog(@"scrollWheel");
-  XBMC_Event newEvent;
-  memset(&newEvent, 0, sizeof(newEvent));
-  
-  // The incoming mouse position.
-  NSPoint location = [theEvent locationInWindow];
-  // cocoa world is upside down ...
-  location.y = g_Windowing.FlipY(location.y);
-  
-  newEvent.type = XBMC_MOUSEBUTTONDOWN;
-  newEvent.button.state = XBMC_PRESSED;
-  newEvent.button.x = location.x;
-  newEvent.button.y = location.y;
-  newEvent.button.which = 0;
-  newEvent.button.type = XBMC_MOUSEBUTTONDOWN;
-  //newEvent.button.button = CGEventGetIntegerValueField(event, kCGScrollWheelEventDeltaAxis1) > 0 ? XBMC_BUTTON_WHEELUP : XBMC_BUTTON_WHEELDOWN;
-  m_windowData->winEvents->MessagePush(&newEvent);
-  newEvent.type = XBMC_MOUSEBUTTONUP;
-  newEvent.button.state = XBMC_RELEASED;
-  m_windowData->winEvents->MessagePush(&newEvent);
+  g_osx_events.HandleInputEvent(theEvent);
 }
-*/
 
 @end
 

@@ -546,7 +546,7 @@ void CWinEventsOSX::enableInputEvents()
   disableInputEvents();// allow only one registration at a time
   
   // Create an event tap. We are interested in mouse and keyboard events.
-  eventMask = NSLeftMouseDownMask |
+  eventMask = /*NSLeftMouseDownMask |
               NSLeftMouseUpMask |
               NSRightMouseDownMask |
               NSRightMouseUpMask |
@@ -556,7 +556,7 @@ void CWinEventsOSX::enableInputEvents()
               NSOtherMouseUpMask |
               NSOtherMouseDraggedMask |
               NSMouseMovedMask |
-              NSScrollWheelMask |
+              NSScrollWheelMask |*/
               NSKeyDownMask |
               NSKeyUpMask;
   
@@ -614,5 +614,12 @@ void CWinEventsOSX::disableHotKeyTap()
   mRunLoopSource = NULL;
   mHotKeysEnabled = false;
 }
+
+void CWinEventsOSX::HandleInputEvent(void *event)
+{
+  if(event && mLocalMonitorId != nil)
+    InputEventHandler((NSEvent *)event);
+}
+
 
 

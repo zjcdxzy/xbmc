@@ -39,6 +39,7 @@ public:
   bool AreHotKeysEnabled(){return mHotKeysEnabled;}
   void EnableInput();
   void DisableInput();
+  void HandleInputEvent(void *event);
 
 private:
   
