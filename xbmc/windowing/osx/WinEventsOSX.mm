@@ -152,7 +152,7 @@ NSEvent* InputEventHandler(NSEvent *nsevent);
 // and you WILL lose all key control :)
 CGEventRef HotKeyEventHandler(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon)
 {
-  bool passEvent = true;
+  bool passEvent = false;
   CWinEventsOSX *winEvents = (CWinEventsOSX *)refcon;
   XBMC_Event newEvent;
   memset(&newEvent, 0, sizeof(newEvent));
@@ -420,12 +420,8 @@ NSEvent* InputEventHandler(NSEvent *nsevent)
       newEvent.key.type = XBMC_KEYUP;
       newEvent.key.which = 0;
       newEvent.key.keysym.mod = OsxMod2XbmcMod(CGEventGetFlags(event));
-
-      // always allow task switching - so pass all events with command pressed up
-      if (CGEventGetFlags(event) & kCGEventFlagMaskCommand)
-        passEvent = true;
-
       winEvents->MessagePush(&newEvent);
+      passEvent = false;
       break;
     case kCGEventKeyDown:     
       keycode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
@@ -447,6 +443,7 @@ NSEvent* InputEventHandler(NSEvent *nsevent)
       {
         winEvents->MessagePush(&newEvent);
       }
+      passEvent = false;
       
       break;
     default:
@@ -465,12 +462,15 @@ CWinEventsOSX::CWinEventsOSX()
   mTapVolumeKeys = false;// we don't tap the volume keys - they control system volume
   mHotKeysEnabled = false;
   mLocalMonitorId = nil;
+  m_TapThread = new CThread(this, "OSXEventTapThread");
+  //enableHotKeyTap();//disabled for now
 }
 
 CWinEventsOSX::~CWinEventsOSX()
 {
-  disableHotKeyTap();
+  //disableHotKeyTap();
   disableInputEvents();
+  delete m_TapThread;
 }
 
 static CCriticalSection g_inputCond;
@@ -479,13 +479,13 @@ static std::list<XBMC_Event> events;
 
 void CWinEventsOSX::EnableInput()
 {
-  enableHotKeyTap();
+  SetHotKeysEnabled(true);
   enableInputEvents();  
 }
 
 void CWinEventsOSX::DisableInput()
 {
-  disableHotKeyTap();
+  SetHotKeysEnabled(false);
   disableInputEvents();
 }
 
@@ -526,18 +526,37 @@ size_t CWinEventsOSX::GetQueueSize()
   return events.size();
 }
 
-/*
- //TODO from hotkeycontroller - tapping events in its own thread?
-void CWinEventsOSX::eventTapThread()
+
+ // from hotkeycontroller - tapping events in its own thread
+void CWinEventsOSX::Run()
 {
   mRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorSystemDefault, (CFMachPortRef)mEventTap, 0);
-  CFRunLoopAddSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource, kCFRunLoopCommonModes);
+  mRunLoop = CFRunLoopGetCurrent();
+  CFRunLoopAddSource((CFRunLoopRef)mRunLoop, (CFRunLoopSourceRef)mRunLoopSource, kCFRunLoopCommonModes);
   // Enable the event tap.
   CGEventTapEnable((CFMachPortRef)mEventTap, TRUE);
-  
+
+  CLog::Log(LOGDEBUG, "EventTap enabled...");
   CFRunLoopRun();
-  disableTap(); 
-}*/
+  CLog::Log(LOGDEBUG, "EventTap disabled...");
+  
+  SetHotKeysEnabled(false);
+
+  if (mEventTap)
+    CGEventTapEnable((CFMachPortRef)mEventTap, FALSE);
+
+  if (mRunLoopSource)
+  {
+    CFRunLoopRemoveSource((CFRunLoopRef)mRunLoop, (CFRunLoopSourceRef)mRunLoopSource, kCFRunLoopCommonModes);
+    CFRelease((CFRunLoopSourceRef)mRunLoopSource);
+  }
+  mRunLoopSource = NULL;
+  
+  if (mEventTap)
+    CFRelease((CFMachPortRef)mEventTap);
+  mEventTap = NULL;
+  
+}
 
 void CWinEventsOSX::enableInputEvents()
 {
@@ -568,8 +587,8 @@ void CWinEventsOSX::enableInputEvents()
 
 void CWinEventsOSX::enableHotKeyTap()
 {
-  return; // FIXME!!! this one b0rkes all other handlers *grrr*
-  if (!mHotKeysEnabled)
+  disableHotKeyTap();
+  if (!m_TapThread->IsRunning())
   {
     // Create an event tap. We are interested hot key events and mouse move events.
     // tap former hotkeycontroller stuff   
@@ -579,17 +598,8 @@ void CWinEventsOSX::enableHotKeyTap()
                                    eventMask, HotKeyEventHandler, this);
     if (mEventTap != NULL)
     {
-      // Create a run loop source.
-      mRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, (CFMachPortRef)mEventTap, 0); 
-      // Add to the current run loop.
-      CFRunLoopAddSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource,
-                         kCFRunLoopCommonModes);
-      CFRelease(mRunLoopSource);
-      
-      // Enable the event tap.
-      CGEventTapEnable((CFMachPortRef)mEventTap, true);
-      CFRelease((CFMachPortRef)mEventTap);
-      mHotKeysEnabled = true;
+      m_TapThread->Create();
+      SetHotKeysEnabled(true);
     }
   }
 }
@@ -605,14 +615,12 @@ void CWinEventsOSX::disableInputEvents()
 void CWinEventsOSX::disableHotKeyTap()
 {  
   // Disable the event tap.
-/*  if (mEventTap)
-    CGEventTapEnable((CFMachPortRef)mEventTap, FALSE);*/
-
-  mEventTap = NULL;
-/*  if (mRunLoopSource)
-    CFRunLoopRemoveSource(CFRunLoopGetCurrent(), (CFRunLoopSourceRef)mRunLoopSource, kCFRunLoopCommonModes);*/
-  mRunLoopSource = NULL;
-  mHotKeysEnabled = false;
+  if (mRunLoopSource)
+  {
+    CFRunLoopStop((CFRunLoopRef)mRunLoop);
+    m_TapThread->StopThread(true);  
+  }  
+  SetHotKeysEnabled(false);
 }
 
 void CWinEventsOSX::HandleInputEvent(void *event)

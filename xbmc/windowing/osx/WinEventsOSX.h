@@ -21,8 +21,9 @@
  */
 
 #include "windowing/WinEvents.h"
+#include "threads/Thread.h"
 
-class CWinEventsOSX : public IWinEvents
+class CWinEventsOSX : public IWinEvents, public IRunnable
 {
 public:
   CWinEventsOSX();
@@ -41,14 +42,18 @@ public:
   void DisableInput();
   void HandleInputEvent(void *event);
 
+  virtual void Run();
+  
 private:
   
   void *mRunLoopSource;
+  void *mRunLoop;
   void *mEventTap;
   void *mLocalMonitorId;
   bool mHotKeysEnabled;
   bool mTapVolumeKeys;
   bool mTapPowerKey;
+  CThread *m_TapThread;
   
   void enableHotKeyTap();
   void disableHotKeyTap();
