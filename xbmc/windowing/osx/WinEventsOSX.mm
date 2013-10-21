@@ -464,6 +464,7 @@ CWinEventsOSX::CWinEventsOSX()
   mTapPowerKey = true;// we tap the power key (but can't prevent the os from evaluating is aswell
   mTapVolumeKeys = false;// we don't tap the volume keys - they control system volume
   mHotKeysEnabled = false;
+  mLocalMonitorId = nil;
 }
 
 CWinEventsOSX::~CWinEventsOSX()
@@ -541,6 +542,8 @@ void CWinEventsOSX::eventTapThread()
 void CWinEventsOSX::enableInputEvents()
 {
   NSEventMask        eventMask;
+
+  disableInputEvents();// allow only one registration at a time
   
   // Create an event tap. We are interested in mouse and keyboard events.
   eventMask = NSLeftMouseDownMask |
@@ -594,7 +597,8 @@ void CWinEventsOSX::enableHotKeyTap()
 void CWinEventsOSX::disableInputEvents()
 {
   // Disable the local Monitor
-  [NSEvent removeMonitor:(id)mLocalMonitorId];
+  if (mLocalMonitorId != nil)
+    [NSEvent removeMonitor:(id)mLocalMonitorId];
   mLocalMonitorId = nil;
 }
 
