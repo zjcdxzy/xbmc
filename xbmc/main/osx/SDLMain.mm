@@ -257,14 +257,10 @@ static void setupWindowMenu(void)
 
 - (void) applicationWillResignActive:(NSNotification *) note
 {
-  if (g_Windowing.GetEvents())
-    g_Windowing.GetEvents()->SetHotKeysEnabled(false);
 }
 
 - (void) applicationWillBecomeActive:(NSNotification *) note
 {
-  if (g_Windowing.GetEvents() != NULL)
-    g_Windowing.GetEvents()->SetHotKeysEnabled(true);
 }
 
 // To use Cocoa on secondary POSIX threads, your application must first detach
