@@ -96,13 +96,19 @@ UniChar OsxKey2XbmcKey(UniChar character)
   switch(character)
   {
     case 0x1c:
+    case 0xf702:
       return XBMCK_LEFT;
     case 0x1d:
+    case 0xf703:
       return XBMCK_RIGHT;
     case 0x1e:
+    case 0xf700:
       return XBMCK_UP;
     case 0x1f:
+    case 0xf701:
       return XBMCK_DOWN;
+    case 0x7f:
+      return XBMCK_BACKSPACE;
     default:
       return character;
   }
@@ -308,7 +314,7 @@ NSEvent* InputEventHandler(NSEvent *nsevent)
   location.y = g_Windowing.FlipY(location.y);
   
   UniChar unicodeString[10];
-  UniCharCount actualStringLength;
+  UniCharCount actualStringLength = 10;
   CGKeyCode keycode;
   XBMC_Event newEvent;
   memset(&newEvent, 0, sizeof(newEvent));
@@ -408,7 +414,10 @@ NSEvent* InputEventHandler(NSEvent *nsevent)
     case kCGEventKeyUp:
       keycode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
       CGEventKeyboardGetUnicodeString(event, sizeof(unicodeString) / sizeof(*unicodeString), &actualStringLength, unicodeString);
-      unicodeString[0] = OsxKey2XbmcKey(unicodeString[0]);
+      if ( actualStringLength > 0 )
+          unicodeString[0] = OsxKey2XbmcKey(unicodeString[0]);
+      else
+          unicodeString[0] = OsxKey2XbmcKey([[nsevent characters] characterAtIndex:0]);
 
       newEvent.type = XBMC_KEYUP;
       newEvent.key.keysym.scancode = keycode;
@@ -426,7 +435,10 @@ NSEvent* InputEventHandler(NSEvent *nsevent)
     case kCGEventKeyDown:     
       keycode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
       CGEventKeyboardGetUnicodeString(event, sizeof(unicodeString) / sizeof(*unicodeString), &actualStringLength, unicodeString);
-      unicodeString[0] = OsxKey2XbmcKey(unicodeString[0]);
+      if ( actualStringLength > 0 )
+        unicodeString[0] = OsxKey2XbmcKey(unicodeString[0]);
+      else
+        unicodeString[0] = OsxKey2XbmcKey([[nsevent characters] characterAtIndex:0]);
 
       newEvent.type = XBMC_KEYDOWN;
       newEvent.key.keysym.scancode = keycode;
