@@ -201,68 +201,90 @@ CWinEventsOSX   g_osx_events;
 
 -(void) mouseDown:(NSEvent *) theEvent
 {
-  NSLog(@"mouseDown");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"mouseDown");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) rightMouseDown:(NSEvent *) theEvent
 {
-  NSLog(@"rightMouseDown");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"rightMouseDown");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) otherMouseDown:(NSEvent *) theEvent
 {
-  NSLog(@"otherMouseDown");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"otherMouseDown");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) mouseUp:(NSEvent *) theEvent
 {
-  NSLog(@"mouseUp");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"mouseUp");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) rightMouseUp:(NSEvent *) theEvent
 {
-  NSLog(@"rightMouseUp");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"rightMouseUp");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) otherMouseUp:(NSEvent *) theEvent
 {
-  NSLog(@"otherMouseUp");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"otherMouseUp");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) mouseMoved:(NSEvent *) theEvent
 {
   //NSLog(@"mouseMoved");
-  g_osx_events.HandleInputEvent(theEvent);
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) mouseDragged:(NSEvent *) theEvent
 {
-  NSLog(@"mouseDragged");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"mouseDragged");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) rightMouseDragged:(NSEvent *) theEvent
 {
-  NSLog(@"rightMouseDragged");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"rightMouseDragged");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) otherMouseDragged:(NSEvent *) theEvent
 {
-  NSLog(@"otherMouseDragged");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"otherMouseDragged");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 -(void) scrollWheel:(NSEvent *) theEvent
 {
-  NSLog(@"scrollWheel");
-  g_osx_events.HandleInputEvent(theEvent);
+  //NSLog(@"scrollWheel");
+  // if it is hidden - mouse is belonging to us!
+  if (Cocoa_IsMouseHidden())
+    g_osx_events.HandleInputEvent(theEvent);
 }
 
 @end
@@ -326,10 +348,7 @@ CWinEventsOSX   g_osx_events;
   [glcontext makeCurrentContext];
   
   
-  trackingArea = [[NSTrackingArea alloc] initWithRect:frameRect
-                                                options: (NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved | NSTrackingActiveInKeyWindow )
-                                                  owner:self userInfo:nil];
-  [self addTrackingArea:trackingArea];
+  [self updateTrackingAreas];
 
   return( self );
 }
@@ -822,7 +841,7 @@ void fadeInDisplay(NSScreen *theScreen, double fadeTime)
   [curtainWindow close];
   curtainWindow = nil;
 
-  [NSCursor unhide];
+  //Cocoa_ShowMouse();
 }
 
 void fadeOutDisplay(NSScreen *theScreen, double fadeTime)
@@ -830,7 +849,7 @@ void fadeOutDisplay(NSScreen *theScreen, double fadeTime)
   int     fadeSteps     = 100;
   double  fadeInterval  = (fadeTime / (double) fadeSteps);
 
-  [NSCursor hide];
+  Cocoa_HideMouse();
 
   curtainWindow = [[NSWindow alloc]
     initWithContentRect:[theScreen frame]
@@ -1116,6 +1135,26 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
   
   [appWindow makeKeyWindow];
   
+  // check if we have to hide the mouse after creating the window
+  // in case we start windowed with the mouse over the window
+  // the tracking area mouseenter, mouseexit are not called
+  // so we have to decide here to initial hide the os cursor
+  NSPoint mouse = [NSEvent mouseLocation];
+  if ([NSWindow windowNumberAtPoint:mouse belowWindowWithWindowNumber:0] == appWindow.windowNumber) 
+  {
+    Cocoa_HideMouse();
+    // warp XBMC cursor to our position
+    NSPoint locationInWindowCoords = [appWindow mouseLocationOutsideOfEventStream];
+    XBMC_Event newEvent;
+    memset(&newEvent, 0, sizeof(newEvent));
+    newEvent.type = XBMC_MOUSEMOTION;
+    newEvent.motion.type =  XBMC_MOUSEMOTION;
+    newEvent.motion.x =  locationInWindowCoords.x;
+    newEvent.motion.y =  locationInWindowCoords.y;
+    g_application.OnEvent(newEvent);
+
+  }
+
   [pool release];
 
   return true;
@@ -1276,7 +1315,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
     }
 
     // Hide the mouse.
-    [NSCursor hide];
+    Cocoa_HideMouse();
 
   }
   else
@@ -1284,7 +1323,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
     // Windowed Mode
     // exit fullscreen
 
-    [NSCursor unhide];
+    //Cocoa_ShowMouse();
 
     if (CSettings::Get().GetBool("videoscreen.fakefullscreen"))
     {

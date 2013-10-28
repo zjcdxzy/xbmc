@@ -53,6 +53,7 @@ extern "C"
   //
   void Cocoa_HideMouse();
   void Cocoa_ShowMouse();
+  bool Cocoa_IsMouseHidden();
   void Cocoa_HideDock();
 
   // Version.
