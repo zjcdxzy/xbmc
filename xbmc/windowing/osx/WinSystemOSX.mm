@@ -77,6 +77,7 @@ CWinEventsOSX   g_osx_events;
 -(void) windowDidDeminiaturize:(NSNotification *) aNotification;
 -(void) windowDidBecomeKey:(NSNotification *) aNotification;
 -(void) windowDidResignKey:(NSNotification *) aNotification;
+-(void) windowDidChangeScreen:(NSNotification *)notification;
 
 /* Window event handling */
 /*
@@ -184,6 +185,15 @@ CWinEventsOSX   g_osx_events;
   g_application.OnEvent(newEvent);
   g_windowManager.MarkDirty();
 }
+
+-(void)windowDidChangeScreen:(NSNotification *)notification
+{
+  // user has moved the window to a
+  // different screen
+  if (!g_Windowing.IsFullScreen())
+    g_Windowing.SetMovedToOtherScreen(true);
+}
+
 
 - (void)windowDidMiniaturize:(NSNotification *)aNotification
 {
@@ -1236,9 +1246,11 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   if (m_lastDisplayNr == -1)
     m_lastDisplayNr = res.iScreen;
 
-  GLView *view = [(NSWindow *)m_appWindow contentView];
   NSWindow *window = (NSWindow *)m_appWindow;
   GLView *view = [window contentView];
+  
+  if (m_lastDisplayNr == -1)
+    m_lastDisplayNr = res.iScreen;
 
   // Fade to black to hide resolution-switching flicker and garbage.
   //CGDisplayFadeReservationToken fade_token = DisplayFadeToBlack(needtoshowme);
@@ -1950,6 +1962,22 @@ int CWinSystemOSX::GetNumScreens()
 }
 
 int CWinSystemOSX::GetCurrentScreen()
+{
+  
+  // if user hasn't moved us in windowed mode - return the
+  // last display we were fullscreened at
+  if (!m_movedToOtherScreen)
+    return m_lastDisplayNr;
+
+  if (m_appWindow)
+  {
+    m_movedToOtherScreen = false;
+    return GetDisplayIndex(GetDisplayIDFromScreen( [(NSWindow *)m_appWindow screen]));
+  }
+  return 0;
+}
+
+void CWinSystemOSX::CheckDisplayChanging(u_int32_t flags)
 {
   NSOpenGLContext* context = [NSOpenGLContext currentContext];
   

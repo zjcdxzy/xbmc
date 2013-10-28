@@ -77,6 +77,8 @@ public:
   void        StartLostDeviceTimer();
   void        StopLostDeviceTimer();
 
+  
+  void         SetMovedToOtherScreen(bool moved) { m_movedToOtherScreen = moved; }
   void         CheckDisplayChanging(u_int32_t flags);
   
   void*        GetCGLContextObj();
