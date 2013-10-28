@@ -64,6 +64,9 @@ CWinEventsOSX   g_osx_events;
 {
 }
 
++(void) SetMenuBarVisible;
++(void) SetMenuBarInvisible;
+
 -(id) initWithContentRect:(NSRect)box styleMask:(uint)style;
 -(void) dealloc;
 -(BOOL) windowShouldClose:(id) sender;
@@ -98,6 +101,18 @@ CWinEventsOSX   g_osx_events;
 @end
 
 @implementation Window
+
++(void) SetMenuBarVisible
+{
+  NSApplicationPresentationOptions options = NSApplicationPresentationDefault;
+  [NSApp setPresentationOptions:options];
+}
+
++(void) SetMenuBarInvisible
+{
+  NSApplicationPresentationOptions options = NSApplicationPresentationHideMenuBar | NSApplicationPresentationHideDock;
+  [NSApp setPresentationOptions:options];
+}
 
 -(id) initWithContentRect:(NSRect)box styleMask:(uint)style
 {
@@ -677,7 +692,11 @@ void SetMenuBarVisible(bool visible)
 
   @try
   {
-    [NSApp setPresentationOptions:options];
+    if (visible)
+      [Window performSelectorOnMainThread:@selector(SetMenuBarVisible) withObject:nil waitUntilDone:TRUE];
+    else
+      [Window performSelectorOnMainThread:@selector(SetMenuBarInvisible) withObject:nil waitUntilDone:TRUE];
+//    [NSApp setPresentationOptions:options];
   }
   
   @catch(NSException * exception)
