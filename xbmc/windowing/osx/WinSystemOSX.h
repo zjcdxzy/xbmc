@@ -44,6 +44,7 @@ public:
   virtual bool DestroyWindowSystem();
   virtual bool CreateNewWindow(const CStdString& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction);
   virtual bool DestroyWindow();
+  bool         DestroyWindowInternal();
   virtual bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop);
   bool         ResizeWindowInternal(int newWidth, int newHeight, int newLeft, int newTop, void *additional);
   virtual bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays);
@@ -80,6 +81,8 @@ public:
   
   void         SetMovedToOtherScreen(bool moved) { m_movedToOtherScreen = moved; }
   void         CheckDisplayChanging(u_int32_t flags);
+  void         SetFullscreenWillToggle(bool toggle){ m_fullscreenWillToggle = toggle; }
+  bool         GetFullscreenWillToggle(){ return m_fullscreenWillToggle; }
   
   void*        GetCGLContextObj();
   CWinEventsOSX* GetEvents();
@@ -107,6 +110,7 @@ protected:
   bool                         m_use_system_screensaver;
   bool                         m_can_display_switch;
   bool                         m_movedToOtherScreen;
+  bool                         m_fullscreenWillToggle;
   int                          m_lastDisplayNr;
   void                        *m_windowDidMove;
   void                        *m_windowDidReSize;

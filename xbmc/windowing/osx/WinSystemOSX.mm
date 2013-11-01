@@ -43,11 +43,13 @@
 #include "windowing/WindowingFactory.h"
 #include "input/XBMC_vkeys.h"
 #include "xbmc/input/MouseStat.h"
+#include "ApplicationMessenger.h"
 #undef BOOL
 
 #import "osx/OSXTextInputResponder.h"
 
 #import <Cocoa/Cocoa.h>
+#import <Foundation/NSException.h>
 #import <QuartzCore/QuartzCore.h>
 #import <IOKit/pwr_mgt/IOPMLib.h>
 #import <IOKit/graphics/IOGraphicsLib.h>
@@ -56,7 +58,28 @@
 // turn off deprecated warning spew.
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+
+// for sdk 10.6 we need to define something
+#if !defined(NSAppKitVersionNumber10_7)
+#define NSAppKitVersionNumber10_7 1138
+#endif
+
+#if !defined(NSWindowCollectionBehaviorFullScreenPrimary)
+#define NSWindowCollectionBehaviorFullScreenPrimary (1 << 7)
+#endif
+
 CWinEventsOSX   g_osx_events;
+
+// check if we can use the native fullscreen
+// methods which are available on 10.7 and later
+bool UseNativeFullscreen()
+{
+  static int useNativeFullscreen = -1;
+  if (useNativeFullscreen == -1)
+    useNativeFullscreen = NSAppKitVersionNumber >= NSAppKitVersionNumber10_7 ? 1 : 0;
+  return useNativeFullscreen == 1;
+}
+
 
 //@class Window;
 
@@ -77,6 +100,10 @@ CWinEventsOSX   g_osx_events;
 -(void) windowDidDeminiaturize:(NSNotification *) aNotification;
 -(void) windowDidBecomeKey:(NSNotification *) aNotification;
 -(void) windowDidResignKey:(NSNotification *) aNotification;
+-(void) windowDidEnterFullScreen: (NSNotification*)pNotification;
+-(void) windowWillEnterFullScreen: (NSNotification*)pNotification;
+-(void) windowDidExitFullScreen: (NSNotification*)pNotification;
+-(void) windowWillExitFullScreen: (NSNotification*)pNotification;
 -(void) windowDidChangeScreen:(NSNotification *)notification;
 
 /* Window event handling */
@@ -182,7 +209,12 @@ CWinEventsOSX   g_osx_events;
   newEvent.type = XBMC_VIDEORESIZE;
   newEvent.resize.w = (int)rect.size.width;
   newEvent.resize.h = (int)rect.size.height;
-  g_application.OnEvent(newEvent);
+
+  // check for valid sizes cause in some cases
+  // we are hit during fullscreen transition from osx
+  // and might be technically "zero" sized
+  if (newEvent.resize.w != 0 && newEvent.resize.h != 0)
+    g_application.OnEvent(newEvent);
   g_windowManager.MarkDirty();
 }
 
@@ -194,6 +226,64 @@ CWinEventsOSX   g_osx_events;
     g_Windowing.SetMovedToOtherScreen(true);
 }
 
+-(void)windowDidEnterFullScreen: (NSNotification*)pNotification
+{
+}
+
+
+-(void)windowWillEnterFullScreen: (NSNotification*)pNotification
+{
+  if (!UseNativeFullscreen())
+    return; // sanity
+  
+  // if osx is the issuer of the toggle
+  // call XBMCs toggle function
+  if (!g_Windowing.GetFullscreenWillToggle())
+  {
+    // indicate that we are toggling
+    // flag will be reset in SetFullscreen once its
+    // called from XBMCs gui thread
+    g_Windowing.SetFullscreenWillToggle(true);
+    CApplicationMessenger::Get().ToggleFullScreenRoot();
+  }
+  else
+  {
+    // in this case we are just called because
+    // of xbmc did a toggle - just reset the flag
+    // we don't need to do anything else
+    g_Windowing.SetFullscreenWillToggle(false);
+  }
+}
+
+
+-(void)windowDidExitFullScreen: (NSNotification*)pNotification
+{
+  if (!UseNativeFullscreen())
+    return; // sanity
+  
+  // if osx is the issuer of the toggle
+  // call XBMCs toggle function
+  if (!g_Windowing.GetFullscreenWillToggle())
+  {
+    // indicate that we are toggling
+    // flag will be reset in SetFullscreen once its
+    // called from XBMCs gui thread
+    g_Windowing.SetFullscreenWillToggle(true);
+    CApplicationMessenger::Get().ToggleFullScreenRoot();
+  }
+  else
+  {
+    // in this case we are just called because
+    // of xbmc did a toggle - just reset the flag
+    // we don't need to do anything else
+    g_Windowing.SetFullscreenWillToggle(false);
+  }
+}
+
+-(void)windowWillExitFullScreen: (NSNotification*)pNotification
+{
+
+}
 
 - (void)windowDidMiniaturize:(NSNotification *)aNotification
 {
@@ -682,10 +772,14 @@ double GetDictionaryDouble(CFDictionaryRef theDict, const void* key)
                 CFNumberGetValue(numRef, kCFNumberDoubleType, &value);
         return value;
 }
-
 //---------------------------------------------------------------------------------
+
 void SetMenuBarVisible(bool visible)
 {
+  // native fullscreen stuff handles this for us...
+  if ( UseNativeFullscreen() )
+    return;
+
   if( [NSApplication sharedApplication] == nil)
     printf("[NSApplication sharedApplication] nil %d\n" , visible);
   
@@ -1035,6 +1129,7 @@ CWinSystemOSX::CWinSystemOSX() : CWinSystemBase(), m_lostDeviceTimer(this)
   m_can_display_switch = (floor(NSAppKitVersionNumber) >= 949);
   m_lastDisplayNr = -1;
   m_movedToOtherScreen = false;
+  m_fullscreenWillToggle = false;
 }
 
 CWinSystemOSX::~CWinSystemOSX()
@@ -1103,7 +1198,7 @@ bool CWinSystemOSX::DestroyWindowSystem()
   if (m_can_display_switch)
     CGDisplayRemoveReconfigurationCallback(DisplayReconfigured, (void*)this);
 
-  DestroyWindow();
+  DestroyWindowInternal();
   
   if(m_glView)
   {
@@ -1130,7 +1225,10 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
   m_name        = name;
 
   NSUInteger windowStyleMask;
-  if( fullScreen )
+
+  // for native fullscreen we always want to set the
+  // same windowed flags
+  if( fullScreen && !UseNativeFullscreen())
   {
     windowStyleMask = NSBorderlessWindowMask;
   }
@@ -1139,41 +1237,49 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
     windowStyleMask = NSTitledWindowMask|NSResizableWindowMask|NSClosableWindowMask|NSMiniaturizableWindowMask;
   }
   
-  NSWindow *appWindow = [[Window alloc] initWithContentRect:NSMakeRect(0, 0, m_nWidth, m_nHeight) styleMask:windowStyleMask];
-  appWindow.backgroundColor = [NSColor blackColor];
-  NSString *title = [NSString stringWithFormat:@"%s" , m_name.c_str()];
-  appWindow.title = title;
-  [appWindow makeKeyAndOrderFront:nil];
-  [appWindow setOneShot:NO];
+  if (m_appWindow == NULL || !UseNativeFullscreen())
+  {
+    NSWindow *appWindow = [[Window alloc] initWithContentRect:NSMakeRect(0, 0, m_nWidth, m_nHeight) styleMask:windowStyleMask];
+    appWindow.backgroundColor = [NSColor blackColor];
+    NSString *title = [NSString stringWithFormat:@"%s" , m_name.c_str()];
+    appWindow.title = title;
+    [appWindow makeKeyAndOrderFront:nil];
+    [appWindow setOneShot:NO];
+    //if (!fullScreen)
+    {
+      NSWindowCollectionBehavior behavior = [appWindow collectionBehavior];
+      behavior |= NSWindowCollectionBehaviorFullScreenPrimary;
+      [appWindow setCollectionBehavior:behavior];
+    }
+    // create new content view
+    NSRect rect = [appWindow contentRectForFrameRect:[appWindow frame]];
+    
+    // create new view if we don't have one
+    if(!m_glView)
+      m_glView = [[GLView alloc] initWithFrame:rect];
+    contentView = (GLView *)m_glView;
+    
+    // associate with current window
+    [appWindow setContentView: contentView];
+    m_bWindowCreated = true;
+    
+    m_appWindow = appWindow;
+  }
+
+
   
-  // create new content view
-  NSRect rect = [appWindow contentRectForFrameRect:[appWindow frame]];
-  
-  // create new view if we don't have one
-  if(!m_glView)
-    m_glView = [[GLView alloc] initWithFrame:rect];
-  
-  contentView = (GLView *)m_glView;
-  
-  // associate with current window
-  [appWindow setContentView: contentView];
-  
-  m_bWindowCreated = true;
-  
-  m_appWindow = appWindow;
-  
-  [appWindow makeKeyWindow];
+  [(NSWindow *)m_appWindow makeKeyWindow];
   
   // check if we have to hide the mouse after creating the window
   // in case we start windowed with the mouse over the window
   // the tracking area mouseenter, mouseexit are not called
   // so we have to decide here to initial hide the os cursor
   NSPoint mouse = [NSEvent mouseLocation];
-  if ([NSWindow windowNumberAtPoint:mouse belowWindowWithWindowNumber:0] == appWindow.windowNumber) 
+  if ([NSWindow windowNumberAtPoint:mouse belowWindowWithWindowNumber:0] == ((NSWindow *)m_appWindow).windowNumber)
   {
     Cocoa_HideMouse();
     // warp XBMC cursor to our position
-    NSPoint locationInWindowCoords = [appWindow mouseLocationOutsideOfEventStream];
+    NSPoint locationInWindowCoords = [(NSWindow *)m_appWindow mouseLocationOutsideOfEventStream];
     XBMC_Event newEvent;
     memset(&newEvent, 0, sizeof(newEvent));
     newEvent.type = XBMC_MOUSEMOTION;
@@ -1189,21 +1295,33 @@ bool CWinSystemOSX::CreateNewWindow(const CStdString& name, bool fullScreen, RES
   return true;
 }
 
-bool CWinSystemOSX::DestroyWindow()
+bool CWinSystemOSX::DestroyWindowInternal()
 {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  
+
   if(m_appWindow)
   {
     [(NSWindow *)m_appWindow setContentView:nil];
     [(NSWindow *)m_appWindow release];
     m_appWindow = NULL;
   }
-  
+
   m_bWindowCreated = false;
-  
+
   [pool release];
+  
   return true;
+}
+
+bool CWinSystemOSX::DestroyWindow()
+{
+  // when using native fullscreen
+  // we never destroy the window
+  // we reuse it ...
+  if (UseNativeFullscreen())
+    return true;
+
+  return DestroyWindowInternal();
 }
 
 bool CWinSystemOSX::ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop)
@@ -1285,6 +1403,15 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
     }
   }
   
+  // we are toggled by osx fullscreen feature
+  // only resize and reset the toggle flag
+  if (UseNativeFullscreen() && m_fullscreenWillToggle)
+  {
+    ResizeWindow(m_nWidth, m_nHeight, -1, -1);
+    m_fullscreenWillToggle = false;
+    return true;
+  }
+  
   [window setAllowsConcurrentViewDrawing:NO];
 
   if (m_bFullScreen)
@@ -1315,14 +1442,25 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
       
       // ...and the original one beneath it and on the same screen.
       //[[view window] setLevel:NSNormalWindowLevel-1];
-      [window setFrameOrigin:[pScreen frame].origin];
-      [view setFrameOrigin:NSMakePoint(0.0, 0.0)];
+      
+      // old behaviour - set origin to 0,0 when going
+      // to fullscreen - not needed when we use native
+      // fullscreen mode
+      if (!UseNativeFullscreen())
+      {
+        [window setFrameOrigin:[pScreen frame].origin];
+        [view setFrameOrigin:NSMakePoint(0.0, 0.0)];
+      }
       [view setFrameSize:NSMakeSize(m_nWidth, m_nHeight) ];
 
       NSString *title = [NSString stringWithFormat:@"%s" , ""];
       window.title = title;
-      NSUInteger windowStyleMask = NSBorderlessWindowMask;
-      [window setStyleMask:windowStyleMask];
+      
+      if (!UseNativeFullscreen())
+      {
+        NSUInteger windowStyleMask = NSBorderlessWindowMask;
+        [window setStyleMask:windowStyleMask];
+      }
       
       // Hide the menu bar.
       if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay || CDarwinUtils::IsMavericks() )
@@ -1399,6 +1537,18 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   //DisplayFadeFromBlack(fade_token, needtoshowme);
 
   //ShowHideNSWindow([last_view window], needtoshowme);
+
+  // set the toggle flag so that the
+  // native "willenterfullscreen" et al callbacks
+  // know that they are "called" by xbmc and not osx
+  if (UseNativeFullscreen())
+  {
+    m_fullscreenWillToggle = true;
+    // toggle cocoa fullscreen mode
+    if ([(NSWindow *)m_appWindow respondsToSelector:@selector(toggleFullScreen:)])
+      [(NSWindow *)m_appWindow toggleFullScreen:nil];
+  }
+
   // need to make sure SDL tracks any window size changes
   ResizeWindow(m_nWidth, m_nHeight, -1, -1);
   
