@@ -1369,7 +1369,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
       //[window setStyleMask:windowStyleMask];
       
       // Show menubar.
-      if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay)
+      if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay || DarwinIsMavericks())
         SetMenuBarVisible(true);
       
       // Unblank.
@@ -1380,7 +1380,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
     else
     {
       // Show menubar.
-      if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay)
+      if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay || DarwinIsMavericks())
         SetMenuBarVisible(true);
       
       // release displays

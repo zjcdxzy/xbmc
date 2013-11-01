@@ -721,4 +721,19 @@ bool CDarwinUtils::CreateAliasShortcut(const std::string& fromPath, const std::s
   return ret;
 }
 
+bool DarwinIsMavericks()
+{
+  static int isMavericks = -1;
+  
+  // there is no NSAppKitVersionNumber10_9 out there anywhere
+  // so we detect mavericks by one of these newly added app nap
+  // methods - and fix the ugly mouse rect problem which was hitting
+  // us when mavericks came out
+  if (isMavericks == -1)
+  {
+    isMavericks = [NSProcessInfo instancesRespondToSelector:@selector(beginActivityWithOptions:reason:)] == TRUE ? 1 : 0;
+  }
+  return isMavericks == 1;
+}
+
 #endif
