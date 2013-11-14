@@ -32,6 +32,7 @@
 #import <unistd.h>
 
 #import "osx/CocoaInterface.h"
+#import "osx/DarwinUtils.h"
 //hack around problem with xbmc's typedef int BOOL
 // and obj-c's typedef unsigned char BOOL
 #define BOOL XBMC_BOOL 
@@ -479,6 +480,14 @@ int main(int argc, char *argv[])
         gArgv[i] = argv[i];
     gFinderLaunch = NO;
   }
+  
+  // fix open with document/movie - autostart
+  // on mavericks we are not called with "-psn" anymore
+  // as the whole ProcessSerialNumber approach is deprecated
+  // in that case assume finder launch - else
+  // we wouldn't handle documents/movies someone dragged on the app icon
+  if (DarwinIsMavericks())
+    gFinderLaunch = TRUE;
 
   // fix open with document/movie - autostart
   // on mavericks we are not called with "-psn" anymore
