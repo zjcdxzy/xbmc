@@ -261,7 +261,9 @@ bool CNfsConnection::splitUrlIntoExportAndPath(const CURL& url, CStdString &expo
           //handle special case where root is exported
           //in that case we don't want to stripp off to
           //much from the path
-          if( exportPath == "/" )
+          if( exportPath == path )
+            relativePath = "//";
+          else if( exportPath == "/" )
             relativePath = "//" + path.substr(exportPath.length());
           else
             relativePath = "//" + path.substr(exportPath.length()+1);
