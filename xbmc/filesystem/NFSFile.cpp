@@ -258,6 +258,13 @@ bool CNfsConnection::splitUrlIntoExportAndPath(const CURL& url, CStdString &expo
         if(StringUtils::StartsWith(path, *it))
         {
           exportPath = *it;
+          //its possible that StartsWith may not find the correct match first
+          //as an example, if /path/ & and /path/sub/ are exported, but
+          //the user specifies the path /path/subdir/ (from /path/ export).
+          //If the path is longer than the exportpath, make sure / is next.
+          if( (path.length() > exportPath.length()) &&
+              (path.substr(exportPath.length(), 1) != "/"))
+            continue;
           //handle special case where root is exported
           //in that case we don't want to stripp off to
           //much from the path
