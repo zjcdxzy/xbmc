@@ -27,6 +27,10 @@
   #include "Sinks/AESinkAUDIOTRACK.h"
 #elif defined(TARGET_RASPBERRY_PI)
   #include "Sinks/AESinkPi.h"
+#elif defined(TARGET_DARWIN_IOS)
+  #include "Sinks/AESinkDARWINIOS.h"
+#elif defined(TARGET_DARWIN_OSX)
+  #include "Sinks/AESinkDARWINOSX.h"
 #elif defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
   #if defined(HAS_ALSA)
     #include "Sinks/AESinkALSA.h"
@@ -62,6 +66,10 @@ void CAESinkFactory::ParseDevice(std::string &device, std::string &driver)
         driver == "AUDIOTRACK"  ||
 #elif defined(TARGET_RASPBERRY_PI)
         driver == "Pi"          ||
+#elif defined(TARGET_DARWIN_IOS)
+        driver == "DARWINIOS"  ||
+#elif defined(TARGET_DARWIN_OSX)
+        driver == "DARWINOSX"  ||
 #elif defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
   #if defined(HAS_ALSA)
         driver == "ALSA"        ||
@@ -124,6 +132,14 @@ IAESink *CAESinkFactory::Create(std::string &device, AEAudioFormat &desiredForma
   if (driver.empty() || driver == "Pi")
     TRY_SINK(Pi)
 
+#elif defined(TARGET_DARWIN_IOS)
+  if (driver.empty() || driver == "DARWINIOS")
+    TRY_SINK(DARWINIOS)
+
+#elif defined(TARGET_DARWIN_OSX)
+  if (driver.empty() || driver == "DARWINOSX")
+    TRY_SINK(DARWINOSX)
+
 #elif defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
   #if defined(HAS_PULSEAUDIO)
   if (driver.empty() || driver == "PULSE")
@@ -164,6 +180,10 @@ void CAESinkFactory::EnumerateEx(AESinkInfoList &list, bool force)
     ENUMERATE_SINK(AUDIOTRACK, force);
 #elif defined(TARGET_RASPBERRY_PI)
     ENUMERATE_SINK(Pi, force);
+#elif defined(TARGET_DARWIN_IOS)
+    ENUMERATE_SINK(DARWINIOS, force);
+#elif defined(TARGET_DARWIN_OSX)
+    ENUMERATE_SINK(DARWINOSX, force);
 #elif defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
   #if defined(HAS_PULSEAUDIO)
     ENUMERATE_SINK(PULSE, force);
