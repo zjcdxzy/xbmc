@@ -23,7 +23,7 @@
 
 #if defined(TARGET_DARWIN_OSX)
 
-#include "threads/Thread.h"
+#include "threads/Event.h"
 #include <CoreAudio/CoreAudio.h>
 
 #include <list>
@@ -57,7 +57,6 @@ protected:
 
   CEvent m_virtual_format_event;
   CEvent m_physical_format_event;
-
 
   AudioStreamID m_StreamId;
   AudioStreamBasicDescription m_OriginalVirtualFormat;  

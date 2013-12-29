@@ -20,7 +20,7 @@
 
 #include "CoreAudioStream.h"
 
-#include "CoreAudioAEHAL.h"
+#include "CoreAudioHelpers.h"
 #include "utils/log.h"
 #include "utils/StdString.h"
 
