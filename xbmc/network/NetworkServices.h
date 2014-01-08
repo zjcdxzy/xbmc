@@ -21,6 +21,7 @@
 
 #include "system.h"
 #include "settings/lib/ISettingCallback.h"
+#include <vector>
 
 #ifdef HAS_WEB_SERVER
 class CWebServer;
@@ -51,6 +52,7 @@ public:
   bool StopWebserver();
 
   bool StartAirPlayServer();
+  static std::vector<std::pair<std::string, std::string> > LoadAnnouncementFromXml(std::string &macAdr, std::string &model, std::string &srcvers, std::string &features);
   bool IsAirPlayServerRunning();
   bool StopAirPlayServer(bool bWait);
   bool StartAirTunesServer();

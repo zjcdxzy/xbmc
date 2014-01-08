@@ -27,6 +27,8 @@
 #endif
 
 #include "AirTunesServer.h"
+#include "profiles/ProfilesManager.h"
+#include "utils/XBMCTinyXML.h"
 
 #ifdef HAS_AIRPLAY
 #include "network/AirPlayServer.h"
@@ -580,33 +582,109 @@ bool CAirTunesServer::StartServer(int port, bool nonlocal, bool usePassword, con
 
   if (success)
   {
+    CStdString xmlMac;
+    CStdString model;
+    CStdString srcvers;
+    std::vector<std::pair<std::string, std::string> > txt = LoadAnnouncementFromXml(xmlMac, model, srcvers);
+    
     CStdString appName = StringUtils::Format("%s@%s",
                                              m_macAddress.c_str(),
                                              g_infoManager.GetLabel(SYSTEM_FRIENDLY_NAME).c_str());
+    
+    if (xmlMac.length())
+    {
+      StringUtils::Replace(xmlMac, ":","");
+      while (xmlMac.size() < 12)
+      {
+        xmlMac = CStdString("0") + xmlMac;
+      }
+      appName = StringUtils::Format("%s@%s",
+                                    xmlMac.c_str(),
+                                    g_infoManager.GetLabel(SYSTEM_FRIENDLY_NAME).c_str());
+    }
+    
+    if (model.length() == 0)
+      model = "Xbmc,1";
+    
+    if (srcvers.length() == 0)
+      srcvers = AIRPLAY_SERVER_VERSION_STR;
+    
+    if (txt.size() == 0)
+    {
+      txt.push_back(std::make_pair("txtvers",  "1"));
+      txt.push_back(std::make_pair("cn", "0,1"));
+      txt.push_back(std::make_pair("ch", "2"));
+      txt.push_back(std::make_pair("ek", "1"));
+      txt.push_back(std::make_pair("et", "0,1"));
+      txt.push_back(std::make_pair("sv", "false"));
+      txt.push_back(std::make_pair("tp",  "UDP"));
+      txt.push_back(std::make_pair("sm",  "false"));
+      txt.push_back(std::make_pair("ss",  "16"));
+      txt.push_back(std::make_pair("sr",  "44100"));
+      txt.push_back(std::make_pair("pw",  usePassword?"true":"false"));
+      txt.push_back(std::make_pair("vn",  "3"));
+      txt.push_back(std::make_pair("da",  "true"));
+      txt.push_back(std::make_pair("md",  "0,1,2"));
+    }
 
-    std::vector<std::pair<std::string, std::string> > txt;
-    txt.push_back(std::make_pair("txtvers",  "1"));
-    txt.push_back(std::make_pair("cn", "0,1"));
-    txt.push_back(std::make_pair("ch", "2"));
-    txt.push_back(std::make_pair("ek", "1"));
-    txt.push_back(std::make_pair("et", "0,1"));
-    txt.push_back(std::make_pair("sv", "false"));
-    txt.push_back(std::make_pair("tp",  "UDP"));
-    txt.push_back(std::make_pair("sm",  "false"));
-    txt.push_back(std::make_pair("ss",  "16"));
-    txt.push_back(std::make_pair("sr",  "44100"));
-    txt.push_back(std::make_pair("pw",  usePassword?"true":"false"));
-    txt.push_back(std::make_pair("vn",  "3"));
-    txt.push_back(std::make_pair("da",  "true"));
-    txt.push_back(std::make_pair("vs",  "130.14"));
-    txt.push_back(std::make_pair("md",  "0,1,2"));
-    txt.push_back(std::make_pair("am",  "Xbmc,1"));
+    txt.push_back(std::make_pair("vs",  srcvers));
+    txt.push_back(std::make_pair("am",  model));
+
 
     CZeroconf::GetInstance()->PublishService("servers.airtunes", "_raop._tcp", appName, port, txt);
   }
 
   return success;
 }
+
+std::vector<std::pair<std::string, std::string> > CAirTunesServer::LoadAnnouncementFromXml(CStdString &macAdr, CStdString &model, CStdString &srcvers)
+{
+  std::vector<std::pair<std::string, std::string> > txtRecords;
+  macAdr.clear();
+  CStdString airtunesFile = CProfilesManager::Get().GetUserDataItem("airplay.xml");
+  if (XFILE::CFile::Exists(airtunesFile))
+  {
+    CXBMCTinyXML doc;
+    if (!doc.LoadFile(airtunesFile))
+    {
+      CLog::Log(LOGERROR, "%s - Unable to load: %s, Line %d\n%s", 
+                __FUNCTION__, airtunesFile.c_str(), doc.ErrorRow(), doc.ErrorDesc());
+      return txtRecords;
+    }
+    const TiXmlElement *root = doc.RootElement();
+    if (root->ValueStr() != "airplay")
+      return txtRecords;
+    // read in our passwords
+    const TiXmlElement *node = root->FirstChildElement("airtunesannounce");
+    if (node)
+      node = node->FirstChildElement("entry");
+
+    while (node)
+    {
+      CStdString key, value;
+      key = node->Attribute("key");
+      value = node->Attribute("value");
+      txtRecords.push_back(std::make_pair(key, value));
+      node = node->NextSiblingElement("entry");
+    }
+    node = root->FirstChildElement("genericannounce");
+    if (node)
+    {
+      const TiXmlElement *subNode;
+      subNode = node->FirstChildElement("mac");
+      if (subNode)
+        macAdr = subNode->FirstChild()->Value();
+      subNode = node->FirstChildElement("srcvers");
+      if (subNode)
+        srcvers = subNode->FirstChild()->Value();
+      subNode = node->FirstChildElement("model");
+      if (subNode)
+        model = subNode->FirstChild()->Value();
+    }
+  }
+  return txtRecords;
+}
+
 
 void CAirTunesServer::StopServer(bool bWait)
 {

@@ -43,6 +43,8 @@
 #include "URL.h"
 #include "cores/IPlayer.h"
 #include "interfaces/AnnouncementManager.h"
+#include "profiles/ProfilesManager.h"
+#include "utils/XBMCTinyXML.h"
 
 using namespace ANNOUNCEMENT;
 
@@ -125,13 +127,13 @@ const char *eventStrings[] = {"playing", "paused", "loading", "stopped"};
 "<key>deviceid</key>\r\n"\
 "<string>%s</string>\r\n"\
 "<key>features</key>\r\n"\
-"<integer>119</integer>\r\n"\
+"<integer>%s</integer>\r\n"\
 "<key>model</key>\r\n"\
-"<string>Xbmc,1</string>\r\n"\
+"<string>%s</string>\r\n"\
 "<key>protovers</key>\r\n"\
 "<string>1.0</string>\r\n"\
 "<key>srcvers</key>\r\n"\
-"<string>"AIRPLAY_SERVER_VERSION_STR"</string>\r\n"\
+"<string>%s</string>\r\n"\
 "</dict>\r\n"\
 "</plist>\r\n"
 
@@ -150,6 +152,11 @@ const char *eventStrings[] = {"playing", "paused", "loading", "stopped"};
 
 #define AUTH_REALM "AirPlay"
 #define AUTH_REQUIRED "WWW-Authenticate: Digest realm=\""  AUTH_REALM  "\", nonce=\"%s\"\r\n"
+
+static CStdString srvvers = AIRPLAY_SERVER_VERSION_STR;
+static CStdString srvname = "Xbmc,1";
+static CStdString srvfeatures = "119";
+static CStdString macAdr;
 
 void CAirPlayServer::Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
 {
@@ -175,6 +182,22 @@ bool CAirPlayServer::StartServer(int port, bool nonlocal)
 {
   StopServer(true);
 
+  CStdString srvVers, features, serviceName, mac;
+  LoadAnnouncementFromXml(srvVers, features, serviceName, mac);
+  if (srvVers.length())
+    srvvers = srvVers;
+  if (features.length())
+  {
+    unsigned long featuredec = strtoul(features.c_str(),NULL,16);
+    srvfeatures = StringUtils::Format("%d",featuredec);
+  }
+  if (serviceName.length())
+    srvname = serviceName;
+  if (mac.length())
+    macAdr = mac;
+  else
+    macAdr = g_application.getNetwork().GetFirstConnectedInterface()->GetMacAddress();
+  
   ServerInstance = new CAirPlayServer(port, nonlocal);
   if (ServerInstance->Initialize())
   {
@@ -184,6 +207,51 @@ bool CAirPlayServer::StartServer(int port, bool nonlocal)
   else
     return false;
 }
+
+bool CAirPlayServer::LoadAnnouncementFromXml(CStdString &srcVers, CStdString &features, CStdString &model, CStdString &mac)
+{
+  bool ret = false;
+  srcVers.clear();
+  features.clear();
+  model.clear();
+  mac.clear();
+
+  CStdString airplayFile = CProfilesManager::Get().GetUserDataItem("airplay.xml");
+  if (XFILE::CFile::Exists(airplayFile))
+  {
+    CXBMCTinyXML doc;
+    if (!doc.LoadFile(airplayFile))
+    {
+      CLog::Log(LOGERROR, "%s - Unable to load: %s, Line %d\n%s", 
+                __FUNCTION__, airplayFile.c_str(), doc.ErrorRow(), doc.ErrorDesc());
+      return ret;
+    }
+    const TiXmlElement *root = doc.RootElement();
+    if (root->ValueStr() != "airplay")
+      return ret;
+    // read in our passwords
+    const TiXmlElement *node = root->FirstChildElement("genericannounce");
+    if (node)
+    {
+      const TiXmlElement *subNode;
+      subNode = node->FirstChildElement("mac");
+      if (subNode)
+        mac = subNode->FirstChild()->Value();
+      subNode = node->FirstChildElement("srcvers");
+      if (subNode)
+        srcVers = subNode->FirstChild()->Value();
+      subNode = node->FirstChildElement("model");
+      if (subNode)
+        model = subNode->FirstChild()->Value();
+      subNode = node->FirstChildElement("features");
+      if (subNode)
+        features = subNode->FirstChild()->Value();
+      
+    }
+  }
+  return ret;
+}
+
 
 bool CAirPlayServer::SetCredentials(bool usePassword, const CStdString& password)
 {
@@ -1013,7 +1081,7 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
   else if (uri == "/server-info")
   {
     CLog::Log(LOGDEBUG, "AIRPLAY: got request %s", uri.c_str());
-    responseBody = StringUtils::Format(SERVER_INFO, g_application.getNetwork().GetFirstConnectedInterface()->GetMacAddress().c_str());
+    responseBody = StringUtils::Format(SERVER_INFO, macAdr.c_str(), srvfeatures.c_str(), srvname.c_str(), srvvers.c_str());
     responseHeader = "Content-Type: text/x-apple-plist+xml\r\n";
   }
 

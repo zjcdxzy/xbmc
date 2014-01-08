@@ -51,6 +51,7 @@ class CAirTunesServer : public CThread, public ANNOUNCEMENT::IAnnouncer
 public:
   virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
 
+  static std::vector<std::pair<std::string, std::string> > LoadAnnouncementFromXml(CStdString &macAdr, CStdString &model, CStdString &srcvers);
   static bool StartServer(int port, bool nonlocal, bool usePassword, const CStdString &password="");
   static void StopServer(bool bWait);
   static bool IsRunning();

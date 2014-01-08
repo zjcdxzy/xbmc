@@ -31,6 +31,11 @@
 #include "guilib/LocalizeStrings.h"
 #include "network/Network.h"
 
+#include "profiles/ProfilesManager.h"
+#include "utils/XBMCTinyXML.h"
+#include "filesystem/File.h"
+
+
 #ifdef HAS_AIRPLAY
 #include "network/AirPlayServer.h"
 #endif // HAS_AIRPLAY
@@ -515,18 +520,91 @@ bool CNetworkServices::StartAirPlayServer()
     return false;
   
 #ifdef HAS_ZEROCONF
-  std::vector<std::pair<std::string, std::string> > txt;
+  CStdString xmlMac;
+  
+  CStdString srvVers, features, serviceName, mac;
+  std::vector<std::pair<std::string, std::string> > txt = LoadAnnouncementFromXml(mac, serviceName, srvVers, features);
+  if (srvVers.length() == 0)
+    srvVers = AIRPLAY_SERVER_VERSION_STR;
+  if (features.length() == 0)
+    features = "0x77";
+  if (serviceName.length() == 0)
+    serviceName = "Xbmc,1";
+
   CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
-  txt.push_back(make_pair("deviceid", iface != NULL ? iface->GetMacAddress() : "FF:FF:FF:FF:FF:F2"));
-  txt.push_back(make_pair("features", "0x77"));
-  txt.push_back(make_pair("model", "Xbmc,1"));
-  txt.push_back(make_pair("srcvers", AIRPLAY_SERVER_VERSION_STR));
+  if (mac.length() == 0)
+    mac = iface != NULL ? iface->GetMacAddress() : "FF:FF:FF:FF:FF:F2";
+  
+  txt.push_back(make_pair("deviceid", mac));
+  txt.push_back(make_pair("features", features));
+  txt.push_back(make_pair("model", serviceName));
+  txt.push_back(make_pair("srcvers", srvVers));
+  
+  if (txt.size() == 0)
+  {
+    txt.push_back(make_pair("vv", "1"));
+  }
   CZeroconf::GetInstance()->PublishService("servers.airplay", "_airplay._tcp", g_infoManager.GetLabel(SYSTEM_FRIENDLY_NAME), g_advancedSettings.m_airPlayPort, txt);
 #endif // HAS_ZEROCONF
 
   return true;
 #endif // HAS_AIRPLAY
   return false;
+}
+
+std::vector<std::pair<std::string, std::string> > CNetworkServices::LoadAnnouncementFromXml(std::string &macAdr, std::string &model, std::string &srcvers, std::string &features)
+{
+  std::vector<std::pair<std::string, std::string> > txtRecords;
+  macAdr.clear();
+  model.clear();
+  srcvers.clear();
+  features.clear();
+  
+  CStdString airplayFile = CProfilesManager::Get().GetUserDataItem("airplay.xml");
+  if (XFILE::CFile::Exists(airplayFile))
+  {
+    CXBMCTinyXML doc;
+    if (!doc.LoadFile(airplayFile))
+    {
+      CLog::Log(LOGERROR, "%s - Unable to load: %s, Line %d\n%s", 
+                __FUNCTION__, airplayFile.c_str(), doc.ErrorRow(), doc.ErrorDesc());
+      return txtRecords;
+    }
+    const TiXmlElement *root = doc.RootElement();
+    if (root->ValueStr() != "airplay")
+      return txtRecords;
+    // read in our passwords
+    const TiXmlElement *node = root->FirstChildElement("airplayannounce");
+    if (node)
+      node = node->FirstChildElement("entry");
+      
+      while (node)
+      {
+        CStdString key, value;
+        key = node->Attribute("key");
+        value = node->Attribute("value");
+        txtRecords.push_back(std::make_pair(key, value));
+        node = node->NextSiblingElement("entry");
+      }
+    node = root->FirstChildElement("genericannounce");
+    if (node)
+    {
+      const TiXmlElement *subNode;
+      subNode = node->FirstChildElement("mac");
+      if (subNode)
+        macAdr = subNode->FirstChild()->Value();
+      subNode = node->FirstChildElement("srcvers");
+      if (subNode)
+        srcvers = subNode->FirstChild()->Value();
+      subNode = node->FirstChildElement("model");
+      if (subNode)
+        model = subNode->FirstChild()->Value();
+      subNode = node->FirstChildElement("features");
+      if (subNode)
+        features = subNode->FirstChild()->Value();
+    }
+  }  
+  return txtRecords;
 }
 
 bool CNetworkServices::IsAirPlayServerRunning()
