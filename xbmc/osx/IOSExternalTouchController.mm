@@ -336,6 +336,27 @@ const CGFloat timeFadeSecs                    = 2.0;
   [super dealloc];  
 }
 //--------------------------------------------------------------
+- (BOOL)shouldAutorotate
+{
+  return YES;
+}
+//--------------------------------------------------------------
+
+- (NSUInteger)supportedInterfaceOrientations
+{
+  if (_startup)
+  {
+    return UIInterfaceOrientationMaskLandscape;
+  }
+  return UIInterfaceOrientationMaskAll;
+}
+//--------------------------------------------------------------
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation
+{
+  return UIInterfaceOrientationMaskLandscape;
+}
+//--------------------------------------------------------------
+
 -(BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 { 
   if(_startup)

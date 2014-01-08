@@ -296,6 +296,30 @@ AnnounceReceiver *AnnounceReceiver::g_announceReceiver = NULL;
 }
 // END OF UIKeyInput protocol
 
+
+- (BOOL)shouldAutorotate
+{
+  return YES;
+}
+
+- (NSUInteger)supportedInterfaceOrientations
+{
+  if([[IOSScreenManager sharedInstance] isExternalScreen])
+    return UIInterfaceOrientationMaskAll;
+    //return UIInterfaceOrientationPortrait;
+  else
+    return UIInterfaceOrientationMaskLandscape;  
+}
+
+
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation
+{
+  if([[IOSScreenManager sharedInstance] isExternalScreen])
+    return UIInterfaceOrientationPortrait;
+  else
+    return UIInterfaceOrientationLandscapeLeft;
+}
+
 -(BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {  
   //on external screens somehow the logic is rotated by 90°

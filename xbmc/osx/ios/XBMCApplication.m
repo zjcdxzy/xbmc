@@ -29,6 +29,11 @@
 @implementation XBMCApplicationDelegate
 XBMCController *m_xbmcController;  
 
+- (NSUInteger)application:(UIApplication *)application supportedInterfaceOrientationsForWindow:(UIWindow *)window  // iOS 6 autorotation fix
+{
+  return UIInterfaceOrientationMaskAll;
+}
+
 - (void)applicationWillResignActive:(UIApplication *)application
 {
   PRINT_SIGNATURE();
