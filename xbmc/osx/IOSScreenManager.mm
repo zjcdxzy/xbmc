@@ -73,16 +73,19 @@ static CEvent screenChangeEvent;
     UIScreen *newScreen = [[UIScreen screens] objectAtIndex:screenIdx];
     bool toExternal = _screenIdx == 0 && _screenIdx != screenIdx;
 
-    //set new screen mode
-    [newScreen setCurrentMode:mode];
-
-    //mode couldn't be applied to external screen
-    //wonkey screen!
-    if([newScreen currentMode] != mode)
+    //set new screen mode if given
+    if (mode != nil)
     {
-      NSLog(@"Error setting screen mode!");
-      screenChangeEvent.Set();
-      return;
+      [newScreen setCurrentMode:mode];
+
+      //mode couldn't be applied to external screen
+      //wonkey screen!
+      if([newScreen currentMode] != mode)
+      {
+        NSLog(@"Error setting screen mode!");
+        screenChangeEvent.Set();
+        return;
+      }
     }
     _screenIdx = screenIdx;
 
@@ -185,7 +188,7 @@ static CEvent screenChangeEvent;
   //if we are about to switch to current screen
   //with current mode - don't do anything
   if(screenIdx == _screenIdx &&
-    mode == (UIScreenMode *)[[[UIScreen screens] objectAtIndex:screenIdx] currentMode])
+    (mode == (UIScreenMode *)[[[UIScreen screens] objectAtIndex:screenIdx] currentMode] || mode == nil))
     return true;
 
   //put the params into a dict
@@ -194,8 +197,12 @@ static CEvent screenChangeEvent;
                                                                   idx,  @"screenIdx", nil];
 
 
-  CLog::Log(LOGINFO, "Changing screen to %d with %f x %f",screenIdx,[mode size].width, [mode size].height);
-  //ensure that the screen change is done in the mainthread
+  if (mode != nil)
+    CLog::Log(LOGINFO, "Changing screen to %d with %f x %f",screenIdx,[mode size].width, [mode size].height);
+  else
+    CLog::Log(LOGINFO, "Changing screen to %d with no mode change",screenIdx);
+
+    //ensure that the screen change is done in the mainthread
   if([NSThread currentThread] != [NSThread mainThread])
   {
     [self performSelectorOnMainThread:@selector(changeScreenSelector:) withObject:dict  waitUntilDone:YES];

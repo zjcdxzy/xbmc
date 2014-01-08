@@ -157,10 +157,8 @@ bool CWinSystemIOS::SwitchToVideoMode(int width, int height, double refreshrate,
   //get the mode to pass to the controller
   UIScreenMode *newMode = getModeForResolution(width, height, screenIdx);
 
-  if(newMode)
-  {
-    ret = [g_xbmcController changeScreen:screenIdx withMode:newMode];
-  }
+  ret = [g_xbmcController changeScreen:screenIdx withMode:newMode];
+
   return ret;
 }
 
