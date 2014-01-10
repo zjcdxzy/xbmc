@@ -3432,6 +3432,11 @@ int CDVDPlayer::OnDVDNavResult(void* pData, int iMessage)
                   m_dvd.iDVDStillTime, time / 1000);
       }
     }
+    else if (iMessage == 6)
+    {
+      m_dvd.state = DVDSTATE_NORMAL;
+      CLog::Log(LOGDEBUG, "CDVDPlayer::OnDVDNavResult - libbluray read error (DVDSTATE_NORMAL)");  
+    }
 
     return 0;
   }
