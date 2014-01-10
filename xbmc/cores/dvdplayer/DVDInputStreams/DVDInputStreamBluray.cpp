@@ -556,9 +556,8 @@ void CDVDInputStreamBluray::ProcessEvent() {
     m_player->OnDVDNavResult((void*) &pid, 3);
     break;
 
-#ifdef HAVE_LIBBLURAY_BDJ
   case BD_EVENT_MENU:
-    CLog::Log(LOGDEBUG, "CDVDInputStreamBluray - BD_EVENT_PG_TEXTST %d",
+    CLog::Log(LOGDEBUG, "CDVDInputStreamBluray - BD_EVENT_MENU %d",
         m_event.param);
     m_menu = !!m_event.param;
     break;
@@ -566,7 +565,6 @@ void CDVDInputStreamBluray::ProcessEvent() {
   case BD_EVENT_IDLE:
     Sleep(100);
     break;
-#endif
 
   case BD_EVENT_IG_STREAM:
   case BD_EVENT_SECONDARY_AUDIO:
