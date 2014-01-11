@@ -1005,6 +1005,50 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
       CApplicationMessenger::Get().MediaPlay(fileToPlay);
     }
   }
+  
+  // seems to be new with higher protocol versions
+  // is used by youtube app to tell us to remove a playlist/item
+  // known actions so far are
+  // "type - playlistRemove"
+  // "params - dict with items - with dict with uuid
+  else if (uri == "/action")
+  {
+    CLog::Log(LOGDEBUG, "AIRPLAY: got request %s", uri.c_str());
+    
+    if (needAuth && !checkAuthorization(authorization, method, uri))
+    {
+      status = AIRPLAY_STATUS_NEED_AUTH;
+    }
+    else if (contentType == "application/x-apple-binary-plist")
+    {     
+      if (m_pLibPlist->Load())
+      {
+        m_pLibPlist->EnableDelayedUnload(false);
+        
+        const char* bodyChr = m_httpParser->getBody();
+        
+        plist_t dict = NULL;
+        m_pLibPlist->plist_from_bin(bodyChr, m_httpParser->getContentLength(), &dict);
+        
+        if (m_pLibPlist->plist_dict_get_size(dict))
+        {          
+          plist_t tmpNode = m_pLibPlist->plist_dict_get_item(dict, "type");
+          if (tmpNode)
+          {
+            std::string tmpStr = getStringFromPlist(m_pLibPlist, tmpNode);
+            if (StringUtils::CompareNoCase(tmpStr, "playlistRemove") == 0)
+            {
+              if (IsPlaying()) //only stop player if we started him
+              {
+                CApplicationMessenger::Get().MediaStop();
+                CAirPlayServer::m_isPlaying--;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   // Used to perform seeking (POST request) and to retrieve current player position (GET request).
   // GET scrub seems to also set rate 1 - strange but true
