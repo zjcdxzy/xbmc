@@ -44,7 +44,7 @@ public:
   virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
 
   //AirPlayServer impl.
-  static bool LoadAnnouncementFromXml(CStdString &srcVers, CStdString &features, CStdString &model, CStdString &mac);
+  static bool LoadAnnouncementFromXml(CStdString &srcVers, CStdString &features, CStdString &model, CStdString &mac, CStdString &featuresprotocol);
   static bool StartServer(int port, bool nonlocal);
   static void StopServer(bool bWait);
   static bool IsRunning();

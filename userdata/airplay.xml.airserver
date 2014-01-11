@@ -10,6 +10,7 @@
  
  <airplayannounce>
   <entry key="vv" value="1" /> <!-- key value pair to announce as txt record via zeroconf -->
+  <features>119</features> <!-- feature bits not used for announcement - but inside of the protocol! -->
  </airplayannounce>
 
  <airtunesannounce>

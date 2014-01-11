@@ -159,6 +159,7 @@ static CStdString srvvers = AIRPLAY_SERVER_VERSION_STR;
 static CStdString srvname = "Xbmc,1";
 static CStdString srvfeatures = "119";
 static CStdString macAdr;
+static CStdString featuresProtocol = "119";
 
 void CAirPlayServer::Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
 {
@@ -184,8 +185,8 @@ bool CAirPlayServer::StartServer(int port, bool nonlocal)
 {
   StopServer(true);
 
-  CStdString srvVers, features, serviceName, mac;
-  LoadAnnouncementFromXml(srvVers, features, serviceName, mac);
+  CStdString srvVers, features, serviceName, mac, featuresprotocol;
+  LoadAnnouncementFromXml(srvVers, features, serviceName, mac, featuresprotocol);
   if (srvVers.length())
     srvvers = srvVers;
   if (features.length())
@@ -200,6 +201,9 @@ bool CAirPlayServer::StartServer(int port, bool nonlocal)
   else
     macAdr = g_application.getNetwork().GetFirstConnectedInterface()->GetMacAddress();
   
+  if (featuresprotocol.length())
+    featuresProtocol = featuresprotocol;
+  
   ServerInstance = new CAirPlayServer(port, nonlocal);
   if (ServerInstance->Initialize())
   {
@@ -210,13 +214,14 @@ bool CAirPlayServer::StartServer(int port, bool nonlocal)
     return false;
 }
 
-bool CAirPlayServer::LoadAnnouncementFromXml(CStdString &srcVers, CStdString &features, CStdString &model, CStdString &mac)
+bool CAirPlayServer::LoadAnnouncementFromXml(CStdString &srcVers, CStdString &features, CStdString &model, CStdString &mac, CStdString &featuresprotocol)
 {
   bool ret = false;
   srcVers.clear();
   features.clear();
   model.clear();
   mac.clear();
+  featuresprotocol.clear();
 
   CStdString airplayFile = CProfilesManager::Get().GetUserDataItem("airplay.xml");
   if (XFILE::CFile::Exists(airplayFile))
@@ -248,7 +253,13 @@ bool CAirPlayServer::LoadAnnouncementFromXml(CStdString &srcVers, CStdString &fe
       subNode = node->FirstChildElement("features");
       if (subNode)
         features = subNode->FirstChild()->Value();
-      
+    }
+    node = root->FirstChildElement("airplayannounce");
+    if (node)
+    {
+      const TiXmlElement *subNode = node->FirstChildElement("features");
+      if (subNode)
+        featuresprotocol = subNode->FirstChild()->Value();
     }
   }
   return ret;
@@ -1224,7 +1235,7 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
   else if (uri == "/server-info")
   {
     CLog::Log(LOGDEBUG, "AIRPLAY: got request %s", uri.c_str());
-    responseBody = StringUtils::Format(SERVER_INFO, macAdr.c_str(), srvfeatures.c_str(), srvname.c_str(), srvvers.c_str());
+    responseBody = StringUtils::Format(SERVER_INFO, macAdr.c_str(), featuresProtocol.c_str(), srvname.c_str(), srvvers.c_str());
     responseHeader = "Content-Type: text/x-apple-plist+xml\r\n";
   }
 
