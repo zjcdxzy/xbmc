@@ -63,7 +63,7 @@ protected:
   void DestroyVTSession(void);
   static void VTDecoderCallback(
     void *refcon, CFDictionaryRef frameInfo,
-    OSStatus status, UInt32 infoFlags, CVBufferRef imageBuffer);
+    OSStatus status, UInt32 infoFlags, CVBufferRef imageBuffer, CMTime pts, CMTime duration);
 
   void              *m_vt_session;    // opaque videotoolbox session
   CMFormatDescriptionRef m_fmt_desc;

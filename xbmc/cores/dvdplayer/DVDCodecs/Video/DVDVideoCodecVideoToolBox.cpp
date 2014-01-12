@@ -78,7 +78,8 @@ typedef void (*VTDecompressionOutputCallbackFunc)(
   CFDictionaryRef frameInfo,
   OSStatus        status,
   UInt32          infoFlags,
-  CVBufferRef     imageBuffer);
+  CVBufferRef     imageBuffer,
+  CMTime pts, CMTime duration);
 
 typedef struct _VTDecompressionOutputCallback VTDecompressionOutputCallback;
 struct _VTDecompressionOutputCallback {
@@ -1624,8 +1625,10 @@ CDVDVideoCodecVideoToolBox::VTDecoderCallback(
   CFDictionaryRef    frameInfo,
   OSStatus           status,
   UInt32             infoFlags,
-  CVBufferRef        imageBuffer)
+  CVBufferRef        imageBuffer,
+  CMTime pts, CMTime duration)
 {
+  //CLog::Log(LOGDEBUG, "pts: %d duration: %d", CMTimeGetSeconds(pts), CMTimeGetSeconds(duration));
   // This is an sync callback due to VTDecompressionSessionWaitForAsynchronousFrames
   CDVDVideoCodecVideoToolBox *ctx = (CDVDVideoCodecVideoToolBox*)refcon;
 
