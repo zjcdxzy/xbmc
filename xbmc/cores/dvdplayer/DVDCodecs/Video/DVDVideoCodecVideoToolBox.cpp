@@ -87,6 +87,8 @@ struct _VTDecompressionOutputCallback {
 };
 
 extern CFStringRef kVTVideoDecoderSpecification_EnableSandboxedVideoDecoder;
+CFStringRef kVTAtomavcC = CFSTR("avcC");
+CFStringRef kVTAtomesds = CFSTR("esds");
 
 extern OSStatus VTDecompressionSessionCreate(
   CFAllocatorRef allocator,
@@ -107,24 +109,6 @@ extern void VTDecompressionSessionInvalidate(VTDecompressionSessionRef session);
 extern void VTDecompressionSessionRelease(VTDecompressionSessionRef session);
 extern VTDecompressionSessionRef VTDecompressionSessionRetain(VTDecompressionSessionRef session);
 extern OSStatus VTDecompressionSessionWaitForAsynchronousFrames(VTDecompressionSessionRef session);
-
-//-----------------------------------------------------------------------------------
-// /System/Library/Frameworks/CoreMedia.framework
-union
-{
-  void* lpAddress;
-  // iOS <= 4.2
-  OSStatus (*FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom1)(
-    CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
-    UInt32 atomId, const UInt8 *data, CFIndex len, CMFormatDescriptionRef *formatDesc);
-  // iOS >= 4.3
-  OSStatus (*FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom2)(
-    CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
-    UInt32 atomId, const UInt8 *data, CFIndex len, CFDictionaryRef extensions, CMFormatDescriptionRef *formatDesc);
-} FigVideoHack;
-extern OSStatus FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom(
-  CFAllocatorRef allocator, UInt32 formatId, UInt32 width, UInt32 height,
-  UInt32 atomId, const UInt8 *data, CFIndex len, CMFormatDescriptionRef *formatDesc);
 
 extern CMSampleBufferRef FigSampleBufferRetain(CMSampleBufferRef buf);
 //-----------------------------------------------------------------------------------
@@ -257,6 +241,40 @@ CFDictionarySetDouble(CFMutableDictionaryRef dictionary, CFStringRef key, double
     CFDictionaryAddValue(dictionary, key, number);
     CFRelease(number);
 }
+// helper function that inserts an string into a dictionary
+static void
+CFDictionarySetString(CFMutableDictionaryRef dictionary, CFStringRef key, const char *value)
+{
+  CFStringRef string;
+
+  string = CFStringCreateWithCString (NULL, value, kCFStringEncodingASCII);
+  CFDictionarySetValue (dictionary, key, string);
+  CFRelease (string);
+}
+// helper function that inserts data into a dictionary
+static void 
+CFDictionarySetData (CFMutableDictionaryRef dictionary, CFStringRef key, const uint8_t *value, UInt64 length)
+{
+  CFDataRef data;
+
+  data = CFDataCreate (NULL, value, length);
+  CFDictionarySetValue (dictionary, key, data);
+  CFRelease (data);
+}
+// helper function that inserts a bool into dictionary
+static void 
+CFDictionarySetBool (CFMutableDictionaryRef dictionary, CFStringRef key, bool value)
+{
+  CFDictionarySetValue (dictionary, key, value ? kCFBooleanTrue: kCFBooleanFalse);
+}
+// helper function that inserts an object into dictionary
+static void 
+CFDictionarySetObject (CFMutableDictionaryRef dictionary, CFStringRef key, CFTypeRef *value)
+{
+  CFDictionarySetValue (dictionary, key, value);
+  CFRelease (value);
+}
+
 // helper function that wraps dts/pts into a dictionary
 static CFDictionaryRef
 CreateDictionaryWithDisplayTime(double time, double dts, double pts)
@@ -330,40 +348,32 @@ CreateFormatDescription(VTFormatId format_id, int width, int height)
 }
 // helper function to create a avcC atom format descriptor
 static CMFormatDescriptionRef
-CreateFormatDescriptionFromCodecData(VTFormatId format_id, int width, int height, const uint8_t *extradata, int extradata_size, uint32_t atom)
+CreateFormatDescriptionFromCodecData(VTFormatId format_id, int width, int height, const uint8_t *extradata, int extradata_size, CFStringRef atom)
 {
   CMFormatDescriptionRef fmt_desc = NULL;
+  CFMutableDictionaryRef extensions, par, atoms;
   OSStatus status;
-
-  FigVideoHack.lpAddress = (void*)FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom;
   
-  if (GetIOSVersion() < 4.3)
-  {
-    CLog::Log(LOGDEBUG, "%s - GetIOSVersion says < 4.3", __FUNCTION__);
-    status = FigVideoHack.FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom1(
-      NULL,
-      format_id,
-      width,
-      height,
-      atom,
-      extradata,
-      extradata_size,
-      &fmt_desc);
-  }
-  else
-  {
-    CLog::Log(LOGDEBUG, "%s - GetIOSVersion says >= 4.3", __FUNCTION__);
-    status = FigVideoHack.FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom2(
-      NULL,
-      format_id,
-      width,
-      height,
-      atom,
-      extradata,
-      extradata_size,
-      NULL,
-      &fmt_desc);
-  }
+  /* CVPixelAspectRatio dict */
+  par = CFDictionaryCreateMutable (NULL, 0, &kCFTypeDictionaryKeyCallBacks,
+      &kCFTypeDictionaryValueCallBacks);
+  CFDictionarySetSInt32(par, CFSTR ("HorizontalSpacing"), 1);//self->vinfo.par_n);
+  CFDictionarySetSInt32 (par, CFSTR ("VerticalSpacing"), 1);//self->vinfo.par_d);
+
+  /* SampleDescriptionExtensionAtoms dict */
+  atoms = CFDictionaryCreateMutable (NULL, 0, &kCFTypeDictionaryKeyCallBacks,
+      &kCFTypeDictionaryValueCallBacks);
+  CFDictionarySetData(atoms, atom, extradata, extradata_size);
+
+  /* Extensions dict */
+  extensions = CFDictionaryCreateMutable (NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+  CFDictionarySetString(extensions, CFSTR ("CVImageBufferChromaLocationBottomField"), "left");
+  CFDictionarySetString(extensions, CFSTR ("CVImageBufferChromaLocationTopField"), "left");
+  CFDictionarySetBool(extensions, CFSTR("FullRangeVideo"), false);
+  CFDictionarySetObject(extensions, CFSTR ("CVPixelAspectRatio"), (CFTypeRef *) par);
+  CFDictionarySetObject(extensions, CFSTR ("SampleDescriptionExtensionAtoms"), (CFTypeRef *) atoms);
+
+  status = CMVideoFormatDescriptionCreate (NULL, format_id, width, height, extensions, &fmt_desc);
 
   if (status == kVTDecoderNoErr)
     return fmt_desc;
@@ -1117,7 +1127,7 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
           free(esds);
 
           m_fmt_desc = CreateFormatDescriptionFromCodecData(
-            kVTFormatMPEG4Video, width, height, extradata, extrasize, 'esds');
+            kVTFormatMPEG4Video, width, height, extradata, extrasize, kVTAtomesds);
 
           // done with the converted extradata, we MUST free using av_free
           m_dllAvUtil->av_free(extradata);
@@ -1175,7 +1185,7 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
           }
           // valid avcC atom data always starts with the value 1 (version)
           m_fmt_desc = CreateFormatDescriptionFromCodecData(
-            kVTFormatH264, width, height, extradata, extrasize, 'avcC');
+            kVTFormatH264, width, height, extradata, extrasize, kVTAtomavcC);
 
           CLog::Log(LOGNOTICE, "%s - using avcC atom of size(%d), ref_frames(%d)", __FUNCTION__, extrasize, m_max_ref_frames);
         }
@@ -1227,7 +1237,7 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
  
             // CFDataCreate makes a copy of extradata contents
             m_fmt_desc = CreateFormatDescriptionFromCodecData(
-              kVTFormatH264, width, height, extradata, extrasize, 'avcC');
+              kVTFormatH264, width, height, extradata, extrasize, kVTAtomavcC);
 
             // done with the new converted extradata, we MUST free using av_free
             m_dllAvUtil->av_free(extradata);
