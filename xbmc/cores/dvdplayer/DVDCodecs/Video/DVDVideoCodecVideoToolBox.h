@@ -59,7 +59,7 @@ public:
 
 protected:
   void DisplayQueuePop(void);
-  void CreateVTSession(int width, int height, CMFormatDescriptionRef fmt_desc);
+  void CreateVTSession(int width, int height, CMFormatDescriptionRef fmt_desc, CFMutableDictionaryRef decoder_spec);
   void DestroyVTSession(void);
   static void VTDecoderCallback(
     void *refcon, CFDictionaryRef frameInfo,

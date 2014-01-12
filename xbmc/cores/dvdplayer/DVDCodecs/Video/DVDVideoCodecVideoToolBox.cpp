@@ -90,6 +90,7 @@ struct _VTDecompressionOutputCallback {
 extern CFStringRef kVTVideoDecoderSpecification_EnableSandboxedVideoDecoder;
 CFStringRef kVTAtomavcC = CFSTR("avcC");
 CFStringRef kVTAtomesds = CFSTR("esds");
+const CFStringRef kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder = CFSTR ("EnableHardwareAcceleratedVideoDecoder");
 
 extern OSStatus VTDecompressionSessionCreate(
   CFAllocatorRef allocator,
@@ -347,12 +348,13 @@ CreateFormatDescription(VTFormatId format_id, int width, int height)
   else
     return NULL;
 }
+
 // helper function to create a avcC atom format descriptor
 static CMFormatDescriptionRef
-CreateFormatDescriptionFromCodecData(VTFormatId format_id, int width, int height, const uint8_t *extradata, int extradata_size, CFStringRef atom)
+CreateFormatDescriptionFromCodecData(VTFormatId format_id, int width, int height, const uint8_t *extradata, int extradata_size, CFStringRef atom, CFMutableDictionaryRef extensions)
 {
   CMFormatDescriptionRef fmt_desc = NULL;
-  CFMutableDictionaryRef extensions, par, atoms;
+  CFMutableDictionaryRef par, atoms;
   OSStatus status;
   
   /* CVPixelAspectRatio dict */
@@ -367,7 +369,6 @@ CreateFormatDescriptionFromCodecData(VTFormatId format_id, int width, int height
   CFDictionarySetData(atoms, atom, extradata, extradata_size);
 
   /* Extensions dict */
-  extensions = CFDictionaryCreateMutable (NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
   CFDictionarySetString(extensions, CFSTR ("CVImageBufferChromaLocationBottomField"), "left");
   CFDictionarySetString(extensions, CFSTR ("CVImageBufferChromaLocationTopField"), "left");
   CFDictionarySetBool(extensions, CFSTR("FullRangeVideo"), false);
@@ -1084,7 +1085,8 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
     int spsProfile = profile;
     unsigned int extrasize = hints.extrasize; // extra data for codec to use
     uint8_t *extradata = (uint8_t*)hints.extradata; // size of extra data
- 
+    CFMutableDictionaryRef extensions = CFDictionaryCreateMutable (NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);;
+
     switch(profile)
     {
       case FF_PROFILE_H264_HIGH_10:
@@ -1128,7 +1130,7 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
           free(esds);
 
           m_fmt_desc = CreateFormatDescriptionFromCodecData(
-            kVTFormatMPEG4Video, width, height, extradata, extrasize, kVTAtomesds);
+            kVTFormatMPEG4Video, width, height, extradata, extrasize, kVTAtomesds, extensions);
 
           // done with the converted extradata, we MUST free using av_free
           m_dllAvUtil->av_free(extradata);
@@ -1186,7 +1188,7 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
           }
           // valid avcC atom data always starts with the value 1 (version)
           m_fmt_desc = CreateFormatDescriptionFromCodecData(
-            kVTFormatH264, width, height, extradata, extrasize, kVTAtomavcC);
+            kVTFormatH264, width, height, extradata, extrasize, kVTAtomavcC, extensions);
 
           CLog::Log(LOGNOTICE, "%s - using avcC atom of size(%d), ref_frames(%d)", __FUNCTION__, extrasize, m_max_ref_frames);
         }
@@ -1238,7 +1240,7 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
  
             // CFDataCreate makes a copy of extradata contents
             m_fmt_desc = CreateFormatDescriptionFromCodecData(
-              kVTFormatH264, width, height, extradata, extrasize, kVTAtomavcC);
+              kVTFormatH264, width, height, extradata, extrasize, kVTAtomavcC, extensions);
 
             // done with the new converted extradata, we MUST free using av_free
             m_dllAvUtil->av_free(extradata);
@@ -1268,7 +1270,7 @@ bool CDVDVideoCodecVideoToolBox::Open(CDVDStreamInfo &hints, CDVDCodecOptions &o
     if (m_max_ref_frames == 0)
       m_max_ref_frames = 2;
 
-    CreateVTSession(width, height, m_fmt_desc);
+    CreateVTSession(width, height, m_fmt_desc, extensions);
     if (m_vt_session == NULL)
     {
       if (m_fmt_desc)
@@ -1527,12 +1529,15 @@ void CDVDVideoCodecVideoToolBox::DisplayQueuePop(void)
 
 
 void
-CDVDVideoCodecVideoToolBox::CreateVTSession(int width, int height, CMFormatDescriptionRef fmt_desc)
+CDVDVideoCodecVideoToolBox::CreateVTSession(int width, int height, CMFormatDescriptionRef fmt_desc, CFMutableDictionaryRef decoder_spec)
 {
   VTDecompressionSessionRef vt_session = NULL;
   CFMutableDictionaryRef destinationPixelBufferAttributes;
   VTDecompressionOutputCallback outputCallback;
   OSStatus status;
+  
+  CFDictionarySetBool(decoder_spec, kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder, true);
+
 
   #if defined(TARGET_DARWIN_IOS)
     //TODO - remove the clamp for ipad3 when CVOpenGLESTextureCacheCreateTextureFromImage
@@ -1590,7 +1595,7 @@ CDVDVideoCodecVideoToolBox::CreateVTSession(int width, int height, CMFormatDescr
   status = VTDecompressionSessionCreate(
     NULL, // CFAllocatorRef allocator
     fmt_desc,
-    NULL, // CFTypeRef sessionOptions
+    decoder_spec, // CFTypeRef sessionOptions
     destinationPixelBufferAttributes,
     &outputCallback,
     &vt_session);
