@@ -569,7 +569,12 @@ bool CApplication::OnEvent(XBMC_Event& newEvent)
       if (actionId <= 0)
         return false;
 
-      CApplicationMessenger::Get().SendAction(CAction(actionId, 0, newEvent.touch.x, newEvent.touch.y, newEvent.touch.x2, newEvent.touch.y2), WINDOW_INVALID, false);
+      if ((actionId >= ACTION_TOUCH_TAP && actionId <= ACTION_GESTURE_END)
+          || (actionId >= ACTION_MOUSE_START && actionId <= ACTION_MOUSE_END) )
+        CApplicationMessenger::Get().SendAction(CAction(actionId, 0, newEvent.touch.x, newEvent.touch.y, newEvent.touch.x2, newEvent.touch.y2), WINDOW_INVALID, false);
+      else
+        CApplicationMessenger::Get().SendAction(CAction(actionId), WINDOW_INVALID, false);
+
       // Post an unfocus message for touch device after the action.
       if (newEvent.touch.action == ACTION_GESTURE_END || newEvent.touch.action == ACTION_TOUCH_TAP)
       {
