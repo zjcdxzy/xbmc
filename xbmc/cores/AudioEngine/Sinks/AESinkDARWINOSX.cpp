@@ -22,6 +22,8 @@
 #include "cores/AudioEngine/Sinks/AESinkDARWINOSX.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/AudioEngine/Utils/AERingBuffer.h"
+#include "cores/AudioEngine/Engines/CoreAudio/CoreAudioAEHAL.h"
+#include "cores/AudioEngine/Engines/CoreAudio/CoreAudioHardware.h"
 #include "osx/DarwinUtils.h"
 #include "utils/log.h"
 
@@ -53,87 +55,6 @@ static bool HasDataFormat(const AEDataFormatList &list, const enum AEDataFormat 
   return false;
 }
 
-// Helper Functions
-static std::string OSStatusStr(OSStatus error)
-{
-  char buffer[128];
- 
-  *(UInt32 *)(buffer + 1) = CFSwapInt32HostToBig(error);
-  if (isprint(buffer[1]) && isprint(buffer[2]) &&
-      isprint(buffer[3]) && isprint(buffer[4]))
-  {
-    buffer[0] = buffer[5] = '\'';
-    buffer[6] = '\0';
-  }
-  else
-  {
-    // no, format it as an integer
-    sprintf(buffer, "%d", (int)error);
-  }
- 
-  return std::string(buffer);
-}
-
-static const char* StreamDescriptionToString(AudioStreamBasicDescription desc, std::string &str)
-{
-  char fourCC[5] = {
-    (desc.mFormatID >> 24) & 0xFF,
-    (desc.mFormatID >> 16) & 0xFF,
-    (desc.mFormatID >>  8) & 0xFF,
-     desc.mFormatID        & 0xFF,
-    0
-  };
-
-  std::stringstream sstr; 
-  switch (desc.mFormatID)
-  {
-    case kAudioFormatLinearPCM:
-      sstr  << "["
-            << fourCC
-            << "] "
-            << ((desc.mFormatFlags & kAudioFormatFlagIsNonMixable) ? "" : "Mixable " )
-            << ((desc.mFormatFlags & kAudioFormatFlagIsNonInterleaved) ? "Non-" : "" )
-            << "Interleaved "
-            << desc.mChannelsPerFrame
-            << " Channel "
-            << desc.mBitsPerChannel
-            << "-bit "
-            << ((desc.mFormatFlags & kAudioFormatFlagIsFloat) ? "Floating Point " : "Signed Integer ")
-            << ((desc.mFormatFlags & kAudioFormatFlagIsBigEndian) ? "BE" : "LE")
-            << " ("
-            << (UInt32)desc.mSampleRate
-            << "Hz)";
-      str = sstr.str();
-      break;
-    case kAudioFormatAC3:
-      sstr  << "["
-            << fourCC
-            << "] "
-            << ((desc.mFormatFlags & kAudioFormatFlagIsBigEndian) ? "BE" : "LE")
-            << " AC-3/DTS ("
-            << (UInt32)desc.mSampleRate
-            << "Hz)";
-      str = sstr.str();                
-      break;
-    case kAudioFormat60958AC3:
-      sstr  << "["
-            << fourCC
-            << "] AC-3/DTS for S/PDIF "
-            << ((desc.mFormatFlags & kAudioFormatFlagIsBigEndian) ? "BE" : "LE")
-            << " ("
-            << (UInt32)desc.mSampleRate
-            << "Hz)";
-      str = sstr.str();
-      break;
-    default:
-      sstr  << "["
-            << fourCC
-            << "]";
-      break;
-  }
-  return str.c_str();
-}
-
 static AudioStreamBasicDescription* GetStreamDescriptions(AudioStreamID streamID)
 {
   // Retrieve all the stream formats supported by this output stream
@@ -148,7 +69,7 @@ static AudioStreamBasicDescription* GetStreamDescriptions(AudioStreamID streamID
   if (ret != noErr)
   {
     CLog::Log(LOGDEBUG, "CCoreAudioHardware::FormatsList: "
-      "Unable to get list size. Error = %s", OSStatusStr(ret).c_str());
+      "Unable to get list size. Error = %s", GetError(ret).c_str());
     return NULL;
   }
 
@@ -165,7 +86,7 @@ static AudioStreamBasicDescription* GetStreamDescriptions(AudioStreamID streamID
   if (ret != noErr)
   {
     CLog::Log(LOGDEBUG, "CCoreAudioHardware::FormatsList: "
-      "Unable to get list. Error = %s", OSStatusStr(ret).c_str());
+      "Unable to get list. Error = %s", GetError(ret).c_str());
     free(list);
     return NULL;
   }
@@ -202,7 +123,7 @@ static AudioStreamID* GetDeviceStreams(AudioDeviceID deviceId)
   if (ret != noErr)
   {
     CLog::Log(LOGERROR, "CCoreAudioHardware::StreamsList: "
-      "Unable to get list. Error = %s", OSStatusStr(ret).c_str());
+      "Unable to get list. Error = %s", GetError(ret).c_str());
     return NULL;
   }
 
@@ -234,7 +155,7 @@ static std::string GetDeviceName(AudioDeviceID deviceId)
   if (ret != noErr)
   {
     CLog::Log(LOGERROR, "Unable to get device name - id: 0x%04x. Error = %s",
-      (uint)deviceId, OSStatusStr(ret).c_str());
+      (uint)deviceId, GetError(ret).c_str());
   }
   else
   {
@@ -265,7 +186,7 @@ static AudioDeviceID GetDefaultOutputDevice()
   if (ret != noErr || !deviceId)
   {
     CLog::Log(LOGERROR, "CCoreAudioHardware::GetDefaultOutputDevice:"
-              " Unable to identify default output device. Error = %s", OSStatusStr(ret).c_str());
+              " Unable to identify default output device. Error = %s", GetError(ret).c_str());
     // if there was no error and no deviceId was returned
     // return the last known default device
     if (ret == noErr && !deviceId)
@@ -282,7 +203,7 @@ static AudioDeviceID GetDefaultOutputDevice()
 static void GetOutputDeviceName(std::string& name)
 {
   name = "Default";
-  AudioDeviceID deviceId = GetDefaultOutputDevice();
+  AudioDeviceID deviceId = CCoreAudioHardware::GetDefaultOutputDevice();
   
   if (deviceId)
   {
@@ -330,7 +251,7 @@ static int GetTotalOutputChannels(AudioDeviceID deviceId)
   else
   {
     CLog::Log(LOGERROR, "Unable to get device output channels - id: 0x%04x. Error = %s",
-      (uint)deviceId, OSStatusStr(ret).c_str());
+      (uint)deviceId, GetError(ret).c_str());
   }
 
   free(pList);
@@ -355,7 +276,7 @@ static int GetOutputDevicesIDs(std::list<AudioDeviceID> *pList)
   if (ret != noErr)
   {
     CLog::Log(LOGERROR, "GetOutputDevicesIDs:"
-      " Unable to retrieve the size of the list of available devices. Error = %s", OSStatusStr(ret).c_str());
+      " Unable to retrieve the size of the list of available devices. Error = %s", GetError(ret).c_str());
     return found;
   }
 
@@ -365,7 +286,7 @@ static int GetOutputDevicesIDs(std::list<AudioDeviceID> *pList)
   if (ret != noErr)
   {
     CLog::Log(LOGERROR, "GetOutputDevicesIDs:"
-      " Unable to retrieve the list of available devices. Error = %s", OSStatusStr(ret).c_str());
+      " Unable to retrieve the list of available devices. Error = %s", GetError(ret).c_str());
   }
   else
   {

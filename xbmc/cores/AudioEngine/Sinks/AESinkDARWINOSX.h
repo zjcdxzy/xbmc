@@ -21,7 +21,8 @@
 
 #include "cores/AudioEngine/Interfaces/AESink.h"
 #include "cores/AudioEngine/Utils/AEDeviceInfo.h"
-#include "osx/CoreAudio.h"
+#include "cores/AudioEngine/Engines/CoreAudio/CoreAudioDevice.h"
+#include "cores/AudioEngine/Engines/CoreAudio/CoreAudioStream.h"
 
 class AERingBuffer;
 
