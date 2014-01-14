@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
+ *      Copyright (C) 2005-2014 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -247,6 +247,62 @@ static std::string GetDeviceName(AudioDeviceID deviceId)
   return name;
 }
 
+static AudioDeviceID GetDefaultOutputDevice()
+{
+  AudioDeviceID deviceId = 0;
+  static AudioDeviceID lastDeviceId = 0;
+  
+  AudioObjectPropertyAddress  propertyAddress;
+  propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+  propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+  propertyAddress.mSelector = kAudioHardwarePropertyDefaultOutputDevice;
+  
+  UInt32 size = sizeof(AudioDeviceID);
+  OSStatus ret = AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &size, &deviceId);
+  
+  // outputDevice is set to 0 if there is no audio device available
+  // or if the default device is set to an encoded format
+  if (ret != noErr || !deviceId)
+  {
+    CLog::Log(LOGERROR, "CCoreAudioHardware::GetDefaultOutputDevice:"
+              " Unable to identify default output device. Error = %s", OSStatusStr(ret).c_str());
+    // if there was no error and no deviceId was returned
+    // return the last known default device
+    if (ret == noErr && !deviceId)
+      return lastDeviceId;
+    else
+      return 0;
+  }
+  
+  lastDeviceId = deviceId;
+  
+  return deviceId;
+}
+
+static void GetOutputDeviceName(std::string& name)
+{
+  name = "Default";
+  AudioDeviceID deviceId = GetDefaultOutputDevice();
+  
+  if (deviceId)
+  {
+    AudioObjectPropertyAddress  propertyAddress;
+    propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+    propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+    propertyAddress.mSelector = kAudioObjectPropertyName;
+    
+    CFStringRef theDeviceName = NULL;
+    UInt32 propertySize = sizeof(CFStringRef);
+    OSStatus ret = AudioObjectGetPropertyData(deviceId, &propertyAddress, 0, NULL, &propertySize, &theDeviceName);
+    if (ret != noErr)
+      return;
+    
+    DarwinCFStringRefToUTF8String(theDeviceName, name);
+    
+    CFRelease(theDeviceName);
+  }
+}
+
 static int GetTotalOutputChannels(AudioDeviceID deviceId)
 {
   int channels = 0;
@@ -335,6 +391,9 @@ static void EnumerateDevices(CADeviceList &list)
   CAEDeviceInfo device;
   std::list<AudioDeviceID> deviceIDList;
 
+  std::string defaultDeviceName;
+  GetOutputDeviceName(defaultDeviceName);
+  
   GetOutputDevicesIDs(&deviceIDList);
   while (!deviceIDList.empty())
   {
@@ -439,6 +498,15 @@ static void EnumerateDevices(CADeviceList &list)
     }
 
     list.push_back(std::make_pair(deviceID, device));
+
+    // add the default device with m_deviceName = default
+    if(defaultDeviceName == device.m_deviceName)
+    {
+      device.m_deviceName = std::string("default");
+      device.m_displayName = std::string("default");
+      device.m_displayNameExtra = std::string("");
+      list.push_back(std::make_pair(deviceID, device));
+    }
 
     deviceIDList.pop_front();
   }
