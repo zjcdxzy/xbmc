@@ -127,7 +127,6 @@ protected:
   uint32_t            m_angle;
   bool                m_menu;
   bool                m_navmode;
-  bool                m_bEOF;
 
   typedef boost::shared_ptr<CDVDOverlayImage> SOverlay;
   typedef std::list<SOverlay>                 SOverlays;
@@ -150,6 +149,7 @@ protected:
     HOLD_HELD,
     HOLD_DATA,
     HOLD_STILL,
+    HOLD_ERROR
   } m_hold;
   BD_EVENT m_event;
 #ifdef HAVE_LIBBLURAY_BDJ

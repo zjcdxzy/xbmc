@@ -200,7 +200,6 @@ CDVDInputStreamBluray::CDVDInputStreamBluray(IDVDPlayer* player) :
   m_navmode = false;
   m_hold = HOLD_NONE;
   memset(&m_event, 0, sizeof(m_event));
-  m_bEOF = false;
 }
 
 CDVDInputStreamBluray::~CDVDInputStreamBluray()
@@ -444,7 +443,6 @@ void CDVDInputStreamBluray::Close()
   }
   m_bd = NULL;
   m_title = NULL;
-  m_bEOF = true;
 }
 
 void CDVDInputStreamBluray::ProcessEvent() {
@@ -568,7 +566,7 @@ void CDVDInputStreamBluray::ProcessEvent() {
 #ifdef HAVE_LIBBLURAY_BDJ
     Sleep(100);
 #else
-    m_bEOF = true;
+    m_hold = HOLD_ERROR;
     m_player->OnDVDNavResult(NULL, 6);
 #endif
     break;
@@ -604,14 +602,14 @@ int CDVDInputStreamBluray::Read(uint8_t* buf, int buf_size)
       if(m_hold == HOLD_HELD)
         return 0;
 
-      if(m_bEOF)
+      if(m_hold == HOLD_ERROR)
         return -1;
 
       result = m_dll->bd_read_ext (m_bd, buf, buf_size, &m_event);
 
       if(result < 0)
       {
-        m_bEOF = true;
+        m_hold = HOLD_ERROR;
         return result;
       }
 
@@ -995,7 +993,7 @@ void CDVDInputStreamBluray::GetStreamInfo(int pid, char* language)
 
 CDVDInputStream::ENextStream CDVDInputStreamBluray::NextStream()
 {
-  if(!m_navmode || m_bEOF)
+  if(!m_navmode || m_hold == HOLD_ERROR)
     return NEXTSTREAM_NONE;
 
   /* process any current event */
