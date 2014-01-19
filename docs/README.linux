@@ -40,7 +40,7 @@ external libraries enabled).
 Build-Depends: autoconf, automake, autopoint, autotools-dev, cmake, curl,
   debhelper (>= 7.0.50~), default-jre, gawk, gperf, libao-dev, libasound2-dev,
   libass-dev (>= 0.9.8), libavahi-client-dev, libavahi-common-dev, libavcodec-dev,
-  libavfilter-dev, libavformat-dev, libavutil-dev, libbluetooth-dev, libbluray-dev,
+  libavfilter-dev, libavformat-dev, libavutil-dev, libbluetooth-dev, libbluray-dev (>= 0.3.0),
   libboost-dev, libboost-thread-dev, libbz2-dev, libcap-dev, libcdio-dev, libcec-dev,
   libcrystalhd-dev, libcurl4-gnutls-dev | libcurl-dev, libcwiid-dev, libdbus-1-dev,
   libenca-dev, libflac-dev, libfontconfig-dev, libfreetype6-dev, libfribidi-dev,
