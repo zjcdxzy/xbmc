@@ -521,7 +521,9 @@ bool CNetworkServices::StartAirPlayServer()
   txt.push_back(make_pair("features", "0x77"));
   txt.push_back(make_pair("model", "Xbmc,1"));
   txt.push_back(make_pair("srcvers", AIRPLAY_SERVER_VERSION_STR));
-  CZeroconf::GetInstance()->PublishService("servers.airplay", "_airplay._tcp", g_infoManager.GetLabel(SYSTEM_FRIENDLY_NAME), g_advancedSettings.m_airPlayPort, txt);
+  CZeroconf::GetInstance()->PublishService("servers.airplay", "_airplay._tcp", "FakeAnnounce4iOS7", g_advancedSettings.m_airPlayPort, txt);
+  Sleep(500);
+  CZeroconf::GetInstance()->PublishService("servers.airplay2", "_airplay._tcp", g_infoManager.GetLabel(SYSTEM_FRIENDLY_NAME), g_advancedSettings.m_airPlayPort, txt);
 #endif // HAS_ZEROCONF
 
   return true;
@@ -547,6 +549,7 @@ bool CNetworkServices::StopAirPlayServer(bool bWait)
 
 #ifdef HAS_ZEROCONF
   CZeroconf::GetInstance()->RemoveService("servers.airplay");
+  CZeroconf::GetInstance()->RemoveService("servers.airplay2");
 #endif // HAS_ZEROCONF
 
   return true;
