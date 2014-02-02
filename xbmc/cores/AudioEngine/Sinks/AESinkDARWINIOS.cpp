@@ -454,8 +454,8 @@ static void EnumerateDevices(AEDeviceInfoList &list)
 {
   CAEDeviceInfo device;
 
-  device.m_deviceName = "Default";
-  device.m_displayName = device.m_deviceName;
+  device.m_deviceName = "default";
+  device.m_displayName = "Default";
   device.m_displayNameExtra = "";
   device.m_deviceType = AE_DEVTYPE_PCM;
 
