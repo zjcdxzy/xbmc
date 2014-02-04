@@ -259,6 +259,64 @@ CAESinkDARWINOSX::~CAESinkDARWINOSX()
   RegisterDeviceChangedCB(false, this);
 }
 
+float ScoreStream(const AudioStreamBasicDescription &desc, const AEAudioFormat &format)
+{
+  float score = 0;
+  if (format.m_dataFormat == AE_FMT_AC3 ||
+      format.m_dataFormat == AE_FMT_DTS)    // passthrough - everything needs to match
+  {
+    if (desc.mFormatID == kAudioFormat60958AC3 ||
+        desc.mFormatID == 'IAC3' ||
+        desc.mFormatID == kAudioFormatAC3)
+    {
+      if (desc.mSampleRate == format.m_sampleRate &&
+          desc.mBitsPerChannel == CAEUtil::DataFormatToBits(format.m_dataFormat) &&
+          desc.mChannelsPerFrame == format.m_channelLayout.Count())
+      {
+        // perfect match
+        score = FLT_MAX;
+      }
+    }
+    else
+    { // we *MAY* be able to match via DDWAV if everything else matches
+      if (desc.mSampleRate       == format.m_sampleRate                            &&
+          desc.mBitsPerChannel   == CAEUtil::DataFormatToBits(format.m_dataFormat) &&
+          desc.mChannelsPerFrame == format.m_channelLayout.Count()                 &&
+          desc.mFormatID         == kAudioFormatLinearPCM)
+      {
+        // TODO: Check virtual format matches
+      }
+    }
+  }
+  else
+  { // non-passthrough, whatever works is fine
+    if (desc.mFormatID == kAudioFormatLinearPCM)
+    {
+      if (desc.mSampleRate == format.m_sampleRate)
+        score += 10;
+      else if (desc.mSampleRate > format.m_sampleRate)
+        score += 1;
+      if (desc.mChannelsPerFrame == format.m_channelLayout.Count())
+        score += 5;
+      else if (desc.mChannelsPerFrame > format.m_channelLayout.Count())
+        score += 1;
+      if (format.m_dataFormat == AE_FMT_FLOAT)
+      { // for float, prefer the highest bitdepth we have
+        if (desc.mBitsPerChannel >= 16)
+          score += (desc.mBitsPerChannel / 8);
+      }
+      else
+      {
+        if (desc.mBitsPerChannel == CAEUtil::DataFormatToBits(format.m_dataFormat))
+          score += 5;
+        else if (desc.mBitsPerChannel == CAEUtil::DataFormatToBits(format.m_dataFormat))
+          score += 1;
+      }
+    }
+  }
+  return score;
+}
+
 bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
 {
   AudioDeviceID deviceID = 0;
@@ -280,94 +338,59 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
 
   m_device.Open(deviceID);
 
-  /* see if we have an appropriate stream */
-  AudioStreamBasicDescription outputFormat = {0};
-  AudioStreamID outputStream = 0;
-
   // Fetch a list of the streams defined by the output device
   AudioStreamIdList streams;
-  UInt32  streamIndex = 0;
   m_device.GetStreams(&streams);
 
-  unsigned int num_channels = std::min(m_info.m_channels.Count(), format.m_channelLayout.Count());
-  bool passthrough = false;
   CLog::Log(LOGDEBUG, "%s: Finding stream for format %s", __FUNCTION__, CAEUtil::DataFormatToStr(format.m_dataFormat));
-  while (!streams.empty())
+
+  bool                        passthrough  = false;
+  UInt32                      outputIndex  = 0;
+  float                       outputScore  = 0;
+  AudioStreamBasicDescription outputFormat = {0};
+  AudioStreamID               outputStream = 0;
+
+  /* The theory is to score based on
+   1. Matching passthrough characteristics (i.e. passthrough flag)
+   2. Matching sample rate.
+   3. Matching bits per channel (or higher).
+   4. Matching number of channels (or higher).
+   */
+  UInt32 index = 0;
+  for (AudioStreamIdList::const_iterator i = streams.begin(); i != streams.end(); ++i)
   {
-    // Get the next stream
-    AudioStreamID id = streams.front();
-    streams.pop_front(); // We copied it, now we are done with it
-
     // Probe physical formats
-    StreamFormatList physicalFormats;
-    CCoreAudioStream::GetAvailablePhysicalFormats(id, &physicalFormats);
-    while (!physicalFormats.empty())
+    StreamFormatList formats;
+    CCoreAudioStream::GetAvailablePhysicalFormats(*i, &formats);
+    for (StreamFormatList::const_iterator j = formats.begin(); j != formats.end(); ++j)
     {
-      AudioStreamRangedDescription& desc = physicalFormats.front();
+      const AudioStreamBasicDescription &desc = j->mFormat;
+
+      float score = ScoreStream(desc, format);
+
       std::string formatString;
-      CLog::Log(LOGDEBUG, "%s: Considering Physical Format: %s", __FUNCTION__, StreamDescriptionToString(desc.mFormat, formatString));
+      CLog::Log(LOGDEBUG, "%s: Physical Format: %s rated %f", __FUNCTION__, StreamDescriptionToString(desc, formatString), score);
 
-      /* TODO: we don't support any of these, as OSX doesn't allow them to be bistreamed */
-      if (format.m_dataFormat == AE_FMT_DTSHD  ||
-          format.m_dataFormat == AE_FMT_TRUEHD ||
-          format.m_dataFormat == AE_FMT_EAC3)
+      if (score > outputScore)
       {
-        unsigned int bps = CAEUtil::DataFormatToBits(AE_FMT_S16NE);
-        if (desc.mFormat.mChannelsPerFrame == format.m_channelLayout.Count() &&
-            desc.mFormat.mBitsPerChannel == bps &&
-            desc.mFormat.mSampleRate == format.m_sampleRate)
-        {
-          outputFormat = desc.mFormat;
-          outputStream = id;
-          m_outputBufferIndex = streamIndex;
-          break;
-        }
+        passthrough  = score > 1000;
+        outputScore  = score;
+        outputFormat = desc;
+        outputStream = *i;
+        outputIndex  = index;
       }
-      else if (format.m_dataFormat == AE_FMT_AC3 ||
-               format.m_dataFormat == AE_FMT_DTS)
-      {
-        // encoded format required
-        if (desc.mFormat.mFormatID == kAudioFormat60958AC3 ||
-            desc.mFormat.mFormatID == 'IAC3' ||
-            desc.mFormat.mFormatID == kAudioFormatAC3)
-        {
-          if (desc.mFormat.mChannelsPerFrame == format.m_channelLayout.Count() &&
-              desc.mFormat.mSampleRate == format.m_sampleRate )
-          {
-            passthrough = true;
-            outputFormat = desc.mFormat;
-            outputStream = id;
-            m_outputBufferIndex = streamIndex;
-            break;
-          }
-        }
-      }
-      else
-      { // all others are PCM-ish - we output using float
-        if (desc.mFormat.mSampleRate == format.m_sampleRate &&
-            desc.mFormat.mChannelsPerFrame >= num_channels &&
-            desc.mFormat.mFormatID == kAudioFormatLinearPCM)
-        {
-          format.m_dataFormat = AE_FMT_FLOAT;
-          format.m_channelLayout = m_info.m_channels; /* TODO: Is this appropriate??? */
-          outputFormat = desc.mFormat;
-          outputStream = id;
-          m_outputBufferIndex = streamIndex;
-          break;
-        }
-      }
-      physicalFormats.pop_front();
     }
-
-    if (outputFormat.mFormatID)
-      break; // We found a suitable format. No need to continue.
-    streamIndex++;
+    index++;
   }
+
   if (!outputFormat.mFormatID)
   {
     CLog::Log(LOGERROR, "%s, Unable to find suitable stream", __FUNCTION__);
     return false;
   }
+
+  m_outputBufferIndex = outputIndex;
+
   std::string formatString;
   CLog::Log(LOGDEBUG, "%s: Selected stream[%u] - id: 0x%04X, Physical Format: %s", __FUNCTION__, m_outputBufferIndex, outputStream, StreamDescriptionToString(outputFormat, formatString));
 
@@ -402,6 +425,8 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   m_format = format;
   if (passthrough)
     format.m_dataFormat = AE_FMT_S16NE;
+  else
+    format.m_dataFormat = AE_FMT_FLOAT;
 
   // Register for data request callbacks from the driver and start
   m_device.AddIOProc(renderCallback, this);
