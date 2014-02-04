@@ -460,7 +460,7 @@ bool CCoreAudioDevice::GetMixingSupport()
         mix = 0;
     }
   }
-  CLog::Log(LOGERROR, "CCoreAudioDevice::SupportsMixing: "
+  CLog::Log(LOGDEBUG, "CCoreAudioDevice::SupportsMixing: "
     "Device mixing support : %s.", mix ? "'Yes'" : "'No'");
 
   return (mix > 0);
