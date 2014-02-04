@@ -25,6 +25,8 @@
 #include "cores/AudioEngine/Sinks/osx/CoreAudioHardware.h"
 #include "osx/DarwinUtils.h"
 #include "utils/log.h"
+#include "threads/Condition.h"
+#include "threads/CriticalSection.h"
 
 #include <sstream>
 
@@ -252,6 +254,7 @@ CAESinkDARWINOSX::CAESinkDARWINOSX()
     CLog::Log(LOGERROR, "CCoreAudioAE::constructor: kAudioHardwarePropertyRunLoop error.");
   }
   RegisterDeviceChangedCB(true, this);
+  m_started = false;
 }
 
 CAESinkDARWINOSX::~CAESinkDARWINOSX()
@@ -472,6 +475,7 @@ void CAESinkDARWINOSX::Deinitialize()
     m_buffer = NULL;
   }
   m_outputBufferIndex = 0;
+  m_started = false;
 }
 
 bool CAESinkDARWINOSX::IsCompatible(const AEAudioFormat &format, const std::string &device)
@@ -499,19 +503,18 @@ double CAESinkDARWINOSX::GetCacheTotal()
   return (double)m_buffer->GetMaxSize() / (double)(m_format.m_frameSize * m_format.m_sampleRate);
 }
 
+CCriticalSection mutex;
+XbmcThreads::ConditionVariable condVar;
+
 unsigned int CAESinkDARWINOSX::AddPackets(uint8_t *data, unsigned int frames, bool hasAudio, bool blocking)
 {
-  if (!m_buffer)
-    return 0;
-  
-  if (!hasAudio)
-    return frames;
-
-  /* TODO: Should we check for draining?? */
-
-  if (!m_buffer->GetWriteSize())
-  { // no space to write - wait for no more than 5 times the space we need
-    m_bufferEvent.WaitMSec(5000 * frames / m_format.m_sampleRate);
+  if (m_buffer->GetWriteSize() < frames * m_format.m_frameSize)
+  { // no space to write - wait for a bit
+    CSingleLock lock(mutex);
+    if (!m_started)
+      condVar.wait(lock);
+    else
+      condVar.wait(lock, 900 * frames / m_format.m_sampleRate);
   }
 
   unsigned int write_frames = std::min(frames, m_buffer->GetWriteSize() / m_format.m_frameSize);
@@ -539,43 +542,18 @@ OSStatus CAESinkDARWINOSX::renderCallback(AudioDeviceID inDevice, const AudioTim
 {
   CAESinkDARWINOSX *sink = (CAESinkDARWINOSX*)inClientData;
 
+  sink->m_started = true;
   if (sink->m_outputBufferIndex < outOutputData->mNumberBuffers)
   {
-    /* TODO: Should we do something special when draining?
-    if (sink->m_draining)
-    {
-      sink->m_buffer->Read(NULL, sink->m_buffer->GetReadSize());
-      sink->m_draining = false;
-    } */
+    /* buffers appear to come from CA already zero'd, so just copy what is wanted */
+    unsigned int wanted = outOutputData->mBuffers[sink->m_outputBufferIndex].mDataByteSize;
+    unsigned int bytes = std::min(sink->m_buffer->GetReadSize(), wanted);
+    sink->m_buffer->Read((unsigned char*)outOutputData->mBuffers[sink->m_outputBufferIndex].mData, bytes);
+    if (bytes != wanted)
+      CLog::Log(LOGERROR, "%s: %sFLOW (%i vs %i) bytes", __FUNCTION__, bytes > wanted ? "OVER" : "UNDER", bytes, wanted);
 
-    int readBytes = sink->m_buffer->GetReadSize();
-    if (readBytes > 0)
-    {
-      int freeBytes = outOutputData->mBuffers[sink->m_outputBufferIndex].mDataByteSize;
-      if (readBytes < freeBytes)
-      {
-        // we have less bytes to write than space in the buffer.
-        // write what we have and zero fill the reset.
-        CLog::Log(LOGDEBUG, "Zero-filling %i bytes", freeBytes - readBytes);
-        sink->m_buffer->Read((unsigned char*)outOutputData->mBuffers[sink->m_outputBufferIndex].mData, readBytes);
-        memset((char*)outOutputData->mBuffers[sink->m_outputBufferIndex].mData + readBytes, 0x00, freeBytes - readBytes);
-      }
-      else
-      {
-        // we have more bytes to write than space in the buffer.
-        // write the full buffer size avaliable, the rest goes into the next buffer
-        sink->m_buffer->Read((unsigned char*)outOutputData->mBuffers[sink->m_outputBufferIndex].mData, freeBytes);
-      }
-      // tell the sink we're good for more data
-      sink->m_bufferEvent.Set();
-    }
-    else
-    {
-      // nothing to write or mute, zero fill the buffer.
-      CLog::Log(LOGDEBUG, "Zero-filling %i bytes", outOutputData->mBuffers[sink->m_outputBufferIndex].mDataByteSize);
-      memset(outOutputData->mBuffers[sink->m_outputBufferIndex].mData, 0x00, outOutputData->mBuffers[sink->m_outputBufferIndex].mDataByteSize);
-    }
+    // tell the sink we're good for more data
+    condVar.notifyAll();
   }
-
   return noErr;
 }

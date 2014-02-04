@@ -19,7 +19,6 @@
  *
  */
 
-#include "threads/Event.h"
 #include "cores/AudioEngine/Interfaces/AESink.h"
 #include "cores/AudioEngine/Utils/AEDeviceInfo.h"
 #include "cores/AudioEngine/Sinks/osx/CoreAudioDevice.h"
@@ -60,5 +59,5 @@ private:
   unsigned int       m_outputBufferIndex;
 
   AERingBuffer      *m_buffer;
-  CEvent             m_bufferEvent;
+  volatile bool      m_started;     // set once we get a callback from CoreAudio, which can take a little while.
 };
