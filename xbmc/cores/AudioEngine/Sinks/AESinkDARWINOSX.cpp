@@ -395,10 +395,8 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   format.m_frames        = m_device.GetBufferSize();
   format.m_frameSamples  = format.m_frames * format.m_channelLayout.Count();
 
-  // we want about 1/4 of a second of data in the buffer, aligned to m_frames*m_frameSize
-  unsigned int buf_size  = (format.m_sampleRate / 4) * format.m_frameSize;
-  unsigned int buf_align = format.m_frames * format.m_frameSize;
-  m_buffer = new AERingBuffer((buf_size /  buf_align) * buf_align);
+  unsigned int num_buffers = 4;
+  m_buffer = new AERingBuffer(num_buffers * format.m_frames * format.m_frameSize);
   CLog::Log(LOGDEBUG, "%s: using buffer size: %u (%f ms)", __FUNCTION__, m_buffer->GetMaxSize(), (float)m_buffer->GetMaxSize() / (format.m_sampleRate * format.m_frameSize));
 
   m_format = format;
