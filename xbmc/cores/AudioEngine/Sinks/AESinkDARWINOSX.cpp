@@ -463,6 +463,8 @@ void CAESinkDARWINOSX::Deinitialize()
 {
   m_device.Stop();
   m_device.RemoveIOProc();
+
+  m_outputStream.Close();
   m_device.Close();
   if (m_buffer)
   {
