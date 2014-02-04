@@ -526,8 +526,14 @@ unsigned int CAESinkDARWINOSX::AddPackets(uint8_t *data, unsigned int frames, bo
 
 void CAESinkDARWINOSX::Drain()
 {
-  CLog::Log(LOGDEBUG, "CAESinkDARWINOSX::Drain");
-  /* TODO: What to do here?? */
+  CCriticalSection mutex;
+  int bytes = m_buffer->GetReadSize();
+  while (bytes)
+  {
+    CSingleLock lock(mutex);
+    condVar.wait(mutex, 900 * bytes / (m_format.m_sampleRate * m_format.m_frameSize));
+    bytes = m_buffer->GetReadSize();
+  }
 }
 
 void CAESinkDARWINOSX::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
