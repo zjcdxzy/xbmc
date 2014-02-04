@@ -25,7 +25,7 @@
 #include "utils/StdString.h"
 
 CCoreAudioStream::CCoreAudioStream() :
-  m_StreamId  (0    )
+  m_StreamId  (0)
 {
   m_OriginalVirtualFormat.mFormatID = 0;
   m_OriginalPhysicalFormat.mFormatID = 0;
@@ -335,7 +335,12 @@ bool CCoreAudioStream::SetPhysicalFormat(AudioStreamBasicDescription* pDesc)
 
 bool CCoreAudioStream::GetAvailableVirtualFormats(StreamFormatList* pList)
 {
-  if (!pList || !m_StreamId)
+  return GetAvailableVirtualFormats(m_StreamId, pList);
+}
+
+bool CCoreAudioStream::GetAvailableVirtualFormats(AudioStreamID id, StreamFormatList* pList)
+{
+  if (!pList || !id)
     return false;
 
   AudioObjectPropertyAddress propertyAddress; 
@@ -344,13 +349,13 @@ bool CCoreAudioStream::GetAvailableVirtualFormats(StreamFormatList* pList)
   propertyAddress.mSelector = kAudioStreamPropertyAvailableVirtualFormats; 
 
   UInt32 propertySize = 0;
-  OSStatus ret = AudioObjectGetPropertyDataSize(m_StreamId, &propertyAddress, 0, NULL, &propertySize); 
+  OSStatus ret = AudioObjectGetPropertyDataSize(id, &propertyAddress, 0, NULL, &propertySize);
   if (ret)
     return false;
 
   UInt32 formatCount = propertySize / sizeof(AudioStreamRangedDescription);
   AudioStreamRangedDescription *pFormatList = new AudioStreamRangedDescription[formatCount];
-  ret = AudioObjectGetPropertyData(m_StreamId, &propertyAddress, 0, NULL, &propertySize, pFormatList); 
+  ret = AudioObjectGetPropertyData(id, &propertyAddress, 0, NULL, &propertySize, pFormatList);
   if (!ret)
   {
     for (UInt32 format = 0; format < formatCount; format++)
@@ -362,7 +367,12 @@ bool CCoreAudioStream::GetAvailableVirtualFormats(StreamFormatList* pList)
 
 bool CCoreAudioStream::GetAvailablePhysicalFormats(StreamFormatList* pList)
 {
-  if (!pList || !m_StreamId)
+  return GetAvailablePhysicalFormats(m_StreamId, pList);
+}
+
+bool CCoreAudioStream::GetAvailablePhysicalFormats(AudioStreamID id, StreamFormatList* pList)
+{
+  if (!pList || !id)
     return false;
 
   AudioObjectPropertyAddress propertyAddress; 
@@ -371,13 +381,13 @@ bool CCoreAudioStream::GetAvailablePhysicalFormats(StreamFormatList* pList)
   propertyAddress.mSelector = kAudioStreamPropertyAvailablePhysicalFormats; 
 
   UInt32 propertySize = 0;
-  OSStatus ret = AudioObjectGetPropertyDataSize(m_StreamId, &propertyAddress, 0, NULL, &propertySize); 
+  OSStatus ret = AudioObjectGetPropertyDataSize(id, &propertyAddress, 0, NULL, &propertySize);
   if (ret)
     return false;
 
   UInt32 formatCount = propertySize / sizeof(AudioStreamRangedDescription);
   AudioStreamRangedDescription *pFormatList = new AudioStreamRangedDescription[formatCount];
-  ret = AudioObjectGetPropertyData(m_StreamId, &propertyAddress, 0, NULL, &propertySize, pFormatList); 
+  ret = AudioObjectGetPropertyData(id, &propertyAddress, 0, NULL, &propertySize, pFormatList);
   if (!ret)
   {
     for (UInt32 format = 0; format < formatCount; format++)

@@ -89,8 +89,7 @@ static void EnumerateDevices(CADeviceList &list)
       for (AudioStreamIdList::iterator j = streams.begin(); j != streams.end(); ++j)
       {
         StreamFormatList streams;
-        CCoreAudioStream stream; stream.Open(*j);
-        if (stream.GetAvailablePhysicalFormats(&streams))
+        if (CCoreAudioStream::GetAvailablePhysicalFormats(*j, &streams))
         {
           for (StreamFormatList::iterator i = streams.begin(); i != streams.end(); ++i)
           {
@@ -296,13 +295,12 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   while (!streams.empty())
   {
     // Get the next stream
-    CCoreAudioStream stream;
-    stream.Open(streams.front());
+    AudioStreamID id = streams.front();
     streams.pop_front(); // We copied it, now we are done with it
 
     // Probe physical formats
     StreamFormatList physicalFormats;
-    stream.GetAvailablePhysicalFormats(&physicalFormats);
+    CCoreAudioStream::GetAvailablePhysicalFormats(id, &physicalFormats);
     while (!physicalFormats.empty())
     {
       AudioStreamRangedDescription& desc = physicalFormats.front();
@@ -320,7 +318,7 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
             desc.mFormat.mSampleRate == format.m_sampleRate)
         {
           outputFormat = desc.mFormat;
-          outputStream = stream.GetId();
+          outputStream = id;
           m_outputBufferIndex = streamIndex;
           break;
         }
@@ -338,7 +336,7 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
           {
             passthrough = true;
             outputFormat = desc.mFormat;
-            outputStream = stream.GetId();
+            outputStream = id;
             m_outputBufferIndex = streamIndex;
             break;
           }
@@ -353,7 +351,7 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
           format.m_dataFormat = AE_FMT_FLOAT;
           format.m_channelLayout = m_info.m_channels; /* TODO: Is this appropriate??? */
           outputFormat = desc.mFormat;
-          outputStream = stream.GetId();
+          outputStream = id;
           m_outputBufferIndex = streamIndex;
           break;
         }

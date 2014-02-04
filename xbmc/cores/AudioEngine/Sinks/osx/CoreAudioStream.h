@@ -50,7 +50,9 @@ public:
   bool    SetPhysicalFormat(AudioStreamBasicDescription *pDesc);
   bool    GetAvailableVirtualFormats(StreamFormatList *pList);
   bool    GetAvailablePhysicalFormats(StreamFormatList *pList);
-  
+  static bool GetAvailableVirtualFormats(AudioStreamID id, StreamFormatList *pList);
+  static bool GetAvailablePhysicalFormats(AudioStreamID id, StreamFormatList *pList);
+
 protected:
   static OSStatus HardwareStreamListener(AudioObjectID inObjectID,
     UInt32 inNumberAddresses, const AudioObjectPropertyAddress inAddresses[], void* inClientData);
@@ -60,7 +62,7 @@ protected:
 
   AudioStreamID m_StreamId;
   AudioStreamBasicDescription m_OriginalVirtualFormat;  
-  AudioStreamBasicDescription m_OriginalPhysicalFormat;  
+  AudioStreamBasicDescription m_OriginalPhysicalFormat;
 };
 
 #endif
