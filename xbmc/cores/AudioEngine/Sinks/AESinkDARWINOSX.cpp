@@ -392,6 +392,16 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
     return false;
   }
 
+  /* Update our AE format */
+  format.m_sampleRate    = outputFormat.mSampleRate;
+  if (outputFormat.mChannelsPerFrame != format.m_channelLayout.Count())
+  { /* update the channel count.  We assume that they're layed out as given in CAChannelMap.
+       if they're not, this is plain wrong */
+    format.m_channelLayout.Reset();
+    for (unsigned int i = 0; i < outputFormat.mChannelsPerFrame; i++)
+      format.m_channelLayout += CAChannelMap[i];
+  }
+
   m_outputBufferIndex = outputIndex;
 
   std::string formatString;
