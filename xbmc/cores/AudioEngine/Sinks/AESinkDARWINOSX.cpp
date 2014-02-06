@@ -235,7 +235,7 @@ void RegisterDeviceChangedCB(bool bRegister, void *ref)
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 CAESinkDARWINOSX::CAESinkDARWINOSX()
-: m_latentFrames(0), m_outputBufferIndex(0), m_buffer(NULL)
+: m_latentFrames(0), m_outputBufferIndex(0), m_outputBitstream(false), m_outputBuffer(NULL), m_buffer(NULL)
 {
   // By default, kAudioHardwarePropertyRunLoop points at the process's main thread on SnowLeopard,
   // If your process lacks such a run loop, you can set kAudioHardwarePropertyRunLoop to NULL which
@@ -266,7 +266,7 @@ float ScoreStream(const AudioStreamBasicDescription &desc, const AEAudioFormat &
 {
   float score = 0;
   if (format.m_dataFormat == AE_FMT_AC3 ||
-      format.m_dataFormat == AE_FMT_DTS)    // passthrough - everything needs to match
+      format.m_dataFormat == AE_FMT_DTS)
   {
     if (desc.mFormatID == kAudioFormat60958AC3 ||
         desc.mFormatID == 'IAC3' ||
@@ -280,15 +280,17 @@ float ScoreStream(const AudioStreamBasicDescription &desc, const AEAudioFormat &
         score = FLT_MAX;
       }
     }
-    else
-    { // we *MAY* be able to match via DDWAV if everything else matches
-      if (desc.mSampleRate       == format.m_sampleRate                            &&
-          desc.mBitsPerChannel   == CAEUtil::DataFormatToBits(format.m_dataFormat) &&
-          desc.mChannelsPerFrame == format.m_channelLayout.Count()                 &&
-          desc.mFormatID         == kAudioFormatLinearPCM)
-      {
-        // TODO: Check virtual format matches
-      }
+  }
+  if (format.m_dataFormat == AE_FMT_AC3 ||
+      format.m_dataFormat == AE_FMT_DTS ||
+      format.m_dataFormat == AE_FMT_EAC3)
+  { // we should be able to bistreaming in PCM if the samplerate, bitdepth and channels match
+    if (desc.mSampleRate       == format.m_sampleRate                            &&
+        desc.mBitsPerChannel   == CAEUtil::DataFormatToBits(format.m_dataFormat) &&
+        desc.mChannelsPerFrame == format.m_channelLayout.Count()                 &&
+        desc.mFormatID         == kAudioFormatLinearPCM)
+    {
+      score = FLT_MAX / 2;
     }
   }
   else
@@ -403,9 +405,10 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   }
 
   m_outputBufferIndex = outputIndex;
+  m_outputBitstream   = passthrough && outputFormat.mFormatID == kAudioFormatLinearPCM;
 
   std::string formatString;
-  CLog::Log(LOGDEBUG, "%s: Selected stream[%u] - id: 0x%04X, Physical Format: %s", __FUNCTION__, m_outputBufferIndex, outputStream, StreamDescriptionToString(outputFormat, formatString));
+  CLog::Log(LOGDEBUG, "%s: Selected stream[%u] - id: 0x%04X, Physical Format: %s %s", __FUNCTION__, m_outputBufferIndex, outputStream, StreamDescriptionToString(outputFormat, formatString), m_outputBitstream ? "bitstreamed passthrough" : "");
 
   SetHogMode(passthrough);
 
@@ -430,6 +433,13 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   format.m_frameSize     = format.m_channelLayout.Count() * (CAEUtil::DataFormatToBits(format.m_dataFormat) >> 3);
   format.m_frames        = m_device.GetBufferSize();
   format.m_frameSamples  = format.m_frames * format.m_channelLayout.Count();
+
+  if (m_outputBitstream)
+  {
+    m_outputBuffer = new int16_t[format.m_frameSamples];
+    /* TODO: Do we need this? */
+    m_device.SetNominalSampleRate(format.m_sampleRate);
+  }
 
   unsigned int num_buffers = 4;
   m_buffer = new AERingBuffer(num_buffers * format.m_frames * format.m_frameSize);
@@ -485,6 +495,11 @@ void CAESinkDARWINOSX::Deinitialize()
     m_buffer = NULL;
   }
   m_outputBufferIndex = 0;
+  m_outputBitstream = false;
+
+  delete[] m_outputBuffer;
+  m_outputBuffer = NULL;
+
   m_started = false;
 }
 
@@ -561,12 +576,31 @@ OSStatus CAESinkDARWINOSX::renderCallback(AudioDeviceID inDevice, const AudioTim
   sink->m_started = true;
   if (sink->m_outputBufferIndex < outOutputData->mNumberBuffers)
   {
-    /* buffers appear to come from CA already zero'd, so just copy what is wanted */
-    unsigned int wanted = outOutputData->mBuffers[sink->m_outputBufferIndex].mDataByteSize;
-    unsigned int bytes = std::min(sink->m_buffer->GetReadSize(), wanted);
-    sink->m_buffer->Read((unsigned char*)outOutputData->mBuffers[sink->m_outputBufferIndex].mData, bytes);
-    if (bytes != wanted)
-      CLog::Log(LOGERROR, "%s: %sFLOW (%i vs %i) bytes", __FUNCTION__, bytes > wanted ? "OVER" : "UNDER", bytes, wanted);
+    if (sink->m_outputBitstream)
+    {
+      /* HACK for bitstreaming AC3/DTS via PCM.
+       We reverse the float->S16LE conversion done in the stream or device */
+      static const float mul = 1.0f / (INT16_MAX + 1);
+
+      unsigned int wanted = std::min(outOutputData->mBuffers[sink->m_outputBufferIndex].mDataByteSize / sizeof(float), (size_t)sink->m_format.m_frameSamples)  * sizeof(int16_t);
+      if (wanted <= sink->m_buffer->GetReadSize())
+      {
+        sink->m_buffer->Read((unsigned char *)sink->m_outputBuffer, wanted);
+        int16_t *src = sink->m_outputBuffer;
+        float  *dest = (float*)outOutputData->mBuffers[sink->m_outputBufferIndex].mData;
+        for (unsigned int i = 0; i < wanted / 2; i++)
+          *dest++ = *src++ * mul;
+      }
+    }
+    else
+    {
+      /* buffers appear to come from CA already zero'd, so just copy what is wanted */
+      unsigned int wanted = outOutputData->mBuffers[sink->m_outputBufferIndex].mDataByteSize;
+      unsigned int bytes = std::min(sink->m_buffer->GetReadSize(), wanted);
+      sink->m_buffer->Read((unsigned char*)outOutputData->mBuffers[sink->m_outputBufferIndex].mData, bytes);
+      if (bytes != wanted)
+        CLog::Log(LOGERROR, "%s: %sFLOW (%i vs %i) bytes", __FUNCTION__, bytes > wanted ? "OVER" : "UNDER", bytes, wanted);
+    }
 
     // tell the sink we're good for more data
     condVar.notifyAll();
