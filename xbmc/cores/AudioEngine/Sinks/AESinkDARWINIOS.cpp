@@ -122,7 +122,7 @@ bool CAAudioUnitSink::open(AudioStreamBasicDescription outputFormat)
   /* TODO: Reduce the size of this buffer, pre-calculate the size based on how large
            the buffers are that CA calls us with in the renderCallback - perhaps call
            the checkSessionProperties() before running this? */
-  m_buffer = new AERingBuffer(0.25 * m_frameSize * m_sampleRate);
+  m_buffer = new AERingBuffer(16384);
 
   return setupAudio();
 }
