@@ -127,9 +127,17 @@ UInt32 CCoreAudioStream::GetDirection()
   return val;
 }
 
-UInt32 CCoreAudioStream::GetTerminalType()
+bool CCoreAudioStream::IsDigitalOuptut(AudioStreamID id)
 {
-  if (!m_StreamId)
+  UInt32 type = GetTerminalType(id);
+  return (type == kAudioStreamTerminalTypeDigitalAudioInterface ||
+          type == kAudioStreamTerminalTypeDisplayPort ||
+          type == kAudioStreamTerminalTypeHDMI);
+}
+
+UInt32 CCoreAudioStream::GetTerminalType(AudioStreamID id)
+{
+  if (!id)
     return 0;
 
   UInt32 val = 0;
@@ -140,7 +148,7 @@ UInt32 CCoreAudioStream::GetTerminalType()
   propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
   propertyAddress.mSelector = kAudioStreamPropertyTerminalType; 
 
-  OSStatus ret = AudioObjectGetPropertyData(m_StreamId, &propertyAddress, 0, NULL, &size, &val); 
+  OSStatus ret = AudioObjectGetPropertyData(id, &propertyAddress, 0, NULL, &size, &val);
   if (ret)
     return 0;
   return val;

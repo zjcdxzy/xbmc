@@ -39,10 +39,10 @@ public:
   
   bool    Open(AudioStreamID streamId);
   void    Close(bool restore = true);
-  
+
   AudioStreamID GetId() {return m_StreamId;}
   UInt32  GetDirection();
-  UInt32  GetTerminalType();
+  static UInt32 GetTerminalType(AudioStreamID id);
   UInt32  GetNumLatencyFrames();
   bool    GetVirtualFormat(AudioStreamBasicDescription *pDesc);
   bool    GetPhysicalFormat(AudioStreamBasicDescription *pDesc);
@@ -52,6 +52,7 @@ public:
   bool    GetAvailablePhysicalFormats(StreamFormatList *pList);
   static bool GetAvailableVirtualFormats(AudioStreamID id, StreamFormatList *pList);
   static bool GetAvailablePhysicalFormats(AudioStreamID id, StreamFormatList *pList);
+  static bool IsDigitalOuptut(AudioStreamID id);
 
 protected:
   static OSStatus HardwareStreamListener(AudioObjectID inObjectID,
