@@ -393,12 +393,12 @@ OSStatus CAAudioUnitSink::renderCallback(void *inRefCon, AudioUnitRenderActionFl
 
   sink->m_started = true;
 
-	if (ioData->mNumberBuffers > 0)
+	for (unsigned int i = 0; i < ioData->mNumberBuffers; i++)
 	{
     /* buffers appear to come from CA already zero'd, so just copy what is wanted */
-    unsigned int wanted = ioData->mBuffers[0].mDataByteSize;
+    unsigned int wanted = ioData->mBuffers[i].mDataByteSize;
     unsigned int bytes = std::min(sink->m_buffer->GetReadSize(), wanted);
-    sink->m_buffer->Read((unsigned char*)ioData->mBuffers[0].mData, bytes);
+    sink->m_buffer->Read((unsigned char*)ioData->mBuffers[i].mData, bytes);
     if (bytes != wanted)
       CLog::Log(LOGERROR, "%s: %sFLOW (%i vs %i) bytes", __FUNCTION__, bytes > wanted ? "OVER" : "UNDER", bytes, wanted);
   }
