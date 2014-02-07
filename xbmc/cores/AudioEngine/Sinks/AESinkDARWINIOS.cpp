@@ -23,6 +23,7 @@
 #include "cores/AudioEngine/Utils/AERingBuffer.h"
 #include "osx/DarwinUtils.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "threads/Condition.h"
 #include "windowing/WindowingFactory.h"
 
@@ -467,7 +468,9 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
   bool found = false;
   for (size_t i = 0; i < m_devices.size(); i++)
   {
-    if (device.find(m_devices[i].m_deviceName) != std::string::npos)
+    std::string devicelower = device;
+    StringUtils::ToLower(devicelower);
+    if (devicelower.find(m_devices[i].m_deviceName) != std::string::npos)
     {
       m_info = m_devices[i];
       found = true;
