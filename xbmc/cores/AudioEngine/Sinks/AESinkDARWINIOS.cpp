@@ -444,6 +444,7 @@ static void EnumerateDevices(AEDeviceInfoList &list)
 AEDeviceInfoList CAESinkDARWINIOS::m_devices;
 
 CAESinkDARWINIOS::CAESinkDARWINIOS()
+:   m_audioSink(NULL)
 {
 }
 
@@ -513,7 +514,8 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
 
 void CAESinkDARWINIOS::Deinitialize()
 {
-  m_audioSink->close();
+  if (m_audioSink)
+    m_audioSink->close();
 
   delete m_audioSink;
   m_audioSink = NULL;
@@ -528,22 +530,29 @@ bool CAESinkDARWINIOS::IsCompatible(const AEAudioFormat &format, const std::stri
 
 double CAESinkDARWINIOS::GetDelay()
 {
-  return m_audioSink->getDelay();
+  if (m_audioSink)
+    return m_audioSink->getDelay();
+  return 0.0;
 }
 
 double CAESinkDARWINIOS::GetCacheTotal()
 {
-  return m_audioSink->cacheSize();
+  if (m_audioSink)
+    return m_audioSink->cacheSize();
+  return 0.0;
 }
 
 unsigned int CAESinkDARWINIOS::AddPackets(uint8_t *data, unsigned int frames, bool hasAudio, bool blocking)
 {
-  return m_audioSink->write(data, frames);
+  if (m_audioSink)
+    return m_audioSink->write(data, frames);
+  return 0;
 }
 
 void CAESinkDARWINIOS::Drain()
 {
-  m_audioSink->drain();
+  if (m_audioSink)
+    m_audioSink->drain();
 }
 
 bool CAESinkDARWINIOS::HasVolume()
