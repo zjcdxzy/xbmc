@@ -23,6 +23,7 @@
 #include "cores/AudioEngine/Utils/AERingBuffer.h"
 #include "osx/DarwinUtils.h"
 #include "utils/log.h"
+#include "threads/Condition.h"
 
 #include <sstream>
 #include <AudioToolbox/AudioToolbox.h>
@@ -183,7 +184,7 @@ XbmcThreads::ConditionVariable condVar;
 
 unsigned int CAAudioUnitSink::write(uint8_t *data, unsigned int frames)
 {
-  if (m_buffer->GetWriteSize() < frames * m_numBytesPerSample)
+  if (m_buffer->GetWriteSize() < frames * m_frameSize)
   { // no space to write - wait for a bit
     CSingleLock lock(mutex);
     if (!m_started)
@@ -192,9 +193,9 @@ unsigned int CAAudioUnitSink::write(uint8_t *data, unsigned int frames)
       condVar.wait(lock, 900 * frames / m_sampleRate);
   }
 
-  unsigned int write_frames = std::min(frames, m_buffer->GetWriteSize() / m_format.m_frameSize);
+  unsigned int write_frames = std::min(frames, m_buffer->GetWriteSize() / m_frameSize);
   if (write_frames)
-    m_buffer->Write(data, write_frames * m_format.m_frameSize);
+    m_buffer->Write(data, write_frames * m_frameSize);
   
   return write_frames;
 }
@@ -390,12 +391,12 @@ OSStatus CAAudioUnitSink::renderCallback(void *inRefCon, AudioUnitRenderActionFl
 
   sink->m_started = true;
 
-	for (size_t i = 0; i < ioData->mNumberBuffers; ++i)
+	if (ioData->mNumberBuffers > 0)
 	{
     /* buffers appear to come from CA already zero'd, so just copy what is wanted */
-    unsigned int wanted = outOutputData->mBuffers[sink->m_outputBufferIndex].mDataByteSize;
+    unsigned int wanted = ioData->mBuffers[0].mDataByteSize;
     unsigned int bytes = std::min(sink->m_buffer->GetReadSize(), wanted);
-    sink->m_buffer->Read((unsigned char*)outOutputData->mBuffers[sink->m_outputBufferIndex].mData, bytes);
+    sink->m_buffer->Read((unsigned char*)ioData->mBuffers[0].mData, bytes);
     if (bytes != wanted)
       CLog::Log(LOGERROR, "%s: %sFLOW (%i vs %i) bytes", __FUNCTION__, bytes > wanted ? "OVER" : "UNDER", bytes, wanted);
   }
