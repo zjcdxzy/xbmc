@@ -24,6 +24,7 @@
 #include "osx/DarwinUtils.h"
 #include "utils/log.h"
 #include "threads/Condition.h"
+#include "windowing/WindowingFactory.h"
 
 #include <sstream>
 #include <AudioToolbox/AudioToolbox.h>
@@ -415,7 +416,16 @@ static void EnumerateDevices(AEDeviceInfoList &list)
   device.m_deviceName = "default";
   device.m_displayName = "Default";
   device.m_displayNameExtra = "";
-  device.m_deviceType = AE_DEVTYPE_PCM;
+#if defined(TARGET_DARWIN_IOS_ATV2)
+  device.m_deviceType = AE_DEVTYPE_IEC958;
+#else
+  // TODO screen changing on ios needs to call
+  // devices changed once this is available in activae
+  if (g_Windowing.GetCurrentScreen() > 0)
+    device.m_deviceType = AE_DEVTYPE_IEC958; //allow passthrough for tvout
+  else
+    device.m_deviceType = AE_DEVTYPE_PCM;
+#endif
 
   // add channel info
   CAEChannelInfo channel_info;
