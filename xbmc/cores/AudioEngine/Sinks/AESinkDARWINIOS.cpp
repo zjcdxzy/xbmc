@@ -35,61 +35,29 @@ static enum AEChannel CAChannelMap[CA_MAX_CHANNELS + 1] = {
 
 /***************************************************************************************/
 /***************************************************************************************/
-#if DO_440HZ_TONE_TEST
-static void SineWaveGeneratorInitWithFrequency(SineWaveGenerator *ctx, double frequency, double samplerate)
-{
-  // Given:
-  //   frequency in cycles per second
-  //   2*PI radians per sine wave cycle
-  //   sample rate in samples per second
-  //
-  // Then:
-  //   cycles     radians     seconds     radians
-  //   ------  *  -------  *  -------  =  -------
-  //   second      cycle      sample      sample
-  ctx->currentPhase = 0.0;
-  ctx->phaseIncrement = frequency * 2*M_PI / samplerate;
-}
-
-static int16_t SineWaveGeneratorNextSample(SineWaveGenerator *ctx)
-{
-  int16_t sample = INT16_MAX * sinf(ctx->currentPhase);
-  
-  ctx->currentPhase += ctx->phaseIncrement;
-  // Keep the value between 0 and 2*M_PI
-  while (ctx->currentPhase > 2*M_PI)
-    ctx->currentPhase -= 2*M_PI;
-  
-  return sample / 4;
-}
-#endif
-
-/***************************************************************************************/
-/***************************************************************************************/
 class CAAudioUnitSink
 {
   public:
     CAAudioUnitSink();
    ~CAAudioUnitSink();
 
-    bool        open(AudioStreamBasicDescription outputFormat);
-    bool        close();
-    bool        play(bool mute);
-    bool        mute(bool mute);
-    bool        pause();
-    void        drain();
-    bool        draining();
-    double      getDelay();
-    int         getReadSize();
-    int         getWriteSize();
-    int         write(uint8_t *data, unsigned int byte_count);
+    bool         open(AudioStreamBasicDescription outputFormat);
+    bool         close();
+    bool         play(bool mute);
+    bool         mute(bool mute);
+    bool         pause();
+    void         drain();
+    double       getDelay();
+    double       cacheSize();
+    unsigned int write(uint8_t *data, unsigned int byte_count);
+    unsigned int chunkSize() { return m_bufferDuration * m_sampleRate; }
 
   private:
-    bool        setupAudio();
-    bool        checkAudioRoute();
-    bool        checkSessionProperties();
-    bool        activateAudioSession();
-    void        deactivateAudioSession();
+    bool         setupAudio();
+    bool         checkAudioRoute();
+    bool         checkSessionProperties();
+    bool         activateAudioSession();
+    void         deactivateAudioSession();
  
     // callbacks
     static void sessionPropertyCallback(void *inClientData,
@@ -106,25 +74,29 @@ class CAAudioUnitSink
     bool                m_activated;
     AudioUnit           m_audioUnit;
     AudioStreamBasicDescription m_outputFormat;
-    AERingBuffer       *m_pcm_buffer;
+    AERingBuffer       *m_buffer;
 
     bool                m_mute;
     Float32             m_outputVolume;
     Float32             m_outputLatency;
     Float32             m_bufferDuration;
-    double              m_samplingRate;
-    int                 m_numBytesPerSample;
+
+    unsigned int        m_sampleRate;
+    unsigned int        m_frameSize;
+    unsigned int        m_frames;
+
     bool                m_playing;
     bool                m_playing_saved;
-    bool                m_draining;
+    volatile bool       m_started;
 };
 
 CAAudioUnitSink::CAAudioUnitSink()
 : m_initialized(false)
 , m_activated(false)
-, m_pcm_buffer(NULL)
+, m_buffer(NULL)
 , m_playing(false)
 , m_playing_saved(false)
+, m_started(false)
 {
 }
 
@@ -137,16 +109,17 @@ bool CAAudioUnitSink::open(AudioStreamBasicDescription outputFormat)
 {
   m_mute          = false;
   m_setup         = false;
-  m_draining      = false;
   m_outputFormat  = outputFormat;
   m_outputLatency = 0.0;
   m_bufferDuration= 0.0;
   m_outputVolume  = 1.0;
-  m_samplingRate  = outputFormat.mSampleRate;
-  m_numBytesPerSample = outputFormat.mChannelsPerFrame * outputFormat.mBitsPerChannel / 8;
+  m_sampleRate    = (unsigned int)outputFormat.mSampleRate;
+  m_frameSize     = outputFormat.mChannelsPerFrame * outputFormat.mBitsPerChannel / 8;
 
-  // 1/4 second pull buffer
-  m_pcm_buffer = new AERingBuffer(0.25 * m_numBytesPerSample * m_samplingRate);
+  /* TODO: Reduce the size of this buffer, pre-calculate the size based on how large
+           the buffers are that CA calls us with in the renderCallback - perhaps call
+           the checkSessionProperties() before running this? */
+  m_buffer = new AERingBuffer(0.25 * m_frameSize * m_sampleRate);
 
   return setupAudio();
 }
@@ -155,9 +128,10 @@ bool CAAudioUnitSink::close()
 {
   deactivateAudioSession();
   
-  if (m_pcm_buffer)
-    SAFE_DELETE(m_pcm_buffer);
+  delete m_buffer;
+  m_buffer = NULL;
 
+  m_started = false;
   return true;
 }
 
@@ -190,41 +164,51 @@ bool CAAudioUnitSink::pause()
   return m_playing;
 }
 
-void CAAudioUnitSink::drain()
-{	
-  m_draining = true;
-}
-
-bool CAAudioUnitSink::draining()
-{	
-  return m_draining;
-}
-
 double CAAudioUnitSink::getDelay()
 {
-  double delay = (double)m_pcm_buffer->GetReadSize();
-  delay /= m_samplingRate   * m_numBytesPerSample;
+  double delay = (double)m_buffer->GetReadSize() / m_frameSize;
+  delay /= m_sampleRate;
   delay += m_bufferDuration + m_outputLatency;
 
   return delay;
 }
 
-int CAAudioUnitSink::getReadSize()
+double CAAudioUnitSink::cacheSize()
 {
-  return m_pcm_buffer->GetReadSize();
+  return (double)m_buffer->GetMaxSize() / (double)(m_frameSize * m_sampleRate);
 }
 
-int CAAudioUnitSink::getWriteSize()
+CCriticalSection mutex;
+XbmcThreads::ConditionVariable condVar;
+
+unsigned int CAAudioUnitSink::write(uint8_t *data, unsigned int frames)
 {
-  return m_pcm_buffer->GetWriteSize();
+  if (m_buffer->GetWriteSize() < frames * m_numBytesPerSample)
+  { // no space to write - wait for a bit
+    CSingleLock lock(mutex);
+    if (!m_started)
+      condVar.wait(lock);
+    else
+      condVar.wait(lock, 900 * frames / m_sampleRate);
+  }
+
+  unsigned int write_frames = std::min(frames, m_buffer->GetWriteSize() / m_format.m_frameSize);
+  if (write_frames)
+    m_buffer->Write(data, write_frames * m_format.m_frameSize);
+  
+  return write_frames;
 }
 
-int CAAudioUnitSink::write(uint8_t *data, unsigned int byte_count)
+void CAAudioUnitSink::drain()
 {
-  unsigned int bytes_free  = m_pcm_buffer->GetWriteSize();
-  unsigned int write_count = (unsigned int)byte_count <= bytes_free ? byte_count:bytes_free;
-
-  return m_pcm_buffer->Write(data, write_count);
+  CCriticalSection mutex;
+  unsigned int bytes = m_buffer->GetReadSize();
+  while (bytes)
+  {
+    CSingleLock lock(mutex);
+    condVar.wait(mutex, 900 * bytes / (m_sampleRate * m_frameSize));
+    bytes = m_buffer->GetReadSize();
+  }
 }
 
 bool CAAudioUnitSink::setupAudio()
@@ -308,25 +292,19 @@ bool CAAudioUnitSink::checkSessionProperties()
 {
   checkAudioRoute();
 
-#if 0
   UInt32 ioDataSize;
-
   ioDataSize = sizeof(m_outputVolume);
   if (AudioSessionGetProperty(kAudioSessionProperty_CurrentHardwareOutputVolume,
     &ioDataSize, &m_outputVolume) == noErr)
-  NSLog(@"m_outputVolume(%f)", m_outputVolume);
 
   ioDataSize = sizeof(m_outputLatency);
   if (AudioSessionGetProperty(kAudioSessionProperty_CurrentHardwareOutputLatency,
     &ioDataSize, &m_outputLatency) == noErr)
-  NSLog(@"m_outputLatency(%f)", m_outputLatency);
 
   ioDataSize = sizeof(m_bufferDuration);
   if (AudioSessionGetProperty(kAudioSessionProperty_CurrentHardwareIOBufferDuration,
     &ioDataSize, &m_bufferDuration) == noErr)
-  NSLog(@"m_bufferDuration(%f)", m_bufferDuration);
-#endif
-
+  CLog::Log(LOGDEBUG, "%s: volume = %f, latency = %f, buffer = %f", __FUNCTION__, m_outputVolume, m_outputLatency, m_bufferDuration);
   return true;
 }
 
@@ -410,40 +388,19 @@ OSStatus CAAudioUnitSink::renderCallback(void *inRefCon, AudioUnitRenderActionFl
 {
   CAAudioUnitSink *sink = (CAAudioUnitSink*)inRefCon;
 
+  sink->m_started = true;
+
 	for (size_t i = 0; i < ioData->mNumberBuffers; ++i)
 	{
-    // if muted or m_draining, flush read out the ringbuffer.
-    if (sink->m_mute || sink->m_draining)
-    {
-      sink->m_pcm_buffer->Read(NULL, sink->m_pcm_buffer->GetReadSize());
-      if (sink->m_draining)
-        sink->m_draining = false;
-    }
-
-	  int readBytes = sink->m_pcm_buffer->GetReadSize();
-	  if (readBytes > 0)
-	  {
-      int freeBytes = ioData->mBuffers[i].mDataByteSize;
-      if (readBytes < freeBytes)
-      {
-        // we have less bytes to write than space in the buffer.
-        // write what we have and zero fill the reset.
-        sink->m_pcm_buffer->Read((unsigned char*)ioData->mBuffers[i].mData, readBytes);
-        memset((char*)ioData->mBuffers[i].mData + readBytes, 0x00, freeBytes - readBytes) ;
-      }
-      else
-      {
-        // we have more bytes to write than space in the buffer.
-        // write the full buffer size avaliable, the rest goes into the next buffer
-        sink->m_pcm_buffer->Read((unsigned char*)ioData->mBuffers[i].mData, freeBytes);
-      }
-	  }
-	  else
-    {
-      // nothing to write or mute, zero fill the buffer.
-      memset(ioData->mBuffers[i].mData, 0x00, ioData->mBuffers[i].mDataByteSize);
-    }
-	}
+    /* buffers appear to come from CA already zero'd, so just copy what is wanted */
+    unsigned int wanted = outOutputData->mBuffers[sink->m_outputBufferIndex].mDataByteSize;
+    unsigned int bytes = std::min(sink->m_buffer->GetReadSize(), wanted);
+    sink->m_buffer->Read((unsigned char*)outOutputData->mBuffers[sink->m_outputBufferIndex].mData, bytes);
+    if (bytes != wanted)
+      CLog::Log(LOGERROR, "%s: %sFLOW (%i vs %i) bytes", __FUNCTION__, bytes > wanted ? "OVER" : "UNDER", bytes, wanted);
+  }
+  // tell the sink we're good for more data
+  condVar.notifyAll();
 
   return noErr;
 }
@@ -504,14 +461,13 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
     }
   }
 
-  m_format = format;
-  m_format.m_dataFormat = AE_FMT_S16LE;
-  m_format.m_channelLayout = m_info.m_channels;
-  m_format.m_frameSize = m_format.m_channelLayout.Count() * (CAEUtil::DataFormatToBits(m_format.m_dataFormat) >> 3);
+  format.m_dataFormat = AE_FMT_S16LE;
+  format.m_channelLayout = m_info.m_channels;
+  format.m_frameSize = format.m_channelLayout.Count() * (CAEUtil::DataFormatToBits(format.m_dataFormat) >> 3);
 
   AudioStreamBasicDescription audioFormat = {};
   audioFormat.mFormatID = kAudioFormatLinearPCM;
-  switch(m_format.m_sampleRate)
+  switch(format.m_sampleRate)
   {
     case 11025:
     case 22050:
@@ -540,20 +496,13 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
   audioFormat.mBytesPerPacket  = 4;
   audioFormat.mFormatFlags    |= kLinearPCMFormatFlagIsPacked;
   audioFormat.mFormatFlags    |= kLinearPCMFormatFlagIsSignedInteger;
-#if DO_440HZ_TONE_TEST
-  SineWaveGeneratorInitWithFrequency(&m_SineWaveGenerator, 440.0, audioFormat.mSampleRate);
-#endif
 
   m_audioSink = new CAAudioUnitSink;
   m_audioSink->open(audioFormat);
 
-  m_sink_frameSize = m_format.m_channelLayout.Count() * CAEUtil::DataFormatToBits(m_format.m_dataFormat) >> 3;
-  m_sinkbuffer_sec_per_byte = 1.0 / (double)(m_sink_frameSize * m_format.m_sampleRate);
-  m_sinkbuffer_sec = (double)m_sinkbuffer_sec_per_byte * m_audioSink->getWriteSize();
-
-  m_format.m_frames = m_audioSink->getWriteSize() / m_sink_frameSize;
-  m_format.m_frameSamples = m_format.m_frames * m_format.m_channelLayout.Count();
-  format = m_format;
+  format.m_frames = m_audioSink->chunkSize();
+  format.m_frameSamples = m_format.m_frames * m_format.m_channelLayout.Count();
+  m_format = format;
 
   m_volume_changed = false;
   m_audioSink->play(false);
@@ -564,7 +513,9 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
 void CAESinkDARWINIOS::Deinitialize()
 {
   m_audioSink->close();
-  SAFE_DELETE(m_audioSink);
+
+  delete m_audioSink;
+  m_audioSink = NULL;
 }
 
 bool CAESinkDARWINIOS::IsCompatible(const AEAudioFormat &format, const std::string &device)
@@ -576,60 +527,22 @@ bool CAESinkDARWINIOS::IsCompatible(const AEAudioFormat &format, const std::stri
 
 double CAESinkDARWINIOS::GetDelay()
 {
-  // this includes any latency due to AudioTrack buffer,
-  // AudioMixer (if any) and audio hardware driver.
-
-  double sinkbuffer_seconds_to_empty = m_sinkbuffer_sec_per_byte * (double)m_audioSink->getReadSize();
-  return sinkbuffer_seconds_to_empty;
+  return m_audioSink->getDelay();
 }
 
 double CAESinkDARWINIOS::GetCacheTotal()
 {
-  // total amount that the audio sink can buffer in units of seconds
-
-  return m_sinkbuffer_sec;
+  return m_audioSink->cacheSize();
 }
 
 unsigned int CAESinkDARWINIOS::AddPackets(uint8_t *data, unsigned int frames, bool hasAudio, bool blocking)
 {
-  // write as many frames of audio as we can fit into our internal buffer.
-
-  if (m_audioSink->draining())
-    return frames;
-  
-  unsigned int write_frames = m_audioSink->getWriteSize() / m_sink_frameSize;
-  if (write_frames > frames)
-    write_frames = frames;
-
-#if DO_440HZ_TONE_TEST
-  int16_t *samples = (int16_t*)data;
-  for (unsigned int j = 0; j < (write_frames * m_sink_frameSize)/2; j++)
-  {
-    int16_t sample = SineWaveGeneratorNextSample(&m_SineWaveGenerator);
-    samples[2 * j] = sample;
-    samples[2 * j + 1] = sample;
-  }
-#endif
-
-  if (hasAudio && write_frames)
-    m_audioSink->write(data, write_frames * m_sink_frameSize);
-
-  // AddPackets runs under a non-idled AE thread we must block or sleep.
-  // Trying to calc the optimal sleep is tricky so just a minimal sleep.
-  if (blocking)
-  {
-    float sleep_msec = 0.8f * 1000 * m_sinkbuffer_sec_per_byte * write_frames * m_sink_frameSize;
-    Sleep((int)sleep_msec);
-  }
-
-  return hasAudio ? write_frames:frames;
+  return m_audioSink->write(data, frames);
 }
 
 void CAESinkDARWINIOS::Drain()
 {
-  CLog::Log(LOGDEBUG, "CAESinkDARWINIOS::Drain");
-  if (m_audioSink)
-    m_audioSink->drain();
+  m_audioSink->drain();
 }
 
 bool CAESinkDARWINIOS::HasVolume()
