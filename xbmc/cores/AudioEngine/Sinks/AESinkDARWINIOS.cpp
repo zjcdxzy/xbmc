@@ -464,14 +464,19 @@ CAESinkDARWINIOS::~CAESinkDARWINIOS()
 
 bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
 {
+  bool found = false;
   for (size_t i = 0; i < m_devices.size(); i++)
   {
     if (device.find(m_devices[i].m_deviceName) != std::string::npos)
     {
       m_info = m_devices[i];
+      found = true;
       break;
     }
   }
+  
+  if (!found)
+    return false;
 
   format.m_dataFormat = AE_FMT_S16LE;
   format.m_channelLayout = m_info.m_channels;
