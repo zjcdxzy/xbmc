@@ -120,7 +120,25 @@ static void EnumerateDevices(CADeviceList &list)
                     if (desc.mFormatFlags & kAudioFormatFlagIsBigEndian)
                       format = AE_FMT_S16BE;
                     else
+                    {
+                      /* Passthrough is possible with a 2ch digital output */
+                      if (desc.mChannelsPerFrame == 2 && CCoreAudioStream::IsDigitalOuptut(*j))
+                      {
+                        if (desc.mSampleRate == 48000)
+                        {
+                          if (!HasDataFormat(device.m_dataFormats, AE_FMT_AC3))
+                            device.m_dataFormats.push_back(AE_FMT_AC3);
+                          if (!HasDataFormat(device.m_dataFormats, AE_FMT_DTS))
+                            device.m_dataFormats.push_back(AE_FMT_DTS);
+                        }
+                        else if (desc.mSampleRate == 192000)
+                        {
+                          if (!HasDataFormat(device.m_dataFormats, AE_FMT_EAC3))
+                            device.m_dataFormats.push_back(AE_FMT_EAC3);
+                        }
+                      }
                       format = AE_FMT_S16LE;
+                    }
                     break;
                   case 24:
                     if (desc.mFormatFlags & kAudioFormatFlagIsBigEndian)
