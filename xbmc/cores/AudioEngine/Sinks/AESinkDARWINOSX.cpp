@@ -162,12 +162,6 @@ static void EnumerateDevices(CADeviceList &list)
                   device.m_dataFormats.push_back(format);
                 break;
             }
-            // special check for AE_FMT_LPCM
-            if (desc.mChannelsPerFrame == 8)
-            {
-              if (!HasDataFormat(device.m_dataFormats, AE_FMT_LPCM))
-                device.m_dataFormats.push_back(AE_FMT_LPCM);
-            }
 
             // add channel info
             CAEChannelInfo channel_info;
