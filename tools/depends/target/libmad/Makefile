@@ -8,7 +8,11 @@ SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
-CONFIGURE=rm config.sub config.guess; $(AUTOMAKE) -ac; ./configure --prefix=$(PREFIX) --enable-fpm=default
+ifeq ($(CPU),arm64)
+	CONFIGURE=rm config.sub config.guess; $(AUTOMAKE) -ac; ./configure --prefix=$(PREFIX) --enable-fpm=default --disable-aso
+else
+	CONFIGURE=rm config.sub config.guess; $(AUTOMAKE) -ac; ./configure --prefix=$(PREFIX) --enable-fpm=default
+endif
 
 LIBDYLIB=$(PLATFORM)/.libs/$(LIBNAME).a
 
