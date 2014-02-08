@@ -20,7 +20,11 @@ $(TARBALLS_LOCATION)/$(ARCHIVE):
 $(PLATFORM): $(TARBALLS_LOCATION)/$(ARCHIVE) $(DEPS)
 	rm -rf $(PLATFORM); mkdir -p $(PLATFORM)
 	cd $(PLATFORM); $(ARCHIVE_TOOL) $(ARCHIVE_TOOL_FLAGS) $(TARBALLS_LOCATION)/$(ARCHIVE)
+ifeq ($(CPU), arm64)
+	cd $(PLATFORM); patch -p1 < ../01_ios_arm64_support.patch
+else
 	cd $(PLATFORM); patch -p0 < ../01_ios_arm_align_fix.patch
+endif
 	cd $(PLATFORM); $(CONFIGURE)
 
 $(LIBDYLIB): $(PLATFORM)
@@ -30,7 +34,11 @@ $(LIBDYLIB): $(PLATFORM)
 .installed-$(PLATFORM): $(LIBDYLIB)
 	$(MAKE) -C $(PLATFORM) install
 	mkdir -p $(PREFIX)/include/ffi
+ifeq ($(CPU), arm64)
+	cp $(PREFIX)/lib/$(LIBNAME)-*/include/* $(PREFIX)/include/ffi/
+else
 	cp $(PREFIX)/lib/$(SOURCE)/include/* $(PREFIX)/include/ffi/
+endif
 	touch $@
 
 clean:
