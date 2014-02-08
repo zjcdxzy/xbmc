@@ -201,7 +201,7 @@ void CMatrixGLES::Rotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
   MultMatrixf(matrix);
 }
 
-#if defined(__ARM_NEON__)
+#if defined(__ARM_NEON__) && !defined(__LP64__)
   
 inline void Matrix4Mul(const float* src_mat_1, const float* src_mat_2, float* dst_mat)
 {
@@ -246,7 +246,7 @@ void CMatrixGLES::MultMatrixf(const GLfloat *matrix)
 {
   if (m_pMatrix)
   {
-#if defined(__ARM_NEON__)
+#if defined(__ARM_NEON__) && !defined(__LP64__)
     if (m_has_neon)
     {
       GLfloat m[16];
