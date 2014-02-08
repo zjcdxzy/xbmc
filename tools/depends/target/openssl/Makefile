@@ -45,7 +45,7 @@ $(PLATFORM): $(TARBALLS_LOCATION)/$(ARCHIVE) $(DEPS)
 	fi
 	if test "$(OS)" = "ios"; then \
 		sed -ie "s|CFLAG= |CFLAG=$(CFLAGS) |" "$(PLATFORM)/Makefile"; \
-		sed -ie "s|-arch i386|-arch armv7|" "$(PLATFORM)/Makefile"; \
+		sed -ie "s|-arch i386|-arch $(CPU)|" "$(PLATFORM)/Makefile"; \
 		sed -ie "s|static volatile sig_atomic_t intr_signal;|static volatile intr_signal;|" "$(PLATFORM)/crypto/ui/ui_openssl.c"; \
 	fi
 
