@@ -1523,7 +1523,7 @@ CDVDVideoCodecVideoToolBox::CreateVTSession(int width, int height, CMFormatDescr
   VTDecompressionOutputCallback outputCallback;
   OSStatus status;
 
-  #if defined(TARGET_DARWIN_IOS)
+  #if defined(TARGET_DARWIN_IOS) && !defined(__LP64__)
     //TODO - remove the clamp for ipad3 when CVOpenGLESTextureCacheCreateTextureFromImage
     //has been planted ...
     //if (!DarwinIsIPad3())
