@@ -60,10 +60,6 @@ private:
   AEAudioFormat      m_format;
   double             m_volume;
   bool               m_volume_changed;
-  bool               m_draining;
-  unsigned int       m_sink_frameSize;
-  double             m_sinkbuffer_sec;
-  double             m_sinkbuffer_sec_per_byte;
 
   CAAudioUnitSink   *m_audioSink;
 #if DO_440HZ_TONE_TEST
