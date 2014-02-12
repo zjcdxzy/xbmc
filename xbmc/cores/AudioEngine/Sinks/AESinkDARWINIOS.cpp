@@ -38,6 +38,37 @@ static enum AEChannel CAChannelMap[CA_MAX_CHANNELS + 1] = {
 
 /***************************************************************************************/
 /***************************************************************************************/
+#if DO_440HZ_TONE_TEST
+static void SineWaveGeneratorInitWithFrequency(SineWaveGenerator *ctx, double frequency, double samplerate)
+{
+  // Given:
+  //   frequency in cycles per second
+  //   2*PI radians per sine wave cycle
+  //   sample rate in samples per second
+  //
+  // Then:
+  //   cycles     radians     seconds     radians
+  //   ------  *  -------  *  -------  =  -------
+  //   second      cycle      sample      sample
+  ctx->currentPhase = 0.0;
+  ctx->phaseIncrement = frequency * 2*M_PI / samplerate;
+}
+
+static int16_t SineWaveGeneratorNextSample(SineWaveGenerator *ctx)
+{
+  int16_t sample = INT16_MAX * sinf(ctx->currentPhase);
+
+  ctx->currentPhase += ctx->phaseIncrement;
+  // Keep the value between 0 and 2*M_PI
+  while (ctx->currentPhase > 2*M_PI)
+    ctx->currentPhase -= 2*M_PI;
+
+  return sample / 4;
+}
+#endif
+
+/***************************************************************************************/
+/***************************************************************************************/
 class CAAudioUnitSink
 {
   public:
@@ -516,6 +547,10 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
   audioFormat.mBytesPerPacket  = 4;
   audioFormat.mFormatFlags    |= kLinearPCMFormatFlagIsPacked;
   audioFormat.mFormatFlags    |= kLinearPCMFormatFlagIsSignedInteger;
+  
+#if DO_440HZ_TONE_TEST
+  SineWaveGeneratorInitWithFrequency(&m_SineWaveGenerator, 440.0, audioFormat.mSampleRate);
+#endif
 
   m_audioSink = new CAAudioUnitSink;
   m_audioSink->open(audioFormat);
@@ -562,6 +597,16 @@ double CAESinkDARWINIOS::GetCacheTotal()
 
 unsigned int CAESinkDARWINIOS::AddPackets(uint8_t *data, unsigned int frames, bool hasAudio, bool blocking)
 {
+  
+#if DO_440HZ_TONE_TEST
+  int16_t *samples = (int16_t*)data;
+  for (unsigned int j = 0; j < frames ; j++)
+  {
+    int16_t sample = SineWaveGeneratorNextSample(&m_SineWaveGenerator);
+    *samples++ = sample;
+    *samples++ = sample;
+  }
+#endif
   if (m_audioSink)
     return m_audioSink->write(data, frames);
   return 0;
