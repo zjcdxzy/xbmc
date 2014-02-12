@@ -21,6 +21,7 @@
 #include "cores/AudioEngine/Sinks/AESinkDARWINIOS.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/AudioEngine/Utils/AERingBuffer.h"
+#include "cores/AudioEngine/Sinks/osx/CoreAudioHelpers.h"
 #include "osx/DarwinUtils.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -247,14 +248,19 @@ void CAAudioUnitSink::drain()
 
 bool CAAudioUnitSink::setupAudio()
 {
+  OSStatus status = noErr;
   if (m_setup && m_audioUnit)
     return true;
 
   // Audio Session Setup
   UInt32 sessionCategory = kAudioSessionCategory_MediaPlayback;
-  if (AudioSessionSetProperty(kAudioSessionProperty_AudioCategory,
-    sizeof(sessionCategory), &sessionCategory) != noErr)
+  status = AudioSessionSetProperty(kAudioSessionProperty_AudioCategory,
+                                   sizeof(sessionCategory), &sessionCategory);
+  if (status != noErr)
+  {
+    CLog::Log(LOGERROR, "%s error setting sessioncategory (error: %d)", __PRETTY_FUNCTION__, (int)status);
     return false;
+  }
 
   AudioSessionAddPropertyListener(kAudioSessionProperty_AudioRouteChange,
     sessionPropertyCallback, this);
@@ -265,9 +271,12 @@ bool CAAudioUnitSink::setupAudio()
 #if !TARGET_IPHONE_SIMULATOR
   // set the buffer size, this affects the number of samples
   // that get rendered every time the audio callback is fired.
-  Float32 preferredBufferSize = 0.0232;
-  AudioSessionSetProperty(kAudioSessionProperty_PreferredHardwareIOBufferDuration,
+  Float32 preferredBufferSize = 512 * m_outputFormat.mChannelsPerFrame / m_outputFormat.mSampleRate;
+  CLog::Log(LOGINFO, "%s setting buffer duration to %f", __PRETTY_FUNCTION__, preferredBufferSize);
+  status = AudioSessionSetProperty(kAudioSessionProperty_PreferredHardwareIOBufferDuration,
     sizeof(preferredBufferSize), &preferredBufferSize);
+  if (status != noErr)
+    CLog::Log(LOGWARNING, "%s preferredBufferSize couldn't be set (error :%d)", __PRETTY_FUNCTION__, (int)status);
 #endif
 
   if (AudioSessionSetActive(true) != noErr)
@@ -283,30 +292,63 @@ bool CAAudioUnitSink::setupAudio()
   // Get component
   AudioComponent component;
   component = AudioComponentFindNext(NULL, &description);
-  if (AudioComponentInstanceNew(component, &m_audioUnit) != noErr)
+  status = AudioComponentInstanceNew(component, &m_audioUnit);
+  if (status != noErr)
+  {
+    CLog::Log(LOGERROR, "%s error creating audioUnit (error: %d)", __PRETTY_FUNCTION__, (int)status);
     return false;
+  }
   
 	// Set the output stream format
   UInt32 ioDataSize = sizeof(AudioStreamBasicDescription);
-  if (AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
-    kAudioUnitScope_Input, 0, &m_outputFormat, ioDataSize) != noErr)
+  status = AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
+                                kAudioUnitScope_Input, 0, &m_outputFormat, ioDataSize);
+  if (status != noErr)
+  {
+    CLog::Log(LOGERROR, "%s error setting stream format on audioUnit (error: %d)", __PRETTY_FUNCTION__, (int)status);
     return false;
+  }
+  
+	// Get the output stream format for knowing what was setup in reality
+  ioDataSize = sizeof(AudioStreamBasicDescription);
+  AudioStreamBasicDescription realOutputFormat;
+  status = AudioUnitGetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
+                                kAudioUnitScope_Input, 0, &realOutputFormat, &ioDataSize);
+  if (status == noErr)
+  {
+    if (m_outputFormat.mSampleRate != realOutputFormat.mSampleRate)
+    {
+      CLog::Log(LOGNOTICE, "%s couldn't set requested samplerate %d, realised %d instead", __PRETTY_FUNCTION__, (int)m_outputFormat.mSampleRate, (int)realOutputFormat.mSampleRate);
+    }
+    m_outputFormat = realOutputFormat;
+  }
+  
 
   // Attach a render callback on the unit
   AURenderCallbackStruct callbackStruct = {};
   callbackStruct.inputProc = renderCallback;
   callbackStruct.inputProcRefCon = this;
-  if (AudioUnitSetProperty(m_audioUnit,
-    kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input,
-    0, &callbackStruct, sizeof(callbackStruct)) != noErr)
+  status = AudioUnitSetProperty(m_audioUnit,
+                                kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input,
+                                0, &callbackStruct, sizeof(callbackStruct));
+  if (status != noErr)
+  {
+    CLog::Log(LOGERROR, "%s error setting render callback for audioUnit (error: %d)", __PRETTY_FUNCTION__, (int)status);
     return false;
+  }
 
-	if (AudioUnitInitialize(m_audioUnit) != noErr)
+  status = AudioUnitInitialize(m_audioUnit);
+	if (status != noErr)
+  {
+    CLog::Log(LOGERROR, "%s error initializing audioUnit (error: %d)", __PRETTY_FUNCTION__, (int)status);
     return false;
+  }
 
   checkSessionProperties();
 
   m_setup = true;
+  std::string formatString;
+  CLog::Log(LOGINFO, "%s setup audio format: %s", __PRETTY_FUNCTION__, StreamDescriptionToString(m_outputFormat, formatString));
 
   return m_setup;
 }
@@ -352,7 +394,10 @@ bool CAAudioUnitSink::activateAudioSession()
       if (osstat == kAudioSessionNoError || osstat == kAudioSessionAlreadyInitialized)
         m_initialized = true;
       else
+      {
+        CLog::Log(LOGERROR, "%s error initializing audio session (error: %d)", __PRETTY_FUNCTION__, (int)osstat);
         return false;
+      }
     }
     if (checkAudioRoute() && setupAudio())
       m_activated = true;

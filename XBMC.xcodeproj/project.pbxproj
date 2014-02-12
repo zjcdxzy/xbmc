@@ -462,6 +462,8 @@
 		DF3488E713FD958F0026A711 /* GUIAction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF3488E513FD958F0026A711 /* GUIAction.cpp */; };
 		DF34892A13FD9C780026A711 /* AirPlayServer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF34892813FD9C780026A711 /* AirPlayServer.cpp */; };
 		DF34898213FDAAF60026A711 /* HttpParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DF34898113FDAAF60026A711 /* HttpParser.cpp */; };
+		DF374B2418AC2BA20076B514 /* CoreAudioHelpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C8AE852189DE47400C33786 /* CoreAudioHelpers.cpp */; };
+		DF374B2518AC2BA20076B514 /* CoreAudioHelpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C8AE852189DE47400C33786 /* CoreAudioHelpers.cpp */; };
 		DF3C3C0E1752A7EE000989C3 /* IOSEAGLView.mm in Sources */ = {isa = PBXBuildFile; fileRef = E49910D7174E4A6400741B6D /* IOSEAGLView.mm */; };
 		DF3C3C0F1752A7EE000989C3 /* IOSExternalTouchController.mm in Sources */ = {isa = PBXBuildFile; fileRef = E49910D9174E4A6400741B6D /* IOSExternalTouchController.mm */; };
 		DF3C3C101752A7EE000989C3 /* IOSScreenManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = E49910DB174E4A6400741B6D /* IOSScreenManager.mm */; };
@@ -11849,6 +11851,7 @@
 				F5CC230D18150118006B5E91 /* AESinkFactory.cpp in Sources */,
 				F5CC234818150277006B5E91 /* AESinkNULL.cpp in Sources */,
 				F5CC238918150768006B5E91 /* AESinkProfiler.cpp in Sources */,
+				DF374B2518AC2BA20076B514 /* CoreAudioHelpers.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -12901,6 +12904,7 @@
 				F5CC230C18150118006B5E91 /* AESinkFactory.cpp in Sources */,
 				F5CC234718150277006B5E91 /* AESinkNULL.cpp in Sources */,
 				F5CC238818150768006B5E91 /* AESinkProfiler.cpp in Sources */,
+				DF374B2418AC2BA20076B514 /* CoreAudioHelpers.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
