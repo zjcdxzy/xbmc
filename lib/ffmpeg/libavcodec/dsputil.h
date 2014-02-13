@@ -395,6 +395,7 @@ int ff_check_alignment(void);
 void ff_set_cmp(DSPContext* c, me_cmp_func *cmp, int type);
 
 void ff_dsputil_init_alpha(DSPContext* c, AVCodecContext *avctx);
+void ff_dsputil_init_aarch64(DSPContext* c, AVCodecContext *avctx);
 void ff_dsputil_init_arm(DSPContext* c, AVCodecContext *avctx);
 void ff_dsputil_init_bfin(DSPContext* c, AVCodecContext *avctx);
 void ff_dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx);

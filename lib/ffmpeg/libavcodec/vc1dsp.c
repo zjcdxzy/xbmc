@@ -861,6 +861,8 @@ av_cold void ff_vc1dsp_init(VC1DSPContext* dsp) {
     dsp->sprite_v_double_twoscale = sprite_v_double_twoscale_c;
 #endif
 
+    if (ARCH_AARCH64)
+        ff_vc1dsp_init_aarch64(dsp);
     if (HAVE_ALTIVEC)
         ff_vc1dsp_init_altivec(dsp);
     if (ARCH_X86)

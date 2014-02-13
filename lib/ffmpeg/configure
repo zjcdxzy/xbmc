@@ -1612,8 +1612,8 @@ CMDLINE_APPEND="
 armv5te_deps="arm"
 armv6_deps="arm"
 armv6t2_deps="arm"
-neon_deps="arm"
-vfp_deps="arm"
+neon_deps_any="aarch64 arm"
+vfp_deps_any="aarch64 arm"
 vfpv3_deps="vfp"
 
 map 'eval ${v}_inline_deps=inline_asm' $ARCH_EXT_LIST_ARM
@@ -1654,10 +1654,10 @@ for ext in $(filter_out mmx $ARCH_EXT_LIST_X86); do
     eval ${ext}_suggest='"${ext}_external ${ext}_inline"'
 done
 
-aligned_stack_if_any="ppc x86"
-fast_64bit_if_any="alpha ia64 mips64 parisc64 ppc64 sparc64 x86_64"
-fast_clz_if_any="alpha avr32 mips ppc x86"
-fast_unaligned_if_any="ppc x86"
+aligned_stack_if_any="aarch64 ppc x86"
+fast_64bit_if_any="aarch64 alpha ia64 mips64 parisc64 ppc64 sparc64 x86_64"
+fast_clz_if_any="aarch64 alpha avr32 mips ppc x86"
+fast_unaligned_if_any="aarch64 ppc x86"
 
 inline_asm_deps="!tms470"
 need_memalign="altivec neon sse"
@@ -3561,7 +3561,14 @@ unsigned int endian = 'B' << 24 | 'I' << 16 | 'G' << 8 | 'E';
 EOF
 od -t x1 $TMPO | grep -q '42 *49 *47 *45' && enable bigendian
 
-if enabled alpha; then
+if enabled aarch64; then
+    # internal assembler in clang 3.3 does not support this instruction
+    enabled neon && check_insn neon 'ext   v0.8B, v0.8B, v1.8B, #1'
+    enabled vfp  && check_insn vfp  'fmadd d0,    d0,    d1,    d2'
+
+    map 'enabled_any ${v}_external ${v}_inline || disable $v' $ARCH_EXT_LIST_ARM
+
+elif enabled alpha; then
 
     check_cflags -mieee
 
@@ -4287,6 +4294,10 @@ if enabled x86; then
     echo "CMOV is fast              ${fast_cmov-no}"
     echo "EBX available             ${ebx_available-no}"
     echo "EBP available             ${ebp_available-no}"
+fi
+if enabled aarch64; then
+    echo "NEON enabled              ${neon-no}"
+    echo "VFP enabled               ${vfp-no}"
 fi
 if enabled arm; then
     echo "ARMv5TE enabled           ${armv5te-no}"

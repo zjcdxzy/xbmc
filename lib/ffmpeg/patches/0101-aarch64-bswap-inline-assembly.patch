@@ -1,0 +1,87 @@
+From 71ab7c6cbb71a56f85a1ad55574dcdca0fc1418d Mon Sep 17 00:00:00 2001
+From: Janne Grunau <janne-libav@jannau.net>
+Date: Mon, 25 Nov 2013 16:58:54 +0100
+Subject: [PATCH 101/108] aarch64: bswap inline assembly
+
+Signed-off-by: Janne Grunau <janne-libav@jannau.net>
+Signed-off-by: Linus Yang <laokongzi@gmail.com>
+---
+ libavutil/aarch64/bswap.h | 50 +++++++++++++++++++++++++++++++++++++++++++++++
+ libavutil/bswap.h         |  4 +++-
+ 2 files changed, 53 insertions(+), 1 deletion(-)
+ create mode 100644 libavutil/aarch64/bswap.h
+
+diff --git a/libavutil/aarch64/bswap.h b/libavutil/aarch64/bswap.h
+new file mode 100644
+index 0000000..0c001ce
+--- /dev/null
++++ b/libavutil/aarch64/bswap.h
+@@ -0,0 +1,50 @@
++/*
++ * This file is part of Libav.
++ *
++ * Libav is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * Libav is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with Libav; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#ifndef AVUTIL_AARCH64_BSWAP_H
++#define AVUTIL_AARCH64_BSWAP_H
++
++#include <stdint.h>
++#include "config.h"
++#include "libavutil/attributes.h"
++
++#if HAVE_INLINE_ASM
++
++#define av_bswap16 av_bswap16
++static av_always_inline av_const unsigned av_bswap16(unsigned x)
++{
++    __asm__("rev16 %w0, %w0" : "+r"(x));
++    return x;
++}
++
++#define av_bswap32 av_bswap32
++static av_always_inline av_const uint32_t av_bswap32(uint32_t x)
++{
++    __asm__("rev %w0, %w0" : "+r"(x));
++    return x;
++}
++
++#define av_bswap64 av_bswap64
++static av_always_inline av_const uint64_t av_bswap64(uint64_t x)
++{
++    __asm__("rev %0, %0" : "+r"(x));
++    return x;
++}
++
++#endif /* HAVE_INLINE_ASM */
++#endif /* AVUTIL_AARCH64_BSWAP_H */
+diff --git a/libavutil/bswap.h b/libavutil/bswap.h
+index 06f6548..f38e1de 100644
+--- a/libavutil/bswap.h
++++ b/libavutil/bswap.h
+@@ -34,7 +34,9 @@
+ 
+ #include "config.h"
+ 
+-#if   ARCH_ARM
++#if   ARCH_AARCH64
++#   include "aarch64/bswap.h"
++#elif ARCH_ARM
+ #   include "arm/bswap.h"
+ #elif ARCH_AVR32
+ #   include "avr32/bswap.h"
+-- 
+1.8.5.3
+

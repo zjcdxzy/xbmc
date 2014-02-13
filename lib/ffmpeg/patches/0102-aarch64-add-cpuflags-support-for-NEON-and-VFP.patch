@@ -1,0 +1,272 @@
+From 704d51c7a2c97b19375808d7757b1e01b9e89d2c Mon Sep 17 00:00:00 2001
+From: Janne Grunau <janne-libav@jannau.net>
+Date: Tue, 10 Dec 2013 20:13:32 +0100
+Subject: [PATCH 102/108] aarch64: add cpuflags support for NEON and VFP
+
+NEON and VFP are currently mandatory for all ARMv8 profiles. Both are
+handled as extensions as far as cpuflags are concerned. This is
+consistent with handling x86_64 which always has SSE2, but still
+handles it as an extension.
+
+Conflicts:
+	configure
+	libavutil/cpu_internal.h
+
+Signed-off-by: Linus Yang <laokongzi@gmail.com>
+---
+ configure                  | 17 ++++++++++---
+ libavutil/aarch64/Makefile |  1 +
+ libavutil/aarch64/asm.S    | 63 ++++++++++++++++++++++++++++++++++++++++++++++
+ libavutil/aarch64/cpu.c    | 26 +++++++++++++++++++
+ libavutil/aarch64/cpu.h    | 28 +++++++++++++++++++++
+ libavutil/cpu.c            | 19 +++++++++++---
+ libavutil/cpu.h            |  1 +
+ 7 files changed, 148 insertions(+), 7 deletions(-)
+ create mode 100644 libavutil/aarch64/Makefile
+ create mode 100644 libavutil/aarch64/asm.S
+ create mode 100644 libavutil/aarch64/cpu.c
+ create mode 100644 libavutil/aarch64/cpu.h
+
+diff --git a/configure b/configure
+index 1b3cdac..870db79 100755
+--- a/configure
++++ b/configure
+@@ -1612,8 +1612,8 @@ CMDLINE_APPEND="
+ armv5te_deps="arm"
+ armv6_deps="arm"
+ armv6t2_deps="arm"
+-neon_deps="arm"
+-vfp_deps="arm"
++neon_deps_any="aarch64 arm"
++vfp_deps_any="aarch64 arm"
+ vfpv3_deps="vfp"
+ 
+ map 'eval ${v}_inline_deps=inline_asm' $ARCH_EXT_LIST_ARM
+@@ -3561,7 +3561,14 @@ unsigned int endian = 'B' << 24 | 'I' << 16 | 'G' << 8 | 'E';
+ EOF
+ od -t x1 $TMPO | grep -q '42 *49 *47 *45' && enable bigendian
+ 
+-if enabled alpha; then
++if enabled aarch64; then
++    # internal assembler in clang 3.3 does not support this instruction
++    enabled neon && check_insn neon 'ext   v0.8B, v0.8B, v1.8B, #1'
++    enabled vfp  && check_insn vfp  'fmadd d0,    d0,    d1,    d2'
++
++    map 'enabled_any ${v}_external ${v}_inline || disable $v' $ARCH_EXT_LIST_ARM
++
++elif enabled alpha; then
+ 
+     check_cflags -mieee
+ 
+@@ -4288,6 +4295,10 @@ if enabled x86; then
+     echo "EBX available             ${ebx_available-no}"
+     echo "EBP available             ${ebp_available-no}"
+ fi
++if enabled aarch64; then
++    echo "NEON enabled              ${neon-no}"
++    echo "VFP enabled               ${vfp-no}"
++fi
+ if enabled arm; then
+     echo "ARMv5TE enabled           ${armv5te-no}"
+     echo "ARMv6 enabled             ${armv6-no}"
+diff --git a/libavutil/aarch64/Makefile b/libavutil/aarch64/Makefile
+new file mode 100644
+index 0000000..13d26a1
+--- /dev/null
++++ b/libavutil/aarch64/Makefile
+@@ -0,0 +1 @@
++OBJS += aarch64/cpu.o
+diff --git a/libavutil/aarch64/asm.S b/libavutil/aarch64/asm.S
+new file mode 100644
+index 0000000..94e5a84
+--- /dev/null
++++ b/libavutil/aarch64/asm.S
+@@ -0,0 +1,63 @@
++/*
++ * Copyright (c) 2008 Mans Rullgard <mans@mansr.com>
++ *
++ * This file is part of Libav.
++ *
++ * Libav is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * Libav is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with Libav; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#include "config.h"
++
++#ifdef __ELF__
++#   define ELF
++#else
++#   define ELF //
++#endif
++
++.macro  function name, export=0, align=2
++    .macro endfunc
++ELF     .size   \name, . - \name
++        .endfunc
++        .purgem endfunc
++    .endm
++        .text
++        .align          \align
++    .if \export
++        .global EXTERN_ASM\name
++EXTERN_ASM\name:
++    .endif
++ELF     .type   \name, %function
++        .func   \name
++\name:
++.endm
++
++.macro  const   name, align=2
++    .macro endconst
++ELF     .size   \name, . - \name
++        .purgem endconst
++    .endm
++        .section        .rodata
++        .align          \align
++\name:
++.endm
++
++.macro  movrel rd, val
++#if CONFIG_PIC
++        adrp            \rd, #:pg_hi21:\val
++        add             \rd, \rd, #:lo12:\val
++#else
++        ldr             \rd, =\val
++#endif
++.endm
+diff --git a/libavutil/aarch64/cpu.c b/libavutil/aarch64/cpu.c
+new file mode 100644
+index 0000000..5624b67
+--- /dev/null
++++ b/libavutil/aarch64/cpu.c
+@@ -0,0 +1,26 @@
++/*
++ * This file is part of Libav.
++ *
++ * Libav is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * Libav is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with Libav; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#include "libavutil/cpu.h"
++#include "config.h"
++
++int ff_get_cpu_flags_aarch64(void)
++{
++    return AV_CPU_FLAG_NEON * HAVE_NEON |
++           AV_CPU_FLAG_VFP  * HAVE_VFP;
++}
+diff --git a/libavutil/aarch64/cpu.h b/libavutil/aarch64/cpu.h
+new file mode 100644
+index 0000000..869e42b
+--- /dev/null
++++ b/libavutil/aarch64/cpu.h
+@@ -0,0 +1,28 @@
++/*
++ * This file is part of Libav.
++ *
++ * Libav is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * Libav is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with Libav; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#ifndef AVUTIL_AARCH64_CPU_H
++#define AVUTIL_AARCH64_CPU_H
++
++#include "config.h"
++#include "libavutil/cpu.h"
++
++#define have_neon(flags) (HAVE_NEON    && ((flags) & AV_CPU_FLAG_NEON))
++#define have_vfp(flags)  (HAVE_VFP     && ((flags) & AV_CPU_FLAG_VFP))
++
++#endif /* AVUTIL_AARCH64_CPU_H */
+diff --git a/libavutil/cpu.c b/libavutil/cpu.c
+index a1d1547..7f9c1f1 100644
+--- a/libavutil/cpu.c
++++ b/libavutil/cpu.c
+@@ -32,9 +32,14 @@ int av_get_cpu_flags(void)
+     if (checked)
+         return flags;
+ 
+-    if (ARCH_ARM) flags = ff_get_cpu_flags_arm();
+-    if (ARCH_PPC) flags = ff_get_cpu_flags_ppc();
+-    if (ARCH_X86) flags = ff_get_cpu_flags_x86();
++    if (ARCH_AARCH64)
++        flags = ff_get_cpu_flags_aarch64();
++    if (ARCH_ARM)
++        flags = ff_get_cpu_flags_arm();
++    if (ARCH_PPC)
++        flags = ff_get_cpu_flags_ppc();
++    if (ARCH_X86)
++        flags = ff_get_cpu_flags_x86();
+ 
+     checked = 1;
+     return flags;
+@@ -92,6 +97,9 @@ int av_parse_cpu_flags(const char *s)
+         { "vfp",      NULL, 0, AV_OPT_TYPE_CONST, { .i64 = AV_CPU_FLAG_VFP      },    .unit = "flags" },
+         { "vfpv3",    NULL, 0, AV_OPT_TYPE_CONST, { .i64 = AV_CPU_FLAG_VFPV3    },    .unit = "flags" },
+         { "neon",     NULL, 0, AV_OPT_TYPE_CONST, { .i64 = AV_CPU_FLAG_NEON     },    .unit = "flags" },
++#elif ARCH_AARCH64
++        { "neon",     NULL, 0, AV_OPT_TYPE_CONST, { .i64 = AV_CPU_FLAG_NEON     },    .unit = "flags" },
++        { "vfp",      NULL, 0, AV_OPT_TYPE_CONST, { .i64 = AV_CPU_FLAG_VFP      },    .unit = "flags" },
+ #endif
+         { NULL },
+     };
+@@ -181,7 +189,10 @@ static const struct {
+     int flag;
+     const char *name;
+ } cpu_flag_tab[] = {
+-#if   ARCH_ARM
++#if   ARCH_AARCH64
++    { AV_CPU_FLAG_NEON,      "neon"       },
++    { AV_CPU_FLAG_VFP,       "vfp"        },
++#elif ARCH_ARM
+     { AV_CPU_FLAG_ARMV5TE,   "armv5te"    },
+     { AV_CPU_FLAG_ARMV6,     "armv6"      },
+     { AV_CPU_FLAG_ARMV6T2,   "armv6t2"    },
+diff --git a/libavutil/cpu.h b/libavutil/cpu.h
+index c8f34e0..69c5c78 100644
+--- a/libavutil/cpu.h
++++ b/libavutil/cpu.h
+@@ -101,6 +101,7 @@ int av_parse_cpu_flags(const char *s);
+ int av_parse_cpu_caps(unsigned *flags, const char *s);
+ 
+ /* The following CPU-specific functions shall not be called directly. */
++int ff_get_cpu_flags_aarch64(void);
+ int ff_get_cpu_flags_arm(void);
+ int ff_get_cpu_flags_ppc(void);
+ int ff_get_cpu_flags_x86(void);
+-- 
+1.8.5.3
+

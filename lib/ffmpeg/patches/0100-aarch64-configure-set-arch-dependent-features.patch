@@ -1,0 +1,36 @@
+From c13b99d4b861ab2e7615cd0ece4d288f29f5a1ad Mon Sep 17 00:00:00 2001
+From: Janne Grunau <janne-libav@jannau.net>
+Date: Thu, 12 Dec 2013 17:45:32 +0100
+Subject: [PATCH 100/108] aarch64: configure: set arch dependent features
+
+Stack is always 16 byte aligned and clz, 64bit operations and unaligned
+memory access are fast in aarch64 mode on ARMv8.
+
+Signed-off-by: Janne Grunau <janne-libav@jannau.net>
+Signed-off-by: Linus Yang <laokongzi@gmail.com>
+---
+ configure | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/configure b/configure
+index 351611d..1b3cdac 100755
+--- a/configure
++++ b/configure
+@@ -1654,10 +1654,10 @@ for ext in $(filter_out mmx $ARCH_EXT_LIST_X86); do
+     eval ${ext}_suggest='"${ext}_external ${ext}_inline"'
+ done
+ 
+-aligned_stack_if_any="ppc x86"
+-fast_64bit_if_any="alpha ia64 mips64 parisc64 ppc64 sparc64 x86_64"
+-fast_clz_if_any="alpha avr32 mips ppc x86"
+-fast_unaligned_if_any="ppc x86"
++aligned_stack_if_any="aarch64 ppc x86"
++fast_64bit_if_any="aarch64 alpha ia64 mips64 parisc64 ppc64 sparc64 x86_64"
++fast_clz_if_any="aarch64 alpha avr32 mips ppc x86"
++fast_unaligned_if_any="aarch64 ppc x86"
+ 
+ inline_asm_deps="!tms470"
+ need_memalign="altivec neon sse"
+-- 
+1.8.5.3
+
