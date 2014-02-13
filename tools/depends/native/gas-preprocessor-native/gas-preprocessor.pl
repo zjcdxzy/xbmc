@@ -49,9 +49,13 @@ if ((grep /^-c$/, @gcc_cmd) && !(grep /^-o/, @gcc_cmd)) {
 @preprocess_c_cmd = map { /\.o$/ ? "-" : $_ } @preprocess_c_cmd;
 
 my $comm;
+my $aarch64 = 0;
 
 # detect architecture from gcc binary name
-if      ($gcc_cmd[0] =~ /arm/) {
+if      ($gcc_cmd[0] =~ /arm64|aarch64/) {
+    $comm = '//';
+    $aarch64 = 1;
+} elsif ($gcc_cmd[0] =~ /arm/) {
     $comm = '@';
 } elsif ($gcc_cmd[0] =~ /powerpc|ppc/) {
     $comm = '#';
@@ -60,7 +64,10 @@ if      ($gcc_cmd[0] =~ /arm/) {
 # look for -arch flag
 foreach my $i (1 .. $#gcc_cmd-1) {
     if ($gcc_cmd[$i] eq "-arch") {
-        if ($gcc_cmd[$i+1] =~ /arm/) {
+        if      ($gcc_cmd[$i+1] =~ /arm64|aarch64/) {
+            $comm = '//';
+            $aarch64 = 1;
+        } elsif ($gcc_cmd[$i+1] =~ /arm/) {
             $comm = '@';
         } elsif ($gcc_cmd[$i+1] =~ /powerpc|ppc/) {
             $comm = '#';
@@ -71,7 +78,10 @@ foreach my $i (1 .. $#gcc_cmd-1) {
 # assume we're not cross-compiling if no -arch or the binary doesn't have the arch name
 if (!$comm) {
     my $native_arch = qx/arch/;
-    if ($native_arch =~ /arm/) {
+    if      ($native_arch =~ /arm64|aarch64/) {
+        $comm = '//';
+        $aarch64 = 1;
+    } elsif ($native_arch =~ /arm/) {
         $comm = '@';
     } elsif ($native_arch =~ /powerpc|ppc/) {
         $comm = '#';
@@ -109,14 +119,14 @@ while (<ASMFILE>) {
     s/(?<!\\)$comm.*//x;
 
     # comment out unsupported directives
-    s/\.type/$comm.type/x;
-    s/\.func/$comm.func/x;
-    s/\.endfunc/$comm.endfunc/x;
-    s/\.ltorg/$comm.ltorg/x;
-    s/\.size/$comm.size/x;
-    s/\.fpu/$comm.fpu/x;
-    s/\.arch/$comm.arch/x;
-    s/\.object_arch/$comm.object_arch/x;
+    s/\.type/$comm$&/x;
+    s/\.func/$comm$&/x;
+    s/\.endfunc/$comm$&/x;
+    s/\.ltorg/$comm$&/x;
+    s/\.size/$comm$&/x;
+    s/\.fpu/$comm$&/x;
+    s/\.arch/$comm$&/x;
+    s/\.object_arch/$comm$&/x;
 
     # the syntax for these is a little different
     s/\.global/.globl/x;
@@ -167,7 +177,7 @@ sub handle_if {
         } elsif ($type eq "lt") {
             $result = eval_expr($expr) < 0;
         } else {
-	    chomp($line);
+            chomp($line);
             die "unhandled .if varient. \"$line\"";
         }
         push (@ifstack, $result);
@@ -408,6 +418,11 @@ my %call_targets;
 my @irp_args;
 my $irp_param;
 
+my %neon_alias_reg;
+my %neon_alias_type;
+
+my %aarch64_req_alias;
+
 # pass 2: parse .rept and .if variants
 foreach my $line (@pass1_lines) {
     # handle .previous (only with regard to .section not .subsection)
@@ -441,6 +456,13 @@ foreach my $line (@pass1_lines) {
         %literal_labels = ();
     }
 
+    # handle GNU as pc-relative relocations for adrp/add
+    if ($line =~ /(.*)\s*adrp([\w\s\d]+)\s*,\s*#:pg_hi21:([^\s]+)/) {
+        $line = "$1 adrp$2, ${3}\@PAGE\n";
+    } elsif ($line =~ /(.*)\s*add([\w\s\d]+)\s*,([\w\s\d]+)\s*,\s*#:lo12:([^\s]+)/) {
+        $line = "$1 add$2, $3, ${4}\@PAGEOFF\n";
+    }
+
     # thumb add with large immediate needs explicit add.w
     if ($thumb and $line =~ /add\s+.*#([^@]+)/) {
         $line =~ s/add/add.w/ if eval_expr($1) > 255;
@@ -449,15 +471,25 @@ foreach my $line (@pass1_lines) {
     # mach-o local symbol names start with L (no dot)
     $line =~ s/(?<!\w)\.(L\w+)/$1/g;
 
+    # recycle the commented '.func' directive for '.thumb_func'
+    if ($thumb) {
+        $line =~ s/$comm\.func/.thumb_func/x;
+    }
+
     if ($thumb and $line =~ /^\s*(\w+)\s*:/) {
         $thumb_labels{$1}++;
     }
 
-    if ($line =~ /^\s*((\w+\s*:\s*)?bl?x?(?:..)?(?:\.w)?|\.globl)\s+(\w+)/) {
-        if (exists $thumb_labels{$3}) {
-            print ASMFILE ".thumb_func $3\n";
-        } else {
-            $call_targets{$3}++;
+    if ($line =~ /^\s*((\w+\s*:\s*)?bl?x?(..)?(?:\.w)?|\.globl)\s+(\w+)/) {
+        my $cond = $3;
+        my $label = $4;
+        # Don't interpret e.g. bic as b<cc> with ic as conditional code
+        if ($cond =~ /|eq|ne|cs|cc|mi|pl|vs|vc|hi|ls|ge|lt|gt|le|al|hs|lo/) {
+            if (exists $thumb_labels{$label}) {
+                print ASMFILE ".thumb_func $label\n";
+            } else {
+                $call_targets{$label}++;
+            }
         }
     }
 
@@ -471,15 +503,6 @@ foreach my $line (@pass1_lines) {
             $line = "$1${2}spr $ppc_spr{$3}, $4\n";
         } else {
             $line = "$1${2}spr $4, $ppc_spr{$3}\n";
-        }
-    }
-
-    # old gas versions store upper and lower case names on .req,
-    # but they remove only one on .unreq
-    if ($fix_unreq) {
-        if ($line =~ /\.unreq\s+(.*)/) {
-            $line = ".unreq " . lc($1) . "\n";
-            $line .= ".unreq " . uc($1) . "\n";
         }
     }
 
@@ -521,19 +544,14 @@ foreach my $line (@pass1_lines) {
                     my $line = $origline;
                     $line =~ s/\\$irp_param/$i/g;
                     $line =~ s/\\\(\)//g;     # remove \()
-                    if (!parse_if_line($line) && !handle_if($line)) {
-                        handle_set($line);
-                        print ASMFILE $line;
-                    }
+                    handle_serialized_line($line, 1);
                 }
             }
         } else {
             for (1 .. $num_repts) {
-                foreach my $line (@rept_lines) {
-                    if (!parse_if_line($line) && !handle_if($line)) {
-                        handle_set($line);
-                        print ASMFILE $line;
-                    }
+                foreach my $origline (@rept_lines) {
+                    my $line = $origline;
+                    handle_serialized_line($line, 1);
                 }
             }
         }
@@ -543,9 +561,99 @@ foreach my $line (@pass1_lines) {
     } elsif (scalar(@rept_lines)) {
         push(@rept_lines, $line);
     } else {
-        handle_set($line);
-        print ASMFILE $line;
+        handle_serialized_line($line, 0);
     }
+}
+
+sub handle_serialized_line {
+    my $line = @_[0];
+    my $do_eval_if = @_[1];
+
+    if ($do_eval_if) {
+        return if parse_if_line($line);
+        return if handle_if($line);
+    }
+
+    handle_set($line);
+
+    if ($line =~ /\.unreq\s+(.*)/) {
+        if (defined $neon_alias_reg{$1}) {
+            delete $neon_alias_reg{$1};
+            delete $neon_alias_type{$1};
+            return;
+        } elsif (defined $aarch64_req_alias{$1}) {
+            delete $aarch64_req_alias{$1};
+            return;
+        }
+    }
+    # old gas versions store upper and lower case names on .req,
+    # but they remove only one on .unreq
+    if ($fix_unreq) {
+        if ($line =~ /\.unreq\s+(.*)/) {
+            $line = ".unreq " . lc($1) . "\n";
+            $line .= ".unreq " . uc($1) . "\n";
+        }
+    }
+
+    if ($line =~ /(\w+)\s+\.(dn|qn)\s+(\w+)(?:\.(\w+))?(\[\d+\])?/) {
+        $neon_alias_reg{$1} = "$3$5";
+        $neon_alias_type{$1} = $4;
+        return;
+    }
+    if (scalar keys %neon_alias_reg > 0 && $line =~ /^\s+v\w+/) {
+        # This line seems to possibly have a neon instruction
+        foreach (keys %neon_alias_reg) {
+            my $alias = $_;
+            # Require the register alias to match as an invididual word, not as a substring
+            # of a larger word-token.
+            if ($line =~ /\b$alias\b/) {
+                $line =~ s/\b$alias\b/$neon_alias_reg{$alias}/g;
+                # Add the type suffix. If multiple aliases match on the same line,
+                # only do this replacement the first time (a vfoo.bar string won't match v\w+).
+                $line =~ s/^(\s+)(v\w+)(\s+)/$1$2.$neon_alias_type{$alias}$3/;
+            }
+        }
+    }
+
+    if ($aarch64) {
+        # clang's integrated aarch64 assembler in Xcode 5 does not support .req/.unreq
+        if ($line =~ /\b(\w+)\s+\.req\s+(\w+)\b/) {
+            $aarch64_req_alias{$1} = $2;
+            return;
+        }
+        foreach (keys %aarch64_req_alias) {
+            my $alias = $_;
+            # recursively resolve aliases
+            my $resolved = $aarch64_req_alias{$alias};
+            while (defined $aarch64_req_alias{$resolved}) {
+                $resolved = $aarch64_req_alias{$resolved};
+            }
+            $line =~ s/\b$alias\b/$resolved/g;
+        }
+        # fix missing aarch64 instructions in Xcode 5.1 (beta3)
+        # mov with vector arguments is not supported, use alias orr instead
+        if ($line =~ /^\s*mov\s+(v\d[\.{}\[\]\w]+),\s*(v\d[\.{}\[\]\w]+)\b\s*$/) {
+            $line = "        orr $1, $2, $2\n";
+        }
+        # movi 8, 16, 32 bit shifted variant, shift is optional
+        if ($line =~ /^\s*movi\s+(v[0-3]?\d\.(?:2|4|8|16)[bhsBHS])\s*,\s*(#\w+)\b\s*$/) {
+            $line = "        movi $1, $2, lsl #0\n";
+        }
+        # Xcode 5 misses the alias uxtl replace it with the more general ushll
+        if ($line =~ /^\s*uxtl(2)?\s+(v[0-3]?\d\.[248][hsdHSD])\s*,\s*(v[0-3]?\d\.(?:4|8|16)[bhsBHS])\b\s*$/) {
+            $line = "        ushll$1 $2, $3, #0\n";
+        }
+        if ($line =~ /^\s*bsl\b/) {
+            $line =~ s/\b(bsl)(\s+v[0-3]?\d\.(\w+))\b/$1.$3$2/;
+            $line =~ s/\b(v[0-3]?\d)\.$3\b/$1/g;
+        }
+        if ($line =~ /^\s*saddl2?\b/) {
+            $line =~ s/\b(saddl2?)(\s+v[0-3]?\d\.(\w+))\b/$1.$3$2/;
+            $line =~ s/\b(v[0-3]?\d)\.\w+\b/$1/g;
+        }
+    }
+
+    print ASMFILE $line;
 }
 
 print ASMFILE ".text\n";
