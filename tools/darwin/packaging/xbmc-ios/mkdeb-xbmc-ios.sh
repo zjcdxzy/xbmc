@@ -6,6 +6,7 @@ SWITCH=`echo $1 | tr [A-Z] [a-z]`
 DIRNAME=`dirname $0`
 DSYM_TARGET_DIR=/Users/Shared/xbmc-depends/dSyms
 DSYM_FILENAME=XBMC.app.dSYM
+ARM64=false
 
 if [ ${SWITCH:-""} = "debug" ]; then
   echo "Packaging Debug target for iOS"
@@ -19,6 +20,11 @@ else
   echo "You need to specify the build target"
   exit 1 
 fi  
+
+# check if build is 64-bit
+if [[ "$(lipo -info "$XBMC/XBMC" | awk '{print $NF}')" == "arm64" ]]; then
+  ARM64=true
+fi
 
 #copy bzip2 of dsym to xbmc-depends install dir
 if [ -d $DSYM ]; then
@@ -46,10 +52,14 @@ if [ -f "/Users/Shared/xbmc-depends/buildtools-native/bin/dpkg-deb" ]; then
 fi
 
 PACKAGE=org.xbmc.xbmc-ios
+PACKAGE_ARM64="$PACKAGE-arm64"
 
 VERSION=13.0
 REVISION=0~alpha12
 ARCHIVE=${PACKAGE}_${VERSION}-${REVISION}_iphoneos-arm.deb
+
+# package identifier for arm64
+$ARM64 && ARCHIVE=${PACKAGE_ARM64}_${VERSION}-${REVISION}_iphoneos-arm.deb
 
 echo Creating $PACKAGE package version $VERSION revision $REVISION
 ${SUDO} rm -rf $DIRNAME/$PACKAGE
@@ -57,13 +67,21 @@ ${SUDO} rm -rf $DIRNAME/$ARCHIVE
 
 # create debian control file.
 mkdir -p $DIRNAME/$PACKAGE/DEBIAN
-echo "Package: $PACKAGE"                          >  $DIRNAME/$PACKAGE/DEBIAN/control
+if [ $ARM64 ]; then
+  echo "Package: $PACKAGE_ARM64"                  >  $DIRNAME/$PACKAGE/DEBIAN/control
+  echo "Name: XBMC-iOS (64-bit)"                  >> $DIRNAME/$PACKAGE/DEBIAN/control
+  echo "Pre-Depends: cy+cpu.arm64"                >> $DIRNAME/$PACKAGE/DEBIAN/control
+  echo "Conflicts: $PACKAGE"                      >> $DIRNAME/$PACKAGE/DEBIAN/control
+  echo "Replaces: $PACKAGE"                       >> $DIRNAME/$PACKAGE/DEBIAN/control
+else
+  echo "Package: $PACKAGE"                        >  $DIRNAME/$PACKAGE/DEBIAN/control
+  echo "Name: XBMC-iOS"                           >> $DIRNAME/$PACKAGE/DEBIAN/control
+  echo "Depends: firmware (>= 4.1), curl"         >> $DIRNAME/$PACKAGE/DEBIAN/control
+fi
 echo "Priority: Extra"                            >> $DIRNAME/$PACKAGE/DEBIAN/control
-echo "Name: XBMC-iOS"                             >> $DIRNAME/$PACKAGE/DEBIAN/control
-echo "Depends: firmware (>= 4.1), curl"           >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Version: $VERSION-$REVISION"                >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Architecture: iphoneos-arm"                 >> $DIRNAME/$PACKAGE/DEBIAN/control
-echo "Description: XBMC Multimedia Center for 4.x iOS" >> $DIRNAME/$PACKAGE/DEBIAN/control
+echo "Description: XBMC Multimedia Center for iOS" >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Homepage: http://xbmc.org/"                 >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Maintainer: Scott Davilla, Edgar Hucek"     >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Author: TeamXBMC"                           >> $DIRNAME/$PACKAGE/DEBIAN/control
