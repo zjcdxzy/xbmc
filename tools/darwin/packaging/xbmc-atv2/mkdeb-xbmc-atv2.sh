@@ -31,7 +31,9 @@ if [ ! -d $XBMC ]; then
   echo "XBMC.frappliance not found! are you sure you built $1 target?"
   exit 1
 fi
-if [ -f "/usr/libexec/fauxsu/libfauxsu.dylib" ]; then
+if [ -f "/Users/Shared/xbmc-depends/buildtools-native/bin/fakeroot" ]; then
+  SUDO="/Users/Shared/xbmc-depends/buildtools-native/bin/fakeroot"
+elif [ -f "/usr/libexec/fauxsu/libfauxsu.dylib" ]; then
   export DYLD_INSERT_LIBRARIES=/usr/libexec/fauxsu/libfauxsu.dylib
 elif [ -f "/usr/bin/sudo" ]; then
   SUDO="/usr/bin/sudo"
@@ -113,7 +115,8 @@ echo Packaging $PACKAGE
 export COPYFILE_DISABLE=true
 export COPY_EXTENDED_ATTRIBUTES_DISABLE=true
 #
-dpkg-deb -b $DIRNAME/$PACKAGE $DIRNAME/$ARCHIVE
+${SUDO} dpkg-deb -b $DIRNAME/$PACKAGE $DIRNAME/$ARCHIVE
+${SUDO} chown 501:20 $DIRNAME/$ARCHIVE
 dpkg-deb --info $DIRNAME/$ARCHIVE
 dpkg-deb --contents $DIRNAME/$ARCHIVE
 
