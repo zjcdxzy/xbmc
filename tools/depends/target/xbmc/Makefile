@@ -13,6 +13,10 @@ ifeq ($(OS),android)
 CONFIGURE += --enable-codec=libstagefright,amcodec
 endif
 
+ifeq ($(CPU),arm64)
+CONFIGURE += --with-cpu=arm64
+endif
+
 CONFIGURE += $(CONFIG_EXTRA)
 
 all: $(SOURCE)/libxbmc.so
