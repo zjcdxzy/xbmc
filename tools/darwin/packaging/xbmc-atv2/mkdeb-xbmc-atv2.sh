@@ -48,6 +48,8 @@ PACKAGE=org.xbmc.xbmc-atv2
 
 VERSION=13.0
 REVISION=0~alpha12
+# customize revision string
+[ ! -z "$2" ] && REVISION="$2"
 ARCHIVE=${PACKAGE}_${VERSION}-${REVISION}_iphoneos-arm.deb
 XBMCSIZE="$(du -s -k ${XBMC} | awk '{print $1}')"
 
