@@ -79,7 +79,7 @@ if [ $ARM64 ]; then
 else
   echo "Package: $PACKAGE"                        >  $DIRNAME/$PACKAGE/DEBIAN/control
   echo "Name: XBMC-iOS"                           >> $DIRNAME/$PACKAGE/DEBIAN/control
-  echo "Depends: firmware (>= 4.1), curl"         >> $DIRNAME/$PACKAGE/DEBIAN/control
+  echo "Depends: firmware (>= 4.1)"               >> $DIRNAME/$PACKAGE/DEBIAN/control
 fi
 echo "Priority: Extra"                            >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Version: $VERSION-$REVISION"                >> $DIRNAME/$PACKAGE/DEBIAN/control
