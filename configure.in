@@ -661,7 +661,9 @@ case $host in
      use_optical_drive=no
      use_dvdcss=no
      use_gles=yes
-     use_cpu=cortex-a8
+     if test "$use_cpu" = "no";  then
+       use_cpu=cortex-a8
+     fi
      ARCH="arm-osx"
      use_arch="arm"
      PYTHON_VERSION="2.6"
@@ -2727,11 +2729,15 @@ XB_CONFIG_MODULE([lib/ffmpeg], [
     if test "$use_debug" = "no"; then
       ffmpg_config="$ffmpg_config --disable-debug"
     fi
-    if test "$use_cpu"  != "no";  then
-      ffmpg_config="$ffmpg_config --cpu=$use_cpu"
-    fi
-    if test "$use_arch" != "no"; then
-      ffmpg_config="$ffmpg_config --arch=$use_arch --enable-cross-compile"
+    if test "$use_cpu" = "arm64";  then
+      ffmpg_config="$ffmpg_config --arch=arm64 --enable-cross-compile"
+    else
+      if test "$use_cpu"  != "no";  then
+        ffmpg_config="$ffmpg_config --cpu=$use_cpu"
+      fi
+      if test "$use_arch" != "no"; then
+        ffmpg_config="$ffmpg_config --arch=$use_arch --enable-cross-compile"
+      fi
     fi
     if test "$use_arch"  = "arm"; then
       ffmpg_config="$ffmpg_config --enable-pic"
@@ -2771,7 +2777,11 @@ XB_CONFIG_MODULE([lib/ffmpeg], [
     esac
     
     # extra-cflags must be passed alone or it gets expanded wrong by the ffmpeg configure
-    FFMPEG_EXTRACFLAGS="$CFLAGS $FFMPEG_EXTRACFLAGS -w -D_DARWIN_C_SOURCE -Dattribute_deprecated="
+    if test "$use_cpu" = "arm64";  then
+      FFMPEG_EXTRACFLAGS=""
+    else
+      FFMPEG_EXTRACFLAGS="$CFLAGS $FFMPEG_EXTRACFLAGS -w -D_DARWIN_C_SOURCE -Dattribute_deprecated="
+    fi
 
     LDFLAGS="$LDFLAGS" ./configure --extra-cflags="$FFMPEG_EXTRACFLAGS" $ffmpg_config --as="$AS"
 
