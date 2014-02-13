@@ -49,6 +49,7 @@ PACKAGE=org.xbmc.xbmc-atv2
 VERSION=13.0
 REVISION=0~alpha12
 ARCHIVE=${PACKAGE}_${VERSION}-${REVISION}_iphoneos-arm.deb
+XBMCSIZE="$(du -s -k ${XBMC} | awk '{print $1}')"
 
 echo Creating $PACKAGE package version $VERSION revision $REVISION
 ${SUDO} rm -rf $DIRNAME/$PACKAGE
@@ -62,6 +63,7 @@ echo "Name: XBMC-ATV2"                            >> $DIRNAME/$PACKAGE/DEBIAN/co
 echo "Depends: curl, org.awkwardtv.whitelist, com.nito.updatebegone, org.xbmc.xbmc-seatbeltunlock" >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Version: $VERSION-$REVISION"                >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Architecture: iphoneos-arm"                 >> $DIRNAME/$PACKAGE/DEBIAN/control
+echo "Installed-Size: $XBMCSIZE"                  >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Description: XBMC Multimedia Center for AppleTV 2" >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Homepage: http://xbmc.org/"                 >> $DIRNAME/$PACKAGE/DEBIAN/control
 echo "Maintainer: Scott Davilla, Edgar Hucek"     >> $DIRNAME/$PACKAGE/DEBIAN/control
@@ -102,8 +104,9 @@ chmod +x $DIRNAME/$PACKAGE/DEBIAN/postinst
 mkdir -p $DIRNAME/$PACKAGE/Applications
 cp -r $XBMC $DIRNAME/$PACKAGE/Applications/
 find $DIRNAME/$PACKAGE/Applications/ -name '.svn' -exec rm -rf {} \;
-find $DIRNAME/$PACKAGE/Applications/ -name '.gitignore' -exec rm -rf {} \;
+find $DIRNAME/$PACKAGE/Applications/ -name '.git*' -exec rm -rf {} \;
 find $DIRNAME/$PACKAGE/Applications/ -name '.DS_Store'  -exec rm -rf {} \;
+find $DIRNAME/$PACKAGE/Applications/ -name '*.xcent'  -exec rm -rf {} \;
 
 # set ownership to root:root
 ${SUDO} chown -R 0:0 $DIRNAME/$PACKAGE
@@ -115,7 +118,7 @@ echo Packaging $PACKAGE
 export COPYFILE_DISABLE=true
 export COPY_EXTENDED_ATTRIBUTES_DISABLE=true
 #
-${SUDO} dpkg-deb -b $DIRNAME/$PACKAGE $DIRNAME/$ARCHIVE
+${SUDO} dpkg-deb -bZ lzma $DIRNAME/$PACKAGE $DIRNAME/$ARCHIVE
 ${SUDO} chown 501:20 $DIRNAME/$ARCHIVE
 dpkg-deb --info $DIRNAME/$ARCHIVE
 dpkg-deb --contents $DIRNAME/$ARCHIVE
