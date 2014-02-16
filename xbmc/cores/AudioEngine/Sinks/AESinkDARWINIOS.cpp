@@ -55,7 +55,7 @@ static void SineWaveGeneratorInitWithFrequency(SineWaveGenerator *ctx, double fr
   ctx->phaseIncrement = frequency * 2*M_PI / samplerate;
 }
 
-static int16_t SineWaveGeneratorNextSample(SineWaveGenerator *ctx)
+static int16_t SineWaveGeneratorNextSampleInt16(SineWaveGenerator *ctx)
 {
   int16_t sample = INT16_MAX * sinf(ctx->currentPhase);
 
@@ -64,6 +64,17 @@ static int16_t SineWaveGeneratorNextSample(SineWaveGenerator *ctx)
   while (ctx->currentPhase > 2*M_PI)
     ctx->currentPhase -= 2*M_PI;
 
+  return sample / 4;
+}
+static float SineWaveGeneratorNextSampleFloat(SineWaveGenerator *ctx)
+{
+  float sample = MAXFLOAT * sinf(ctx->currentPhase);
+  
+  ctx->currentPhase += ctx->phaseIncrement;
+  // Keep the value between 0 and 2*M_PI
+  while (ctx->currentPhase > 2*M_PI)
+    ctx->currentPhase -= 2*M_PI;
+  
   return sample / 4;
 }
 #endif
@@ -86,6 +97,7 @@ class CAAudioUnitSink
     double       cacheSize();
     unsigned int write(uint8_t *data, unsigned int byte_count);
     unsigned int chunkSize() { return m_bufferDuration * m_sampleRate; }
+    unsigned int getRealisedSampleRate() { return m_outputFormat.mSampleRate; }
 
   private:
     bool         setupAudio();
@@ -519,6 +531,8 @@ static void EnumerateDevices(AEDeviceInfoList &list)
   device.m_dataFormats.push_back(AE_FMT_S16LE);
   //device.m_dataFormats.push_back(AE_FMT_S24LE3);
   //device.m_dataFormats.push_back(AE_FMT_S32LE);
+  // AE_FMT_FLOAT is 3% slower on atv2
+  // then S16LE - so leave it out for now
   //device.m_dataFormats.push_back(AE_FMT_FLOAT);
 
   CLog::Log(LOGDEBUG, "EnumerateDevices:Device(%s)" , device.m_deviceName.c_str());
@@ -557,11 +571,24 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
   if (!found)
     return false;
 
-  format.m_dataFormat = AE_FMT_S16LE;
+  AudioStreamBasicDescription audioFormat = {};
+
+  // AE_FMT_FLOAT is 3% slower on atv2
+  // then S16LE - so leave it out for now
+  // just leave the code commented in here
+  // as it might come handy at some point maybe ...
+  //if (format.m_dataFormat == AE_FMT_FLOAT)
+  //  audioFormat.mFormatFlags    |= kLinearPCMFormatFlagIsFloat;
+  //else// this will be selected when AE wants AC3 or DTS or anything other then float
+  {
+    audioFormat.mFormatFlags    |= kLinearPCMFormatFlagIsSignedInteger;
+    format.m_dataFormat = AE_FMT_S16LE;
+  }
+
   format.m_channelLayout = m_info.m_channels;
   format.m_frameSize = format.m_channelLayout.Count() * (CAEUtil::DataFormatToBits(format.m_dataFormat) >> 3);
 
-  AudioStreamBasicDescription audioFormat = {};
+  
   audioFormat.mFormatID = kAudioFormatLinearPCM;
   switch(format.m_sampleRate)
   {
@@ -585,13 +612,13 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
       audioFormat.mSampleRate = 48000;
       break;
   }
+
   audioFormat.mFramesPerPacket = 1;
-  audioFormat.mChannelsPerFrame= 2;
-  audioFormat.mBitsPerChannel  = 16;
-  audioFormat.mBytesPerFrame   = 4;
-  audioFormat.mBytesPerPacket  = 4;
+  audioFormat.mChannelsPerFrame= 2;// ios only supports 2 channels
+  audioFormat.mBitsPerChannel  = CAEUtil::DataFormatToBits(format.m_dataFormat);
+  audioFormat.mBytesPerFrame   = format.m_frameSize;
+  audioFormat.mBytesPerPacket  = audioFormat.mBytesPerFrame * audioFormat.mFramesPerPacket;
   audioFormat.mFormatFlags    |= kLinearPCMFormatFlagIsPacked;
-  audioFormat.mFormatFlags    |= kLinearPCMFormatFlagIsSignedInteger;
   
 #if DO_440HZ_TONE_TEST
   SineWaveGeneratorInitWithFrequency(&m_SineWaveGenerator, 440.0, audioFormat.mSampleRate);
@@ -601,7 +628,9 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
   m_audioSink->open(audioFormat);
 
   format.m_frames = m_audioSink->chunkSize();
-  format.m_frameSamples = m_format.m_frames * m_format.m_channelLayout.Count();
+  format.m_frameSamples = format.m_frames * audioFormat.mChannelsPerFrame;
+  // reset to the realised samplerate
+  format.m_sampleRate = m_audioSink->getRealisedSampleRate();
   m_format = format;
 
   m_volume_changed = false;
@@ -644,12 +673,26 @@ unsigned int CAESinkDARWINIOS::AddPackets(uint8_t *data, unsigned int frames, bo
 {
   
 #if DO_440HZ_TONE_TEST
-  int16_t *samples = (int16_t*)data;
-  for (unsigned int j = 0; j < frames ; j++)
+  if (m_format.m_dataFormat == AE_FMT_FLOAT)
   {
-    int16_t sample = SineWaveGeneratorNextSample(&m_SineWaveGenerator);
-    *samples++ = sample;
-    *samples++ = sample;
+    float *samples = (float*)data;
+    for (unsigned int j = 0; j < frames ; j++)
+    {
+      float sample = SineWaveGeneratorNextSampleFloat(&m_SineWaveGenerator);
+      *samples++ = sample;
+      *samples++ = sample;
+    }
+    
+  }
+  else
+  {
+    int16_t *samples = (int16_t*)data;
+    for (unsigned int j = 0; j < frames ; j++)
+    {
+      int16_t sample = SineWaveGeneratorNextSampleInt16(&m_SineWaveGenerator);
+      *samples++ = sample;
+      *samples++ = sample;
+    }
   }
 #endif
   if (m_audioSink)
