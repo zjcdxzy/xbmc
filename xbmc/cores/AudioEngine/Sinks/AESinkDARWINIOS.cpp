@@ -690,9 +690,6 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
 
 void CAESinkDARWINIOS::Deinitialize()
 {
-  if (m_audioSink)
-    m_audioSink->close();
-
   delete m_audioSink;
   m_audioSink = NULL;
 }
