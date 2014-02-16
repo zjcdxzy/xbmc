@@ -547,11 +547,17 @@ static void EnumerateDevices(AEDeviceInfoList &list)
   device.m_displayNameExtra = "";
 #if defined(TARGET_DARWIN_IOS_ATV2)
   device.m_deviceType = AE_DEVTYPE_IEC958;
+  device.m_dataFormats.push_back(AE_FMT_AC3);
+  device.m_dataFormats.push_back(AE_FMT_DTS);
 #else
   // TODO screen changing on ios needs to call
   // devices changed once this is available in activae
   if (g_Windowing.GetCurrentScreen() > 0)
+  {
     device.m_deviceType = AE_DEVTYPE_IEC958; //allow passthrough for tvout
+    device.m_dataFormats.push_back(AE_FMT_AC3);
+    device.m_dataFormats.push_back(AE_FMT_DTS);
+  }
   else
     device.m_deviceType = AE_DEVTYPE_PCM;
 #endif
@@ -565,6 +571,9 @@ static void EnumerateDevices(AEDeviceInfoList &list)
     channel_info += CAChannelMap[chan];
   }
 
+  // there are more supported ( one of those 2 gets resampled
+  // by coreaudio anyway) - but for keeping it save ignore
+  // the others...
   device.m_sampleRates.push_back(44100);
   device.m_sampleRates.push_back(48000);
 
