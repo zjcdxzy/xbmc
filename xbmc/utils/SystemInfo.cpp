@@ -44,6 +44,12 @@
 #include "osx/DarwinUtils.h"
 #include "osx/CocoaInterface.h"
 #endif
+#if defined(TARGET_DARWIN_IOS)
+#include <mach/mach.h>
+#ifndef CPU_TYPE_ARM64
+#define CPU_TYPE_ARM64 (16777228)
+#endif
+#endif
 #include "powermanagement/PowerManager.h"
 #include "utils/StringUtils.h"
 #include "utils/XMLUtils.h"
@@ -461,6 +467,15 @@ int CSysInfo::GetKernelBitness(void)
   if (ptrIsWow64 == NULL || ptrIsWow64(GetCurrentProcess(), &wow64proc) == FALSE)
     return 0; // Can't detect OS
   return (wow64proc == FALSE) ? 32 : 64;
+#elif defined(TARGET_DARWIN_IOS)
+  // machine field in utsname returns iOS device's model, e.g. iPhone3,1
+  // so we should use host_info to check the cpu type instead
+  struct host_basic_info h_info;
+  mach_msg_type_number_t count = HOST_BASIC_INFO_COUNT;
+  kern_return_t ret = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &h_info, &count);
+  if (ret == KERN_SUCCESS && h_info.cpu_type == CPU_TYPE_ARM64)
+    return 64;
+  return 32;
 #elif defined(TARGET_POSIX)
   struct utsname un;
   if (uname(&un) == 0)
