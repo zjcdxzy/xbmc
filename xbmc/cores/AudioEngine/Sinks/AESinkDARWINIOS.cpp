@@ -419,15 +419,19 @@ bool CAAudioUnitSink::checkSessionProperties()
   UInt32 ioDataSize;
   ioDataSize = sizeof(m_outputVolume);
   if (AudioSessionGetProperty(kAudioSessionProperty_CurrentHardwareOutputVolume,
-    &ioDataSize, &m_outputVolume) == noErr)
+    &ioDataSize, &m_outputVolume) != noErr)
+    CLog::Log(LOGERROR, "%s: error getting CurrentHardwareOutputVolume", __FUNCTION__);
 
   ioDataSize = sizeof(m_outputLatency);
   if (AudioSessionGetProperty(kAudioSessionProperty_CurrentHardwareOutputLatency,
-    &ioDataSize, &m_outputLatency) == noErr)
+    &ioDataSize, &m_outputLatency) != noErr)
+    CLog::Log(LOGERROR, "%s: error getting CurrentHardwareOutputLatency", __FUNCTION__);
 
   ioDataSize = sizeof(m_bufferDuration);
   if (AudioSessionGetProperty(kAudioSessionProperty_CurrentHardwareIOBufferDuration,
-    &ioDataSize, &m_bufferDuration) == noErr)
+    &ioDataSize, &m_bufferDuration) != noErr)
+    CLog::Log(LOGERROR, "%s: error getting CurrentHardwareIOBufferDuration", __FUNCTION__);
+   
   CLog::Log(LOGDEBUG, "%s: volume = %f, latency = %f, buffer = %f", __FUNCTION__, m_outputVolume, m_outputLatency, m_bufferDuration);
   return true;
 }
