@@ -100,6 +100,10 @@ class CAAudioUnitSink
     unsigned int getRealisedSampleRate() { return m_outputFormat.mSampleRate; }
 
   private:
+    void         setCoreAudioBuffersize();
+    bool         setCoreAudioInputFormat();
+    void         setCoreAudioPreferredSampleRate();
+    Float64      getCoreAudioRealisedSampleRate();
     bool         setupAudio();
     bool         checkAudioRoute();
     bool         checkSessionProperties();
@@ -258,6 +262,55 @@ void CAAudioUnitSink::drain()
   }
 }
 
+void CAAudioUnitSink::setCoreAudioBuffersize()
+{
+#if !TARGET_IPHONE_SIMULATOR
+  OSStatus status = noErr;
+  // set the buffer size, this affects the number of samples
+  // that get rendered every time the audio callback is fired.
+  Float32 preferredBufferSize = 512 * m_outputFormat.mChannelsPerFrame / m_outputFormat.mSampleRate;
+  CLog::Log(LOGNOTICE, "%s setting buffer duration to %f", __PRETTY_FUNCTION__, preferredBufferSize);
+  status = AudioSessionSetProperty(kAudioSessionProperty_PreferredHardwareIOBufferDuration,
+                                   sizeof(preferredBufferSize), &preferredBufferSize);
+  if (status != noErr)
+    CLog::Log(LOGWARNING, "%s preferredBufferSize couldn't be set (error: %d)", __PRETTY_FUNCTION__, (int)status);
+#endif
+}
+
+bool CAAudioUnitSink::setCoreAudioInputFormat()
+{
+  // Set the output stream format
+  UInt32 ioDataSize = sizeof(AudioStreamBasicDescription);
+  OSStatus status = AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
+                                kAudioUnitScope_Input, 0, &m_outputFormat, ioDataSize);
+  if (status != noErr)
+  {
+    CLog::Log(LOGERROR, "%s error setting stream format on audioUnit (error: %d)", __PRETTY_FUNCTION__, (int)status);
+    return false;
+  }
+  return true;
+}
+
+void CAAudioUnitSink::setCoreAudioPreferredSampleRate()
+{
+  Float64 preferredSampleRate = m_outputFormat.mSampleRate;
+  CLog::Log(LOGNOTICE, "%s requesting hw samplerate %f", __PRETTY_FUNCTION__, preferredSampleRate);
+  OSStatus status = AudioSessionSetProperty(kAudioSessionProperty_PreferredHardwareSampleRate,
+                                   sizeof(preferredSampleRate), &preferredSampleRate);
+  if (status != noErr)
+    CLog::Log(LOGWARNING, "%s preferredSampleRate couldn't be set (error: %d)", __PRETTY_FUNCTION__, (int)status);
+}
+
+Float64 CAAudioUnitSink::getCoreAudioRealisedSampleRate()
+{
+  Float64 outputSampleRate = 0.0;
+  UInt32 ioDataSize = sizeof(outputSampleRate);
+  if (AudioSessionGetProperty(kAudioSessionProperty_CurrentHardwareSampleRate,
+                              &ioDataSize, &outputSampleRate) != noErr)
+    CLog::Log(LOGERROR, "%s: error getting CurrentHardwareSampleRate", __FUNCTION__);
+  return outputSampleRate;
+}
+
 bool CAAudioUnitSink::setupAudio()
 {
   OSStatus status = noErr;
@@ -279,18 +332,7 @@ bool CAAudioUnitSink::setupAudio()
 
   AudioSessionAddPropertyListener(kAudioSessionProperty_CurrentHardwareOutputVolume,
     sessionPropertyCallback, this);
-
-#if !TARGET_IPHONE_SIMULATOR
-  // set the buffer size, this affects the number of samples
-  // that get rendered every time the audio callback is fired.
-  Float32 preferredBufferSize = 512 * m_outputFormat.mChannelsPerFrame / m_outputFormat.mSampleRate;
-  CLog::Log(LOGINFO, "%s setting buffer duration to %f", __PRETTY_FUNCTION__, preferredBufferSize);
-  status = AudioSessionSetProperty(kAudioSessionProperty_PreferredHardwareIOBufferDuration,
-    sizeof(preferredBufferSize), &preferredBufferSize);
-  if (status != noErr)
-    CLog::Log(LOGWARNING, "%s preferredBufferSize couldn't be set (error :%d)", __PRETTY_FUNCTION__, (int)status);
-#endif
-
+ 
   if (AudioSessionSetActive(true) != noErr)
     return false;
 
@@ -311,30 +353,24 @@ bool CAAudioUnitSink::setupAudio()
     return false;
   }
   
-	// Set the output stream format
-  UInt32 ioDataSize = sizeof(AudioStreamBasicDescription);
-  status = AudioUnitSetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
-                                kAudioUnitScope_Input, 0, &m_outputFormat, ioDataSize);
-  if (status != noErr)
+  setCoreAudioPreferredSampleRate();
+ 
+	// Get the output samplerate for knowing what was setup in reality
+  Float64 realisedSampleRate = getCoreAudioRealisedSampleRate();
+  if (m_outputFormat.mSampleRate != realisedSampleRate)
   {
-    CLog::Log(LOGERROR, "%s error setting stream format on audioUnit (error: %d)", __PRETTY_FUNCTION__, (int)status);
+    CLog::Log(LOGNOTICE, "%s couldn't set requested samplerate %d, coreaudio will resample to %d instead", __PRETTY_FUNCTION__, (int)m_outputFormat.mSampleRate, (int)realisedSampleRate);
+    // if we don't ca to resample - but instead let activeae resample -
+    // reflect the realised samplerate to the outputformat here
+    // well maybe it is handy in the future - as of writing this
+    // ca was about 6 times faster then activeae ;)
+    //m_outputFormat.mSampleRate = realisedSampleRate;
+    //m_sampleRate = realisedSampleRate;
+  }
+
+  setCoreAudioBuffersize();
+  if (!setCoreAudioInputFormat())
     return false;
-  }
-  
-	// Get the output stream format for knowing what was setup in reality
-  ioDataSize = sizeof(AudioStreamBasicDescription);
-  AudioStreamBasicDescription realOutputFormat;
-  status = AudioUnitGetProperty(m_audioUnit, kAudioUnitProperty_StreamFormat,
-                                kAudioUnitScope_Input, 0, &realOutputFormat, &ioDataSize);
-  if (status == noErr)
-  {
-    if (m_outputFormat.mSampleRate != realOutputFormat.mSampleRate)
-    {
-      CLog::Log(LOGNOTICE, "%s couldn't set requested samplerate %d, realised %d instead", __PRETTY_FUNCTION__, (int)m_outputFormat.mSampleRate, (int)realOutputFormat.mSampleRate);
-    }
-    m_outputFormat = realOutputFormat;
-  }
-  
 
   // Attach a render callback on the unit
   AURenderCallbackStruct callbackStruct = {};
@@ -360,7 +396,7 @@ bool CAAudioUnitSink::setupAudio()
 
   m_setup = true;
   std::string formatString;
-  CLog::Log(LOGINFO, "%s setup audio format: %s", __PRETTY_FUNCTION__, StreamDescriptionToString(m_outputFormat, formatString));
+  CLog::Log(LOGNOTICE, "%s setup audio format: %s", __PRETTY_FUNCTION__, StreamDescriptionToString(m_outputFormat, formatString));
 
   return m_setup;
 }
