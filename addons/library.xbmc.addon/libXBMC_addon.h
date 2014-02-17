@@ -35,7 +35,7 @@
 #if defined(__APPLE__)          // osx
 #if defined(__POWERPC__)
 #define ADDON_HELPER_ARCH       "powerpc-osx"
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__arm64__)
 #define ADDON_HELPER_ARCH       "arm-osx"
 #elif defined(__x86_64__)
 #define ADDON_HELPER_ARCH       "x86-osx"
