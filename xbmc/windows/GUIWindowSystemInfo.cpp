@@ -142,7 +142,7 @@ void CGUIWindowSystemInfo::FrameMove()
     SetControlLabel(i++, "%s %s", 22023, SYSTEM_RENDER_VENDOR);
     SetControlLabel(i++, "%s %s", 22024, SYSTEM_RENDER_VERSION);
 #endif
-#ifndef __arm__
+#if !defined(__arm__) && !defined(__arm64__)
     SetControlLabel(i++, "%s %s", 22010, SYSTEM_GPU_TEMPERATURE);
 #endif
   }
@@ -158,7 +158,7 @@ void CGUIWindowSystemInfo::FrameMove()
     SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUSerial());
 #endif
     SetControlLabel(i++, "%s %s", 22011, SYSTEM_CPU_TEMPERATURE);
-#if !defined(__arm__) || defined(TARGET_RASPBERRY_PI)
+#if (!defined(__arm__) && !defined(__arm64__)) || defined(TARGET_RASPBERRY_PI)
     SetControlLabel(i++, "%s %s", 13284, SYSTEM_CPUFREQUENCY);
 #endif
 #endif

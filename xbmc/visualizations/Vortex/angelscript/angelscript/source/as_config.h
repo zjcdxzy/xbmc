@@ -465,7 +465,7 @@
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
 		#elif (defined(__ppc__) || defined(__PPC__)) && defined(__LP64__)
 			#define AS_PPC_64
-		#elif (defined(_ARM_) || defined(__arm__))
+		#elif (defined(_ARM_) || defined(__arm__) || defined(__arm64__))
 			// The IPhone use an ARM processor
 			#define AS_ARM
 			#define AS_IPHONE

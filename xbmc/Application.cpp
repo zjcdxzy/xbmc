@@ -746,7 +746,7 @@ bool CApplication::Create()
   CLog::Log(LOGNOTICE, "Running with %s rights", (CWIN32Util::IsCurrentUserLocalAdministrator() == TRUE) ? "administrator" : "restricted");
   CLog::Log(LOGNOTICE, "Aero is %s", (g_sysinfo.IsAeroDisabled() == true) ? "disabled" : "enabled");
 #endif
-#if defined(__arm__)
+#if defined(__arm__) || defined(__arm64__)
   if (g_cpuInfo.GetCPUFeatures() & CPU_FEATURE_NEON)
     CLog::Log(LOGNOTICE, "ARM Features: Neon enabled");
   else
