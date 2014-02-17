@@ -98,12 +98,12 @@ class CAAudioUnitSink
     unsigned int write(uint8_t *data, unsigned int byte_count);
     unsigned int chunkSize() { return m_bufferDuration * m_sampleRate; }
     unsigned int getRealisedSampleRate() { return m_outputFormat.mSampleRate; }
+    static Float64 getCoreAudioRealisedSampleRate();
 
   private:
     void         setCoreAudioBuffersize();
     bool         setCoreAudioInputFormat();
     void         setCoreAudioPreferredSampleRate();
-    Float64      getCoreAudioRealisedSampleRate();
     bool         setupAudio();
     bool         checkAudioRoute();
     bool         checkSessionProperties();
@@ -605,10 +605,12 @@ CAESinkDARWINIOS::~CAESinkDARWINIOS()
 bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
 {
   bool found = false;
+  bool forceRaw = false;
+
+  std::string devicelower = device;
+  StringUtils::ToLower(devicelower);
   for (size_t i = 0; i < m_devices.size(); i++)
   {
-    std::string devicelower = device;
-    StringUtils::ToLower(devicelower);
     if (devicelower.find(m_devices[i].m_deviceName) != std::string::npos)
     {
       m_info = m_devices[i];
@@ -631,6 +633,8 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
   //else// this will be selected when AE wants AC3 or DTS or anything other then float
   {
     audioFormat.mFormatFlags    |= kLinearPCMFormatFlagIsSignedInteger;
+    if (AE_IS_RAW(format.m_dataFormat))
+      forceRaw = true;
     format.m_dataFormat = AE_FMT_S16LE;
   }
 
@@ -661,7 +665,10 @@ bool CAESinkDARWINIOS::Initialize(AEAudioFormat &format, std::string &device)
       audioFormat.mSampleRate = 48000;
       break;
   }
-
+  
+  if (forceRaw)//make sure input and output samplerate match for preventing resampling
+    audioFormat.mSampleRate = CAAudioUnitSink::getCoreAudioRealisedSampleRate();
+  
   audioFormat.mFramesPerPacket = 1;
   audioFormat.mChannelsPerFrame= 2;// ios only supports 2 channels
   audioFormat.mBitsPerChannel  = CAEUtil::DataFormatToBits(format.m_dataFormat);
