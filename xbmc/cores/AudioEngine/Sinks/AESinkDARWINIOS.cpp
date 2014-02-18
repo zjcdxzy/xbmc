@@ -774,6 +774,7 @@ void  CAESinkDARWINIOS::SetVolume(float scale)
 
 void CAESinkDARWINIOS::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
 {
+  m_devices.clear();
   EnumerateDevices(m_devices);
   list = m_devices;
 }
