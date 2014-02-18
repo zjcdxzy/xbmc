@@ -25,6 +25,7 @@
 #include "cores/AudioEngine/Sinks/osx/CoreAudioHardware.h"
 #include "osx/DarwinUtils.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "threads/Condition.h"
 #include "threads/CriticalSection.h"
 
@@ -180,11 +181,18 @@ static void EnumerateDevices(CADeviceList &list)
       }
     }
 
-    // make sure the default device is at the start of the list
+    list.push_back(std::make_pair(deviceID, device));
+    //in the first place of the list add the default device
+    //with name "default" - if this is selected
+    //we will output to whatever osx claims to be default
+    //(allows transition from headphones to speaker and stuff
+    //like that
     if(defaultDeviceName == device.m_deviceName)
+    {
+      device.m_deviceName = "default";
+      device.m_displayName = "Default";
       list.insert(list.begin(), std::make_pair(deviceID, device));
-    else
-      list.push_back(std::make_pair(deviceID, device));
+    }
 
     deviceIDList.pop_front();
   }
@@ -338,6 +346,12 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
 {
   AudioDeviceID deviceID = 0;
   CADeviceList devices = GetDevices();
+  if (StringUtils::EqualsNoCase(device, "default"))
+  {
+    CCoreAudioHardware::GetOutputDeviceName(device);
+    CLog::Log(LOGNOTICE, "%s: Opening default device %s", __PRETTY_FUNCTION__, device.c_str());
+  }
+      
   for (size_t i = 0; i < devices.size(); i++)
   {
     if (device.find(devices[i].second.m_deviceName) != std::string::npos)
