@@ -18,6 +18,7 @@
  *
  */
 
+#include "cores/AudioEngine/AEFactory.h"
 #include "cores/AudioEngine/Sinks/AESinkDARWINOSX.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/AudioEngine/Utils/AERingBuffer.h"
@@ -228,7 +229,7 @@ OSStatus deviceChangedCB(AudioObjectID                       inObjectID,
                          void*                               inClientData)
 {
   CLog::Log(LOGDEBUG, "CoreAudio: audiodevicelist changed - reenumerating");
-  EnumerateDevices();
+  //CAEFactory::DeviceChange(); //TODO uncomment this once the feature is available in ActiveAE!
   CLog::Log(LOGDEBUG, "CoreAudio: audiodevicelist changed - done");
   return noErr;
 }
