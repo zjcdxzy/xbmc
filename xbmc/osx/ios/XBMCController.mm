@@ -44,6 +44,7 @@
 #include "utils/Variant.h"
 #include "Util.h"
 #include "threads/Event.h"
+#include "osx/DarwinUtils.h"
 #define id _id
 #include "TextureCache.h"
 #undef id
@@ -180,7 +181,7 @@ void AnnounceBridge(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, con
     LOG(@"item: %@", item.description);
     [g_xbmcController performSelectorOnMainThread:@selector(onPlay:) withObject:item  waitUntilDone:NO];
   }
-  else if (msg == "OnSpeedChanged")
+  else if (msg == "OnSpeedChanged" || msg == "OnPause")
   {
     NSDictionary *item = [dict valueForKey:@"item"];
     NSDictionary *player = [dict valueForKey:@"player"];
@@ -188,10 +189,8 @@ void AnnounceBridge(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, con
     [item setValue:[NSNumber numberWithDouble:g_application.GetTime()] forKey:@"elapsed"];
     LOG(@"item: %@", item.description);
     [g_xbmcController performSelectorOnMainThread:@selector(OnSpeedChanged:) withObject:item  waitUntilDone:NO];
-  }
-  else if (msg == "OnPause")
-  {
-    [g_xbmcController performSelectorOnMainThread:@selector(onPause:) withObject:[dict valueForKey:@"item"]  waitUntilDone:NO];
+    if (msg == "OnPause")
+      [g_xbmcController performSelectorOnMainThread:@selector(onPause:) withObject:[dict valueForKey:@"item"]  waitUntilDone:NO];
   }
   else if (msg == "OnStop")
   {
