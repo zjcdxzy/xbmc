@@ -397,8 +397,8 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
         case CActiveAEControlProtocol::RECONFIGURE:
           if (m_streams.empty())
           {
-            bool silence = false;
-            m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::SILENCEMODE, &silence, sizeof(bool));
+            bool streaming = false;
+            m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::STREAMING, &streaming, sizeof(bool));
           }
           LoadSettings();
           ChangeResamplers();
@@ -458,13 +458,20 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
         case CActiveAEControlProtocol::PAUSESTREAM:
           CActiveAEStream *stream;
           stream = *(CActiveAEStream**)msg->data;
+          bool streaming;
           if (stream->m_paused != true && m_streams.size() == 1)
+          {
             FlushEngine();
+            streaming = false;
+            m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::STREAMING, &streaming, sizeof(bool));
+          }
           stream->m_paused = true;
           return;
         case CActiveAEControlProtocol::RESUMESTREAM:
           stream = *(CActiveAEStream**)msg->data;
           stream->m_paused = false;
+          streaming = true;
+          m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::STREAMING, &streaming, sizeof(bool));
           m_extTimeout = 0;
           return;
         case CActiveAEControlProtocol::FLUSHSTREAM:
@@ -973,8 +980,8 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
     sinkInputFormat = inputFormat;
     m_internalFormat = inputFormat;
 
-    bool silence = false;
-    m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::SILENCEMODE, &silence, sizeof(bool));
+    bool streaming = false;
+    m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::STREAMING, &streaming, sizeof(bool));
 
     delete m_encoder;
     m_encoder = NULL;
@@ -998,8 +1005,8 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
   // resample buffers for streams
   else
   {
-    bool silence = true;
-    m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::SILENCEMODE, &silence, sizeof(bool));
+    bool streaming = true;
+    m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::STREAMING, &streaming, sizeof(bool));
 
     AEAudioFormat outputFormat;
     if (m_mode == MODE_RAW)
