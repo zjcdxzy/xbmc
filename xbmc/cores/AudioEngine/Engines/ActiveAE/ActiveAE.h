@@ -89,6 +89,7 @@ public:
     GETSTATE,
     DISPLAYLOST,
     DISPLAYRESET,
+    APPFOCUSSED,
     KEEPCONFIG,
     TIMEOUT,
   };
@@ -233,6 +234,7 @@ public:
 
   virtual void OnLostDevice();
   virtual void OnResetDevice();
+  virtual void OnAppFocusChange(bool focus);
 
 protected:
   void PlaySound(CActiveAESound *sound);
