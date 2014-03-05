@@ -456,7 +456,11 @@ int CNfsConnection::stat(const CURL &url, NFSSTAT *statbuff)
       
       if(nfsRet == 0) 
       {
-        nfsRet = m_pLibNfs->nfs_stat(pTmpContext, relativePath.c_str(), statbuff);      
+#if defined(TARGET_WINDOWS)
+        nfsRet = m_pLibNfs->nfs_stat64(pTmpContext, relativePath.c_str(), statbuff);
+#else
+        nfsRet = m_pLibNfs->nfs_stat(pTmpContext, relativePath.c_str(), statbuff);
+#endif
       }
       else
       {
@@ -599,8 +603,11 @@ int CNFSFile::Stat(const CURL& url, struct __stat64* buffer)
 
   NFSSTAT tmpBuffer = {0};
 
+#if defined(TARGET_WINDOWS)
+  ret = gNfsConnection.GetImpl()->nfs_stat64(gNfsConnection.GetNfsContext(), filename.c_str(), &tmpBuffer);
+#else
   ret = gNfsConnection.GetImpl()->nfs_stat(gNfsConnection.GetNfsContext(), filename.c_str(), &tmpBuffer);
-  
+#endif
   //if buffer == NULL we where called from Exists - in that case don't spam the log with errors
   if (ret != 0 && buffer != NULL) 
   {
@@ -612,7 +619,18 @@ int CNFSFile::Stat(const CURL& url, struct __stat64* buffer)
     if(buffer)
     {
 #if defined(TARGET_WINDOWS)// TODO get rid of this define after gotham
-      memcpy(buffer, &tmpBuffer, sizeof(struct __stat64));
+      memset(buffer, 0, sizeof(struct __stat64));
+      buffer->st_dev = tmpBuffer.nfs_dev;
+      buffer->st_ino = tmpBuffer.nfs_ino;
+      buffer->st_mode = tmpBuffer.nfs_mode;
+      buffer->st_nlink = tmpBuffer.nfs_nlink;
+      buffer->st_uid = tmpBuffer.nfs_uid;
+      buffer->st_gid = tmpBuffer.nfs_gid;
+      buffer->st_rdev = tmpBuffer.nfs_rdev;
+      buffer->st_size = tmpBuffer.nfs_size;
+      buffer->st_atime = tmpBuffer.nfs_atime;
+      buffer->st_mtime = tmpBuffer.nfs_mtime;
+      buffer->st_ctime = tmpBuffer.nfs_ctime;
 #else
       memset(buffer, 0, sizeof(struct __stat64));
       buffer->st_dev = tmpBuffer.st_dev;

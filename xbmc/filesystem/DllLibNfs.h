@@ -31,8 +31,7 @@ extern "C" {
 #endif
 
 #if defined(TARGET_WINDOWS)
-struct __stat64;
-#define NFSSTAT struct __stat64
+#define NFSSTAT struct nfs_stat_64
 #else
 #define NFSSTAT struct stat
 #endif
@@ -62,6 +61,9 @@ public:
   virtual struct nfsdirent *nfs_readdir(struct nfs_context *nfs, struct nfsdir *nfsdir)=0;  
   virtual int nfs_mount(struct nfs_context *nfs,     const char *server,   const char *exportname)=0;
   virtual int nfs_stat(struct nfs_context *nfs,      const char *path,     NFSSTAT *st)=0;
+#if defined(TARGET_WINDOWS)
+  virtual int nfs_stat64(struct nfs_context *nfs,    const char *path,     NFSSTAT *st)=0;
+#endif
   virtual int nfs_fstat(struct nfs_context *nfs,     struct nfsfh *nfsfh,  NFSSTAT *st)=0;
   virtual int nfs_truncate(struct nfs_context *nfs,  const char *path,     uint64_t length)=0;
   virtual int nfs_ftruncate(struct nfs_context *nfs, struct nfsfh *nfsfh,  uint64_t length)=0;
@@ -108,6 +110,9 @@ class DllLibNfs : public DllDynamic, DllLibNfsInterface
   DEFINE_METHOD2(int, nfs_close,     (struct nfs_context *p1, struct nfsfh *p2)) 
   DEFINE_METHOD3(int, nfs_mount,     (struct nfs_context *p1, const char *p2,    const char *p3))
   DEFINE_METHOD3(int, nfs_stat,      (struct nfs_context *p1, const char *p2,    NFSSTAT *p3))
+#if defined(TARGET_WINDOWS)
+  DEFINE_METHOD3(int, nfs_stat64,    (struct nfs_context *p1, const char *p2,    NFSSTAT *p3))
+#endif
   DEFINE_METHOD3(int, nfs_fstat,     (struct nfs_context *p1, struct nfsfh *p2,  NFSSTAT *p3))
   DEFINE_METHOD3(int, nfs_truncate,  (struct nfs_context *p1, const char *p2,    uint64_t p3))
   DEFINE_METHOD3(int, nfs_ftruncate, (struct nfs_context *p1, struct nfsfh *p2,  uint64_t p3))
@@ -148,6 +153,9 @@ class DllLibNfs : public DllDynamic, DllLibNfsInterface
     RESOLVE_METHOD_RENAME(nfs_closedir,       nfs_closedir)  
     RESOLVE_METHOD_RENAME(nfs_mount,     nfs_mount)
     RESOLVE_METHOD_RENAME(nfs_stat,      nfs_stat)
+#if defined(TARGET_WINDOWS)
+    RESOLVE_METHOD_RENAME(nfs_stat64,    nfs_stat64)
+#endif
     RESOLVE_METHOD_RENAME(nfs_fstat,     nfs_fstat)
     RESOLVE_METHOD_RENAME(nfs_open,      nfs_open)
     RESOLVE_METHOD_RENAME(nfs_close,     nfs_close)

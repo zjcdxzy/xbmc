@@ -146,7 +146,12 @@ bool CNFSDirectory::ResolveSymlink( const CStdString &dirName, struct nfsdirent 
     }
     else
     {
+#if defined(TARGET_WINDOWS)
+      ret = gNfsConnection.GetImpl()->nfs_stat64(gNfsConnection.GetNfsContext(), fullpath.c_str(), &tmpBuffer);
+#else
       ret = gNfsConnection.GetImpl()->nfs_stat(gNfsConnection.GetNfsContext(), fullpath.c_str(), &tmpBuffer);
+#endif
+
       resolvedUrl.SetFileName(gNfsConnection.GetConnectedExport() + fullpath);      
     }
 
@@ -156,7 +161,24 @@ bool CNFSDirectory::ResolveSymlink( const CStdString &dirName, struct nfsdirent 
       retVal = false;;
     }
     else
-    {  
+    {
+#if defined(TARGET_WINDOWS)
+      dirent->inode = tmpBuffer.nfs_ino;
+      dirent->mode = tmpBuffer.nfs_mode;
+      dirent->size = tmpBuffer.nfs_size;
+      dirent->atime.tv_sec = tmpBuffer.nfs_atime;
+      dirent->mtime.tv_sec = tmpBuffer.nfs_mtime;
+      dirent->ctime.tv_sec = tmpBuffer.nfs_ctime;
+      
+      //map stat mode to nf3type
+      if(S_ISBLK(tmpBuffer.st_mode)){ dirent->type = NF3BLK; }
+      else if(S_ISCHR(tmpBuffer.nfs_mode)){ dirent->type = NF3CHR; }
+      else if(S_ISDIR(tmpBuffer.nfs_mode)){ dirent->type = NF3DIR; }
+      else if(S_ISFIFO(tmpBuffer.nfs_mode)){ dirent->type = NF3FIFO; }
+      else if(S_ISREG(tmpBuffer.nfs_mode)){ dirent->type = NF3REG; }
+      else if(S_ISLNK(tmpBuffer.nfs_mode)){ dirent->type = NF3LNK; }
+      else if(S_ISSOCK(tmpBuffer.nfs_mode)){ dirent->type = NF3SOCK; }
+#else
       dirent->inode = tmpBuffer.st_ino;
       dirent->mode = tmpBuffer.st_mode;
       dirent->size = tmpBuffer.st_size;
@@ -172,6 +194,7 @@ bool CNFSDirectory::ResolveSymlink( const CStdString &dirName, struct nfsdirent 
       else if(S_ISREG(tmpBuffer.st_mode)){ dirent->type = NF3REG; }      
       else if(S_ISLNK(tmpBuffer.st_mode)){ dirent->type = NF3LNK; }      
       else if(S_ISSOCK(tmpBuffer.st_mode)){ dirent->type = NF3SOCK; }            
+#endif
     }
   }
   else
@@ -351,13 +374,21 @@ bool CNFSDirectory::Exists(const char* strPath)
     return false;
   
   NFSSTAT info;
+#if defined(TARGET_WINDOWS)
+  ret = gNfsConnection.GetImpl()->nfs_stat64(gNfsConnection.GetNfsContext(), folderName.c_str(), &info);
+#else
   ret = gNfsConnection.GetImpl()->nfs_stat(gNfsConnection.GetNfsContext(), folderName.c_str(), &info);
+#endif
   
   if (ret != 0)
   {
     return false;
   }
+#if defined(TARGET_WINDOWS)
+    return S_ISDIR(info.nfs_mode) ? true : false;
+#else
   return S_ISDIR(info.st_mode) ? true : false;
+#endif
 }
 
 #endif
