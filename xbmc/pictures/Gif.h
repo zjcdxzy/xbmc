@@ -79,7 +79,7 @@ private:
   unsigned char*  m_pTemplate;
 
   static void ConvertColorTable(COLOR* dest, ColorMapObject* src, unsigned int size);  
-  bool ExtractFrames();
+  bool ExtractFrames(unsigned int count);
   void SetFrameAreaToBack(unsigned char* dest, const GifFrame &frame);
   void ConstructFrame(GifFrame &frame, const unsigned char* src) const;
   bool PrepareTemplate(const GifFrame &frame);

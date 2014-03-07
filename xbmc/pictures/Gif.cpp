@@ -22,6 +22,7 @@
 #include "utils/log.h"
 
 #define UNSIGNED_LITTLE_ENDIAN(lo, hi)	((lo) | ((hi) << 8))
+#define GIF_MAX_MEMORY 82944000U // about 79 MB, which is equivalent to 10 full hd frames.
 
 Gif::Gif() :
   m_width(0),
@@ -139,10 +140,18 @@ bool Gif::LoadGif(const char* file)
     return false;
   }
 
+  m_pitch     = m_width * sizeof(COLOR);
+  m_imageSize = m_pitch * m_height;
+  unsigned long memoryUsage = m_numFrames * m_imageSize;
+  if (memoryUsage > GIF_MAX_MEMORY)
+  {
+    // at least 1 image
+    m_numFrames = std::max(1U, GIF_MAX_MEMORY / m_imageSize);
+    CLog::Log(LOGERROR, "Gif::LoadGif(): Memory consumption too high: %lu bytes. Restricting animation to %u. File %s", memoryUsage, m_numFrames, file);
+  }
+
   try
   {
-    m_pitch     = m_width * sizeof(COLOR);
-    m_imageSize = m_pitch * m_height;
     m_pTemplate = new unsigned char[m_imageSize];
     memset(m_pTemplate, 0, m_imageSize);
 
@@ -165,7 +174,7 @@ bool Gif::LoadGif(const char* file)
     else
       m_pGlobalPalette = NULL;
 
-    return ExtractFrames();
+    return ExtractFrames(m_numFrames);
   }
   catch (std::bad_alloc& ba)
   {
@@ -175,12 +184,12 @@ bool Gif::LoadGif(const char* file)
   }
 }
 
-bool Gif::ExtractFrames()
+bool Gif::ExtractFrames(unsigned int count)
 {
   if (!m_gif)
     return false;
 
-  for (int i = 0; i < m_gif->ImageCount; i++)
+  for (unsigned int i = 0; i < count; i++)
   {
     if (!m_pTemplate)
     {
