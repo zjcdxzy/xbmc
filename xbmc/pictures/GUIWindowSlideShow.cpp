@@ -47,6 +47,8 @@
 #include "interfaces/AnnouncementManager.h"
 #include "pictures/PictureInfoTag.h"
 #include "pictures/PictureThumbLoader.h"
+#include "pictures/Gif.h"
+#include "guilib/GuiTexture.h"
 
 using namespace XFILE;
 
@@ -554,7 +556,12 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
       return;
     bSlideShow = false;
   }
-  
+  else if(m_slides->Get(m_iCurrentSlide)->IsAnimatedPicture())
+  {
+    if (!PlayAnimatedPicture(currentTime, regions))
+      return;
+    bSlideShow = false;
+  }
   // render the current image
   if (m_Image[m_iCurrentPic].IsLoaded())
   {
@@ -1119,6 +1126,30 @@ bool CGUIWindowSlideShow::PlayVideo()
     m_bPause = true;
   m_bPlayingVideo = false;
   return false;
+}
+
+bool CGUIWindowSlideShow::PlayAnimatedPicture(unsigned int currentTime, CDirtyRegionList &dirtyregions)
+{
+  CFileItemPtr item = m_slides->Get(m_iCurrentSlide);
+  if (!item->IsAnimatedPicture())
+    return false;
+  if (StringUtils::EndsWithNoCase(item->GetPath(), ".gif"))
+  {
+    Gif gif;
+    if(!gif.LoadGif(item->GetPath().c_str()))
+    {
+      CLog::Log(LOGERROR, "Unable to load file: %s", item->GetPath().c_str());
+      return false;
+    }
+    for (std::vector<GifFrame>::iterator frame = gif.m_frames.begin(); frame != gif.m_frames.end(); ++frame)
+    {
+      CTexture *glTexture = new CTexture();
+      if (glTexture)
+      {
+        glTexture->LoadFromMemory(gif.m_width, gif.m_height, gif.m_pitch, XB_FMT_A8R8G8B8, false, frame->m_pImage);
+      }
+    }
+  }
 }
 
 CSlideShowPic::DISPLAY_EFFECT CGUIWindowSlideShow::GetDisplayEffect(int iSlideNumber) const
