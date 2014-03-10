@@ -59,6 +59,7 @@ public:
   Gif();
   virtual ~Gif();
 
+  bool LoadGifMetaData(const char* file);
   bool LoadGif(const char* file);
 
   std::vector<GifFrame> m_frames;
@@ -67,10 +68,10 @@ public:
   unsigned int    m_imageSize;
   unsigned int    m_pitch;
   unsigned int    m_loops;
+  unsigned int    m_numFrames;
 
 private:
   DllLibGif       m_dll;
-  unsigned int    m_numFrames;
   GifFileType*    m_gif;
   bool            m_hasBackground;
   COLOR           m_backColor;

@@ -83,8 +83,7 @@ void Gif::ConvertColorTable(COLOR* dest, ColorMapObject* src, unsigned int size)
   }
 }
 
-
-bool Gif::LoadGif(const char* file)
+bool Gif::LoadGifMetaData(const char* file)
 {
   if (!m_dll.IsLoaded())
     return false;
@@ -149,6 +148,14 @@ bool Gif::LoadGif(const char* file)
     m_numFrames = std::max(1U, GIF_MAX_MEMORY / m_imageSize);
     CLog::Log(LOGERROR, "Gif::LoadGif(): Memory consumption too high: %lu bytes. Restricting animation to %u. File %s", memoryUsage, m_numFrames, file);
   }
+
+  return true;
+}
+
+bool Gif::LoadGif(const char* file)
+{
+  if (!LoadGifMetaData(file))
+    return false;
 
   try
   {
