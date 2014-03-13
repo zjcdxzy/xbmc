@@ -47,7 +47,9 @@
 #include "interfaces/AnnouncementManager.h"
 #include "pictures/PictureInfoTag.h"
 #include "pictures/PictureThumbLoader.h"
+#if defined(HAS_GIFLIB)
 #include "pictures/Gif.h"
+#endif//HAS_GIFLIB
 #include "guilib/GuiTexture.h"
 
 using namespace XFILE;
@@ -1135,12 +1137,15 @@ bool CGUIWindowSlideShow::PlayAnimatedPicture(unsigned int currentTime, CDirtyRe
     return false;
   if (StringUtils::EndsWithNoCase(item->GetPath(), ".gif"))
   {
+#if defined(HAS_GIFLIB)
     Gif gif;
     if(!gif.LoadGif(item->GetPath().c_str()))
+#endif//HAS_GIFLIB
     {
       CLog::Log(LOGERROR, "Unable to load file: %s", item->GetPath().c_str());
       return false;
     }
+#if defined(HAS_GIFLIB)
     for (std::vector<GifFrame>::iterator frame = gif.m_frames.begin(); frame != gif.m_frames.end(); ++frame)
     {
       CTexture *glTexture = new CTexture();
@@ -1149,6 +1154,7 @@ bool CGUIWindowSlideShow::PlayAnimatedPicture(unsigned int currentTime, CDirtyRe
         glTexture->LoadFromMemory(gif.m_width, gif.m_height, gif.m_pitch, XB_FMT_A8R8G8B8, false, frame->m_pImage);
       }
     }
+#endif//HAS_GIFLIB
   }
 }
 
