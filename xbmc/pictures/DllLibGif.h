@@ -21,7 +21,7 @@
  *
  */
 
-#include "giflib/gif_lib.h"
+#include <gif_lib.h>
 #include "DynamicDll.h"
 
 class DllLibGifInterface

@@ -51,6 +51,7 @@
 #include "pictures/Gif.h"
 #endif//HAS_GIFLIB
 #include "guilib/GuiTexture.h"
+#include "utils/StringUtils.h"
 
 using namespace XFILE;
 
