@@ -533,7 +533,7 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
 
   unsigned int num_buffers = 4;
   m_buffer = new AERingBuffer(num_buffers * format.m_frames * format.m_frameSize);
-  CLog::Log(LOGDEBUG, "%s: using buffer size: %u (%f ms)", __FUNCTION__, m_buffer->GetMaxSize(), (float)m_buffer->GetMaxSize() / (format.m_sampleRate * format.m_frameSize));
+  CLog::Log(LOGDEBUG, "%s: using buffer size: %u (%f ms) ca latent frames: %u", __FUNCTION__, m_buffer->GetMaxSize(), (float)m_buffer->GetMaxSize() / (format.m_sampleRate * format.m_frameSize), m_latentFrames);
 
   m_format = format;
   if (passthrough)
@@ -607,6 +607,8 @@ double CAESinkDARWINOSX::GetDelay()
     double delay = (double)m_buffer->GetReadSize() / (double)m_format.m_frameSize;
     delay += (double)m_latentFrames;
     delay /= (double)m_format.m_sampleRate;
+    if (delay > 2.0)
+       CLog::Log(LOGERROR, "%s off by more then 1 sec latentframes: %u, bufferreadsize: %u", __FUNCTION__, m_latentFrames, m_buffer->GetReadSize()); 
     return delay;
   }
   return 0.0;
