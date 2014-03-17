@@ -539,7 +539,15 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   if (passthrough)
     format.m_dataFormat = AE_FMT_S16NE;
   else
-    format.m_dataFormat = AE_FMT_FLOAT;
+  {
+    if (HasDataFormat(m_info.m_dataFormats, AE_FMT_FLOAT))
+      format.m_dataFormat = AE_FMT_FLOAT;
+    else
+    {
+      m_device.SetNominalSampleRate(format.m_sampleRate);
+      format.m_dataFormat = AE_FMT_S32BE;
+    }
+  }
 
   // Register for data request callbacks from the driver and start
   m_device.AddIOProc(renderCallback, this);
