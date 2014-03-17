@@ -275,6 +275,7 @@ void CAAudioUnitSink::drain()
       maxNumTimeouts--;
     totalBytes = bytes;
   }
+  m_buffer->Reset();
 }
 
 void CAAudioUnitSink::setCoreAudioBuffersize()

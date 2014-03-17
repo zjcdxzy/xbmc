@@ -663,6 +663,7 @@ void CAESinkDARWINOSX::Drain()
       maxNumTimeouts--;
     totalBytes = bytes;
   }
+  m_buffer->Reset();
 }
 
 void CAESinkDARWINOSX::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
