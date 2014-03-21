@@ -6070,7 +6070,10 @@ msgctxt "#13452"
 msgid "Enable this option to use hardware acceleration for VC-1 based codecs. If disabled the CPU will be used instead. Especially VC-1 Interlaced fails hard on Intel hardware."
 msgstr ""
 
-#empty string with id 13453
+#: system/settings/settings.xml
+msgctxt "#13453"
+msgid "Allow hardware acceleration (VDAffmpeg)"
+msgstr ""
 
 #. Label for a setting to configure the video decoding method
 #: system/settings/settings.xml
@@ -14168,7 +14171,11 @@ msgctxt "#36260"
 msgid "No info available yet."
 msgstr ""
 
-#empty string with id 36261
+#. Description of setting "Videos -> Playback -> Allow hardware acceleration (VDAffmpeg)" with label #13453
+#: system/settings/settings.xml
+msgctxt "#36261"
+msgid "Enable VDA hardware decoding of video files. (ffmpeg version of VDA - use when having audio sync issues)"
+msgstr ""
 
 #. Description of setting "Music -> Library -> Export music library" with label #20196
 #: system/settings/settings.xml
