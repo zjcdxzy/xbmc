@@ -15,9 +15,19 @@
         <setting id="videoplayer.usevda" type="boolean" parent="videoplayer.decodingmethod" label="13429" help="36160">
           <dependencies>
             <dependency type="enable" setting="videoplayer.decodingmethod" operator="is">1</dependency>
+            <dependency type="enable" setting="videoplayer.usevdaffmpeg">false</dependency>
           </dependencies>
           <level>2</level>
           <default>true</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="videoplayer.usevdaffmpeg" type="boolean" parent="videoplayer.decodingmethod" label="13453" help="36261">
+          <dependencies>
+            <dependency type="enable" setting="videoplayer.decodingmethod" operator="is">1</dependency>
+            <dependency type="enable" setting="videoplayer.usevda">false</dependency>
+          </dependencies>
+          <level>3</level>
+          <default>false</default>
           <control type="toggle" />
         </setting>
       </group>

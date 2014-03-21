@@ -14174,7 +14174,7 @@ msgstr ""
 #. Description of setting "Videos -> Playback -> Allow hardware acceleration (VDAffmpeg)" with label #13453
 #: system/settings/settings.xml
 msgctxt "#36261"
-msgid "Enable VDA hardware decoding of video files. (ffmpeg version of VDA - use when having audio sync issues)"
+msgid "Enable VDA hardware decoding of video files. (ffmpeg version of VDA - use when having audio sync issues or artifacts in the video picture)"
 msgstr ""
 
 #. Description of setting "Music -> Library -> Export music library" with label #20196
