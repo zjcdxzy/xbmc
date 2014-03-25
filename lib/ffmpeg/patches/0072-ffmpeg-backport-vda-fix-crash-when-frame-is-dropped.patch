@@ -1,0 +1,46 @@
+From 31a0ca9e75e4c91437c8681b9655a67f09b693dd Mon Sep 17 00:00:00 2001
+From: Xidorn Quan <quanxunzhen@gmail.com>
+Date: Mon, 27 Jan 2014 20:35:23 +0100
+Subject: [PATCH] vda: fix crash when a frame is dropped.
+
+Signed-off-by: Sebastien Zwickert <dilaroga@gmail.com>
+---
+ libavcodec/vda.h      | 6 ++++++
+ libavcodec/vda_h264.c | 3 +++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/libavcodec/vda.h b/libavcodec/vda.h
+index b3d6399..2f68188 100644
+--- a/libavcodec/vda.h
++++ b/libavcodec/vda.h
+@@ -41,6 +41,12 @@
+ 
+ #include "libavcodec/version.h"
+ 
++// extra flags not defined in VDADecoder.h
++enum {
++    kVDADecodeInfo_Asynchronous = 1UL << 0,
++    kVDADecodeInfo_FrameDropped = 1UL << 1
++};
++
+ /**
+  * @defgroup lavc_codec_hwaccel_vda VDA
+  * @ingroup lavc_codec_hwaccel
+diff --git a/libavcodec/vda_h264.c b/libavcodec/vda_h264.c
+index e0561e2..1eff671 100644
+--- a/libavcodec/vda_h264.c
++++ b/libavcodec/vda_h264.c
+@@ -41,6 +41,9 @@ static void vda_decoder_callback(void *vda_hw_ctx,
+ {
+     struct vda_context *vda_ctx = vda_hw_ctx;
+ 
++    if (infoFlags & kVDADecodeInfo_FrameDropped)
++        vda_ctx->cv_buffer = NULL;
++
+     if (!image_buffer)
+         return;
+ 
+-- 
+1.8.5.5
+
+

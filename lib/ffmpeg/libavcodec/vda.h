@@ -45,6 +45,12 @@
 #include <pthread.h>
 #endif
 
+// extra flags not defined in VDADecoder.h
+enum {
+    kVDADecodeInfo_Asynchronous = 1UL << 0,
+    kVDADecodeInfo_FrameDropped = 1UL << 1
+};
+
 /**
  * @defgroup lavc_codec_hwaccel_vda VDA
  * @ingroup lavc_codec_hwaccel
