@@ -4376,7 +4376,7 @@
 		DFF0F49B1752838E002DA3A4 /* XBMCController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = XBMCController.mm; sourceTree = "<group>"; };
 		DFF0F49C1752838E002DA3A4 /* XBMCDebugHelpers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XBMCDebugHelpers.h; sourceTree = "<group>"; };
 		DFFC52CB17527B3100C937AB /* XBMC.frappliance */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XBMC.frappliance; sourceTree = BUILT_PRODUCTS_DIR; };
-		DFFC52CF17527E8B00C937AB /* AppIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = AppIcon.png; path = media/AppIcon.png; sourceTree = "<group>"; };
+		DFFC52CF17527E8B00C937AB /* AppIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = AppIcon.png; path = media/ATV2/AppIcon.png; sourceTree = "<group>"; };
 		DFFC52D117527EFC00C937AB /* XBMC.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = XBMC.png; path = xbmc/osx/atv2/XBMC.png; sourceTree = "<group>"; };
 		E306D12C0DDF7B590052C2AD /* XBMCHelper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = XBMCHelper.cpp; sourceTree = "<group>"; };
 		E306D12D0DDF7B590052C2AD /* XBMCHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XBMCHelper.h; sourceTree = "<group>"; };
