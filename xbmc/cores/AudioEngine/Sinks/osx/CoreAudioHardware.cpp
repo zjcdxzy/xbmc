@@ -271,11 +271,18 @@ UInt32 CCoreAudioHardware::GetOutputDevices(CoreAudioDeviceList *pList)
       // handle possible sub devices
       foundSubDevices = getOutputSubDevices(pDevices[dev], pList);
       found += foundSubDevices;
-      if (foundSubDevices == 0)// no subdevices - add the master device
+
+      // if this device has no subdevices
+      // or the device is a aggregated device with subdevices
+      // which are configured to be automagically mirrored
+      // add this device to the list
+      if (foundSubDevices == 0 || device.IsAggregatedMirrorDevice())
       {
         found++;
         pList->push_back(pDevices[dev]);
       }
+      else
+        CLog::Log(LOGERROR, "%s - aggregated devices which are not mirroring audio are not supported. Device won't be added to device list.", __FUNCTION__);
     }
   }
   delete[] pDevices;

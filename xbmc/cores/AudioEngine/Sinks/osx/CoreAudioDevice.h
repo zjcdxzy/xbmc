@@ -54,6 +54,7 @@ public:
   bool          IsDigital(UInt32 &transportType);
   UInt32        GetTotalOutputChannels();
   bool          GetStreams(AudioStreamIdList *pList);
+  bool          IsAggregatedMirrorDevice();
   bool          IsRunning();
   bool          SetHogStatus(bool hog);
   pid_t         GetHogStatus();

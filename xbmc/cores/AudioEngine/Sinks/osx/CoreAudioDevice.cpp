@@ -307,6 +307,43 @@ UInt32 CCoreAudioDevice::GetTotalOutputChannels()
   return channels;
 }
 
+bool CCoreAudioDevice::IsAggregatedMirrorDevice()
+{
+  bool isMirrored = false;
+
+  if (!m_DeviceId)
+    return false;
+  
+  AudioObjectPropertyAddress  propertyAddress;
+  propertyAddress.mScope    = kAudioObjectPropertyElementMaster;
+  propertyAddress.mElement  = 0;
+  propertyAddress.mSelector = kAudioAggregateDevicePropertyComposition;
+  
+  UInt32  propertySize = 0;
+  OSStatus ret = AudioObjectGetPropertyDataSize(m_DeviceId, &propertyAddress, 0, NULL, &propertySize);
+  if (ret != noErr)
+    return false;
+    
+  CFDictionaryRef aggregatedComposition = NULL;
+  propertySize = sizeof(aggregatedComposition);
+  ret = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &propertySize, &aggregatedComposition);
+  if (ret != noErr)
+    return false;
+
+  CFStringRef stackedKey= CFStringCreateWithCString(NULL, kAudioAggregateDeviceIsStackedKey, kCFStringEncodingUTF8);
+  if (CFDictionaryContainsKey(aggregatedComposition, stackedKey))
+  {
+      CFBooleanRef isStackedValue = (CFBooleanRef)CFDictionaryGetValue(aggregatedComposition, stackedKey);
+      // note - the documentation is inverted here - 1 means - mirrored...
+      isMirrored = CFBooleanGetValue(isStackedValue) == 1;
+      CFRelease(isStackedValue);
+  }
+  CFRelease(aggregatedComposition);
+  CFRelease(stackedKey);
+
+  return isMirrored;
+}
+
 bool CCoreAudioDevice::GetStreams(AudioStreamIdList* pList)
 {
   if (!pList || !m_DeviceId)
