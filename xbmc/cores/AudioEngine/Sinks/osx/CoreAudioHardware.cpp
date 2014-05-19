@@ -263,14 +263,67 @@ UInt32 CCoreAudioHardware::GetOutputDevices(CoreAudioDeviceList *pList)
   {
     for (size_t dev = 0; dev < deviceCount; dev++)
     {
+      UInt32 foundSubDevices;
       CCoreAudioDevice device(pDevices[dev]);
       if (device.GetTotalOutputChannels() == 0)
         continue;
-      found++;
-      pList->push_back(pDevices[dev]);
+      
+      // handle possible sub devices
+      foundSubDevices = getOutputSubDevices(pDevices[dev], pList);
+      found += foundSubDevices;
+      if (foundSubDevices == 0)// no subdevices - add the master device
+      {
+        found++;
+        pList->push_back(pDevices[dev]);
+      }
     }
   }
   delete[] pDevices;
+    
+  // in case there are aggregated devices we might and up with
+  // duped audio device ids - make them unique here...
+  pList->sort();
+  pList->unique();
+
+  return found;
+}
+
+UInt32 CCoreAudioHardware::getOutputSubDevices(AudioDeviceID masterDevice, CoreAudioDeviceList *pList)
+{
+  UInt32 found = 0;
+  if (!masterDevice || !pList)
+    return found;
+
+  // Obtain a list of all available audio subdevices
+  AudioObjectPropertyAddress propertyAddress;
+  propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+  propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+  propertyAddress.mSelector = kAudioAggregateDevicePropertyActiveSubDeviceList;
+
+  UInt32 size = 0;
+  OSStatus ret = AudioObjectGetPropertyDataSize(masterDevice, &propertyAddress, 0, NULL, &size);
+  if (ret != noErr)// no sub devices
+    return found;
+
+  CCoreAudioDevice device(masterDevice);
+  size_t subDeviceCount = size / sizeof(AudioDeviceID);
+  CLog::Log(LOGINFO, "%s - device %s has %d subdevices", __FUNCTION__, device.GetName().c_str(), (int)subDeviceCount);
+  AudioDeviceID* pSubDevices = new AudioDeviceID[subDeviceCount];
+  ret = AudioObjectGetPropertyData(masterDevice, &propertyAddress, 0, NULL, &size, pSubDevices);
+  if (ret != noErr)
+    CLog::Log(LOGERROR, "%s - Unable to retrieve the list of available sub devices. Error = %s", __FUNCTION__, GetError(ret).c_str());
+  else
+  {
+    for (size_t subDdev = 0; subDdev < subDeviceCount; subDdev++)
+    {
+      CCoreAudioDevice subDevice(pSubDevices[subDdev]);
+      if (subDevice.GetTotalOutputChannels() == 0)
+        continue;
+      found++;
+      pList->push_back(pSubDevices[subDdev]);
+    }
+  }
+  delete[] pSubDevices;
 
   return found;
 }
