@@ -406,7 +406,14 @@ bool CCoreAudioStream::GetAvailablePhysicalFormats(AudioStreamID id, StreamForma
   if (!ret)
   {
     for (UInt32 format = 0; format < formatCount; format++)
+    {
+      if (pFormatList[format].mFormat.mSampleRate == kAudioStreamAnyRate)
+      {
+        CLog::Log(LOGDEBUG, "%s - found kAudioStreamAnyRate with min: %f and max: %f", __FUNCTION__, pFormatList[format].mSampleRateRange.mMinimum, pFormatList[format].mSampleRateRange.mMaximum);
+        pFormatList[format].mFormat.mSampleRate = pFormatList[format].mSampleRateRange.mMinimum;
+      }
       pList->push_back(pFormatList[format]);
+    }
   }
   delete[] pFormatList;
   return (ret == noErr);
