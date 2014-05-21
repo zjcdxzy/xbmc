@@ -720,6 +720,50 @@ UInt32 CCoreAudioDevice::GetOutputSubDevices(CoreAudioDeviceList *pList)
   return found;
 }
 
+UInt32 CCoreAudioDevice::GetRelatedOutputDevices(CoreAudioDeviceList *pList)
+{
+  UInt32 found = 0;
+  if (!m_DeviceId || !pList)
+    return found;
+
+  // Obtain a list of all available audio subdevices
+  AudioObjectPropertyAddress propertyAddress;
+  propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+  propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+  propertyAddress.mSelector = kAudioDevicePropertyRelatedDevices;
+
+  UInt32 size = 0;
+  OSStatus ret = AudioObjectGetPropertyDataSize(m_DeviceId, &propertyAddress, 0, NULL, &size);
+  if (ret != noErr)// no sub devices
+    return found;
+
+  size_t relatedDeviceCount = size / sizeof(AudioDeviceID);
+  CLog::Log(LOGINFO, "%s - device %s has %d related devices", __FUNCTION__, GetName().c_str(), (int)relatedDeviceCount);
+  AudioDeviceID* pRelatedDevices = new AudioDeviceID[relatedDeviceCount];
+  ret = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &size, pRelatedDevices);
+  if (ret != noErr)
+    CLog::Log(LOGERROR, "%s - Unable to retrieve the list of available sub devices. Error = %s", __FUNCTION__, GetError(ret).c_str());
+  else
+  {
+    for (size_t relatedDev = 0; relatedDev < relatedDeviceCount;relatedDevsubDdev++)
+    {
+      CCoreAudioDevice relatedDevice(pRelatedDevices[relatedDev]);
+      if (relatedDevice.GetTotalOutputChannels() == 0)
+        continue;
+
+      CoreAudioDataSourceList sourceList;
+      CLog::Log(LOGDEBUG, "%s Fetching sources for %s", __FUNCTION__, relatedDevice.GetName().c_str());
+      relatedDevice.GetDataSources(&sourceList);//just to printout the sources
+
+      found++;
+      pList->push_back(pRelatedDevices[relatedDev]);
+    }
+  }
+  delete[] pRelatedDevices;
+
+  return found;
+}
+
 Float64 CCoreAudioDevice::GetNominalSampleRate()
 {
   if (!m_DeviceId)

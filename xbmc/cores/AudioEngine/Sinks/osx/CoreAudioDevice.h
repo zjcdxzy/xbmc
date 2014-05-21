@@ -66,6 +66,7 @@ public:
   bool          GetDataSources(CoreAudioDataSourceList *pList);
   std::string   GetDataSourceName(UInt32 dataSourceId);
   UInt32        GetOutputSubDevices(CoreAudioDeviceList *pList);
+  UInt32        GetRelatedOutputDevices(CoreAudioDeviceList *pList);
   Float64       GetNominalSampleRate();
   bool          SetNominalSampleRate(Float64 sampleRate);
   UInt32        GetNumLatencyFrames();
