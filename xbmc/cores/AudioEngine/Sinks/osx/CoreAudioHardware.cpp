@@ -287,6 +287,9 @@ UInt32 CCoreAudioHardware::GetOutputDevices(CoreAudioDeviceList *pList)
       }
       else
         CLog::Log(LOGERROR, "%s - aggregated devices which are not mirroring audio are not supported. Device won't be added to device list.", __FUNCTION__);
+
+      // handle possible related devices
+      found += device.GetRelatedOutputDevices(pList);
     }
   }
   delete[] pDevices;
