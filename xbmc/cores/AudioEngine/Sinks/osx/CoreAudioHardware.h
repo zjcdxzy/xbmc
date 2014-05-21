@@ -40,9 +40,6 @@ public:
   static AudioDeviceID  GetDefaultOutputDevice();
   static void           GetOutputDeviceName(std::string &name);
   static UInt32         GetOutputDevices(CoreAudioDeviceList *pList);
-
-private:
-    static UInt32         getOutputSubDevices(AudioDeviceID masterDevice, CoreAudioDeviceList *pList);
 };
 
 #endif
