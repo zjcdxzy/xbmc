@@ -293,8 +293,12 @@ UInt32 CCoreAudioDevice::GetTotalOutputChannels()
   ret = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &size, pList);
   if (ret == noErr)
   {
+    CLog::Log(LOGDEBUG, "%s device %s has %d streams", __FUNCTION__, GetName().c_str(), pList->mNumberBuffers);
     for(UInt32 buffer = 0; buffer < pList->mNumberBuffers; ++buffer)
+    {
+      CLog::Log(LOGDEBUG, "%s stream %d has %d channels", __FUNCTION__, buffer, pList->mBuffers[buffer].mNumberChannels);
       channels += pList->mBuffers[buffer].mNumberChannels;
+    }
   }
   else
   {
