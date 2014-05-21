@@ -685,7 +685,7 @@ bool CCoreAudioDevice::GetDataSource(UInt32 &dataSourceId)
 
   AudioObjectPropertyAddress  propertyAddress;
   propertyAddress.mScope    = kAudioDevicePropertyScopeOutput;
-  propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+  propertyAddress.mElement  = 0;
   propertyAddress.mSelector = kAudioDevicePropertyDataSource;
 
   UInt32 size = sizeof(dataSourceId);
@@ -705,7 +705,7 @@ UInt32 CCoreAudioDevice::GetOutputSubDevices(CoreAudioDeviceList *pList)
   // Obtain a list of all available audio subdevices
   AudioObjectPropertyAddress propertyAddress;
   propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
-  propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+  propertyAddress.mElement  = 0;
   propertyAddress.mSelector = kAudioAggregateDevicePropertyActiveSubDeviceList;
 
   UInt32 size = 0;
@@ -755,7 +755,7 @@ UInt32 CCoreAudioDevice::GetRelatedOutputDevices(CoreAudioDeviceList *pList)
   // Obtain a list of all available audio subdevices
   AudioObjectPropertyAddress propertyAddress;
   propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
-  propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+  propertyAddress.mElement  = 0;
   propertyAddress.mSelector = kAudioDevicePropertyRelatedDevices;
 
   UInt32 size = 0;
