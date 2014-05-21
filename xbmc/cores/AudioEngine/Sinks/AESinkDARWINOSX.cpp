@@ -91,23 +91,30 @@ static void EnumerateDevices(CADeviceList &list)
     UInt32 caTerminalType = 0;
       
     bool isDigital = caDevice.IsDigital(caTerminalType);
-
+    bool isPlanar = true;
 
     CLog::Log(LOGDEBUG, "EnumerateDevices:Device(%s)" , device.m_deviceName.c_str());
     AudioStreamIdList streams;
     if (caDevice.GetStreams(&streams))
     {
+      int streamCounter = 0;
+
       for (AudioStreamIdList::iterator j = streams.begin(); j != streams.end(); ++j)
       {
-        StreamFormatList streams;
-        if (CCoreAudioStream::GetAvailablePhysicalFormats(*j, &streams))
+        streamCounter++;
+        StreamFormatList streamFormats;
+        if (CCoreAudioStream::GetAvailablePhysicalFormats(*j, &streamFormats))
         {
-          for (StreamFormatList::iterator i = streams.begin(); i != streams.end(); ++i)
+
+          for (StreamFormatList::iterator i = streamFormats.begin(); i != streamFormats.end(); ++i)
           {
             AudioStreamBasicDescription desc = i->mFormat;
             std::string formatString;
             CLog::Log(LOGDEBUG, "EnumerateDevices:Format(%s)" ,
                                 StreamDescriptionToString(desc, formatString));
+                                
+            if (desc.mChannelsPerFrame != 1)// planar would only contain 1 channel descriptions
+              isPlanar = false;
 
             // add stream format info
             switch (desc.mFormatID)
