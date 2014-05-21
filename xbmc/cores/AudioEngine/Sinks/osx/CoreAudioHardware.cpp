@@ -267,6 +267,10 @@ UInt32 CCoreAudioHardware::GetOutputDevices(CoreAudioDeviceList *pList)
       CCoreAudioDevice device(pDevices[dev]);
       if (device.GetTotalOutputChannels() == 0)
         continue;
+
+      CoreAudioDataSourceList sourceList;
+      CLog::Log(LOGDEBUG, "%s Fetching sources for %s", __FUNCTION__, device.GetName().c_str());
+      device.GetDataSources(&sourceList);//just to printout the sources
       
       // handle possible sub devices
       foundSubDevices = getOutputSubDevices(pDevices[dev], pList);
@@ -326,6 +330,11 @@ UInt32 CCoreAudioHardware::getOutputSubDevices(AudioDeviceID masterDevice, CoreA
       CCoreAudioDevice subDevice(pSubDevices[subDdev]);
       if (subDevice.GetTotalOutputChannels() == 0)
         continue;
+
+      CoreAudioDataSourceList sourceList;
+      CLog::Log(LOGDEBUG, "%s Fetching sources for %s", __FUNCTION__, subDevice.GetName().c_str());
+      subDevice.GetDataSources(&sourceList);//just to printout the sources
+
       found++;
       pList->push_back(pSubDevices[subDdev]);
     }
