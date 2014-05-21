@@ -827,7 +827,7 @@ UInt32 CCoreAudioDevice::GetRelatedOutputDevices(CoreAudioDeviceList *pList)
     CLog::Log(LOGERROR, "%s - Unable to retrieve the list of available sub devices. Error = %s", __FUNCTION__, GetError(ret).c_str());
   else
   {
-    for (size_t relatedDev = 0; relatedDev < relatedDeviceCount;relatedDevsubDdev++)
+    for (size_t relatedDev = 0; relatedDev < relatedDeviceCount;relatedDev++)
     {
       CCoreAudioDevice relatedDevice(pRelatedDevices[relatedDev]);
       if (relatedDevice.GetTotalOutputChannels() == 0)
@@ -837,9 +837,9 @@ UInt32 CCoreAudioDevice::GetRelatedOutputDevices(CoreAudioDeviceList *pList)
       CLog::Log(LOGDEBUG, "%s Fetching sources for %s", __FUNCTION__, relatedDevice.GetName().c_str());
       relatedDevice.GetDataSources(&sourceList);//just to printout the sources
       UInt32 dataSourceId = 0;
-      if (pRelatedDevices.GetDataSource(dataSourceId))
+      if (relatedDevice.GetDataSource(dataSourceId))
       {
-        std:string sourceName = pRelatedDevices.GetDataSourceName(dataSourceId);
+        std::string sourceName = relatedDevice.GetDataSourceName(dataSourceId);
         CLog::Log(LOGDEBUG, "%s Current source is %s", __FUNCTION__, sourceName.c_str());
       }
 
