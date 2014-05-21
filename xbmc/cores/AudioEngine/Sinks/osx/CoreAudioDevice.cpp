@@ -182,6 +182,22 @@ bool CCoreAudioDevice::AddIOProc(AudioDeviceIOProc ioProc, void* pCallbackData)
     return false;
   }
 
+  //fetch and log streamusage
+  AudioStreamIdList streams;
+  if (GetStreams(&streams))
+  {
+    UInt32 numStreams = streams.size();
+    UInt32 *streamsUsed = new UInt32[numStreams];
+
+    if (GetStreamUsage(streamsUsed, numStreams))
+    {
+      for (UInt32 i = 0; i < numStreams; i++)
+        CLog::Log(LOGDEBUG, "%s stream number %d is enabled %d", __FUNCTION__, i, streamsUsed[i]);
+    }
+
+    delete [] streamsUsed;
+  }
+
   Start();
 
   return true;
