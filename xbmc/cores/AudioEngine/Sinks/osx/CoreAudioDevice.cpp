@@ -676,6 +676,26 @@ bool CCoreAudioDevice::GetDataSources(CoreAudioDataSourceList* pList)
   return (!ret);
 }
 
+bool CCoreAudioDevice::GetDataSource(UInt32 &dataSourceId)
+{
+  bool ret = false;
+
+  if (!m_DeviceId)
+    return false;
+
+  AudioObjectPropertyAddress  propertyAddress;
+  propertyAddress.mScope    = kAudioDevicePropertyScopeOutput;
+  propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+  propertyAddress.mSelector = kAudioDevicePropertyDataSource;
+
+  UInt32 size = sizeof(dataSourceId);
+  OSStatus status = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &size, &dataSourceId);
+  if(status == noErr)
+    ret = true;
+
+  return ret;
+}
+
 UInt32 CCoreAudioDevice::GetOutputSubDevices(CoreAudioDeviceList *pList)
 {
   UInt32 found = 0;

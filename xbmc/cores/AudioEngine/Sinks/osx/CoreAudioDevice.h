@@ -64,6 +64,7 @@ public:
   bool          GetPreferredChannelLayout(CCoreAudioChannelLayout &layout);
   bool          GetPreferredChannelLayoutForStereo(CCoreAudioChannelLayout &layout);
   bool          GetDataSources(CoreAudioDataSourceList *pList);
+  bool          GetDataSource(UInt32 &dataSourceId);
   std::string   GetDataSourceName(UInt32 dataSourceId);
   UInt32        GetOutputSubDevices(CoreAudioDeviceList *pList);
   UInt32        GetRelatedOutputDevices(CoreAudioDeviceList *pList);
