@@ -241,7 +241,7 @@ bool CCoreAudioDevice::GetStreamUsage(UInt32 *streamsUsed, UInt32 &numElements)
     AudioHardwareIOProcStreamUsage *su = (AudioHardwareIOProcStreamUsage*)malloc(propertySize); 
     su->mIOProc = (void*)m_IoProc;
 
-    status = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, &propertySize, su);
+    status = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &propertySize, su);
 
     if (status == noErr)
     {
