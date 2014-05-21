@@ -281,8 +281,15 @@ static void EnumerateDevices(CADeviceList &list)
     AudioStreamIdList streams;
     if (caDevice.GetStreams(&streams))
     {
+      int streamCounter = 0;
       for (AudioStreamIdList::iterator j = streams.begin(); j != streams.end(); ++j)
       {
+            // log the starting channel
+            UInt32 startingChannel = 0;
+            if (CCoreAudioStream::GetStartingChannelInDevice(*j, startingChannel))
+              CLog::Log(LOGDEBUG, "%s stream %d starts at channel %d of device %s", __FUNCTION__, streamCounter, startingChannel, device.m_deviceName.c_str());
+            streamCounter++;
+
         StreamFormatList streams;
         if (CCoreAudioStream::GetAvailablePhysicalFormats(*j, &streams))
         {
