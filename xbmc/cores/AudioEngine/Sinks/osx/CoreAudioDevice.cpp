@@ -206,6 +206,42 @@ bool CCoreAudioDevice::RemoveIOProc()
   return true;
 }
 
+bool CCoreAudioDevice::GetStreamUsage(UInt32 *streamsUsed, UInt32 &numElements)
+{
+  bool ret = false;
+  if (!m_DeviceId || !m_IoProc || !streamsUsed)
+    return ret;
+
+  AudioObjectPropertyAddress  propertyAddress;
+  propertyAddress.mScope    = kAudioDevicePropertyScopeOutput;
+  propertyAddress.mElement  = 0;
+  propertyAddress.mSelector = kAudioDevicePropertyIOProcStreamUsage;
+
+  UInt32 propertySize;
+  OSStatus status = AudioObjectGetPropertyDataSize(m_DeviceId, &propertyAddress, 0, NULL, &propertySize);
+
+  if (status == noErr)
+  {
+    AudioHardwareIOProcStreamUsage *su = (AudioHardwareIOProcStreamUsage*)malloc(propertySize); 
+    su->mIOProc = (void*)m_IoProc;
+
+    status = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, &propertySize, su);
+
+    if (status == noErr)
+    {
+      for (unsigned int i=0; i < su->mNumberStreams; i++)
+      {
+        if (i < numElements)
+          streamsUsed[i] = su->mStreamIsOn[i];
+      }
+      numElements = su->mNumberStreams;
+      ret = true;
+    }
+    free(su);
+  }
+  return ret;
+}
+
 std::string CCoreAudioDevice::GetName()
 {
   if (!m_DeviceId)

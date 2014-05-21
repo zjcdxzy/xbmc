@@ -50,6 +50,7 @@ public:
   bool          SetObjectListenerProc(AudioObjectPropertyListenerProc callback, void *pClientData);
   
   AudioDeviceID GetId() {return m_DeviceId;}
+  bool          GetStreamUsage(UInt32 *streamsUsed, UInt32 numElements);
   std::string   GetName();
   bool          IsDigital(UInt32 &transportType);
   UInt32        GetTotalOutputChannels();
