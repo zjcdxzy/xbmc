@@ -63,6 +63,9 @@ public:
   bool          SetCurrentVolume(Float32 vol);
   bool          GetPreferredChannelLayout(CCoreAudioChannelLayout &layout);
   bool          GetDataSources(CoreAudioDataSourceList *pList);
+  bool          GetDataSource(UInt32 &dataSourceId);
+  std::string   GetDataSourceName(UInt32 dataSourceId);
+  std::string   GetCurrentDataSourceName();
   Float64       GetNominalSampleRate();
   bool          SetNominalSampleRate(Float64 sampleRate);
   UInt32        GetNumLatencyFrames();
