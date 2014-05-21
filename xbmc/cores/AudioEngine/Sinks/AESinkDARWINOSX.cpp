@@ -58,7 +58,13 @@ static bool HasDataFormat(const AEDataFormatList &list, const enum AEDataFormat 
   return false;
 }
 
-typedef std::vector< std::pair<AudioDeviceID, CAEDeviceInfo> > CADeviceList;
+struct CADeviceInstance
+{
+  AudioDeviceID audioDeviceId;
+  unsigned int streamIndex;
+};
+
+typedef std::vector< std::pair<struct CADeviceInstance, CAEDeviceInfo> > CADeviceList;
 
 static void EnumerateDevices(CADeviceList &list)
 {
@@ -71,6 +77,9 @@ static void EnumerateDevices(CADeviceList &list)
   CCoreAudioHardware::GetOutputDevices(&deviceIDList);
   while (!deviceIDList.empty())
   {
+    // vector with streamDeviceName + firstchannel in stream
+    std::vector< std::pair<std::string, UInt32> > streamDeviceList;
+    std::string originalDeviceName;
     AudioDeviceID deviceID = deviceIDList.front();
     CCoreAudioDevice caDevice(deviceID);
 
@@ -78,8 +87,9 @@ static void EnumerateDevices(CADeviceList &list)
     device.m_dataFormats.clear();
     device.m_sampleRates.clear();
 
+    originalDeviceName = caDevice.GetName();
     device.m_deviceType = AE_DEVTYPE_PCM;
-    device.m_deviceName = caDevice.GetName();
+    device.m_deviceName = originalDeviceName;
     device.m_displayName = device.m_deviceName;
     device.m_displayNameExtra = caDevice.GetCurrentDataSourceName();
 
@@ -222,6 +232,21 @@ static void EnumerateDevices(CADeviceList &list)
               device.m_sampleRates.push_back(desc.mSampleRate);
           }
         }
+        // after fetching formats of the stream
+      
+        // if device has multiple streams and is not planar - handle it by
+        // adding a device for each stream - prepending the stream
+        // index
+        if (streams.size() > 1 && !isPlanar)
+        {
+          std::stringstream streamNumberStr;
+          streamNumberStr << (streamCounter - 1);
+          std::string deviceName = caDevice.GetName() + ":stream" + streamNumberStr.str();
+          UInt32 startingChannel;
+          CCoreAudioStream::GetStartingChannelInDevice(*j, startingChannel);
+          // remember the stream as pseudo device for later addition
+          streamDeviceList.push_back(std::make_pair(deviceName, startingChannel));
+        }
       }
     }
 
@@ -265,17 +290,54 @@ static void EnumerateDevices(CADeviceList &list)
       device.m_deviceType = AE_DEVTYPE_DP;
     
     
-    list.push_back(std::make_pair(deviceID, device));
+    struct CADeviceInstance deviceInstance;
+    deviceInstance.audioDeviceId = deviceID;
+    deviceInstance.streamIndex = INT_MAX;//don't limit streamidx for the raw device
+    
+    //if the device has only one stream
+    //or if it is a planar device with multiple streams
+    //add the device to the list
+    //else it is a device with multiple non-planar multichannel
+    //streams and we add those below as pseudodevice
+    if(streams.size() == 1 || isPlanar)
+      list.push_back(std::make_pair(deviceInstance, device));
+    else
+    {
+      CLog::Log(LOGNOTICE, "%s not adding device %s - it has %d non-planar streams - adding them as pseudo devices", __FUNCTION__, caDevice.GetName().c_str(), (unsigned int)streams.size());
+      for (unsigned int devNameIdx = 0; devNameIdx < streamDeviceList.size(); devNameIdx++)
+      {
+        deviceInstance.streamIndex = devNameIdx;
+        device.m_deviceName = streamDeviceList[devNameIdx].first;//the crafted pseudo device name
+        device.m_displayName = originalDeviceName;// we display the original devicename ot the user
+        // build a string with the channels for this stream
+        UInt32 startChannel = streamDeviceList[devNameIdx].second;
+        UInt32 numChannels = caDevice.GetNumChannelsOfStream(devNameIdx);
+        std::stringstream extraName;
+        extraName << "Channels ";
+        extraName << startChannel;
+        extraName << " - ";
+        extraName << startChannel + numChannels - 1;
+        // set channel numbers as extra string so that the user can distinguish
+        // those pseudo devices
+        device.m_displayNameExtra = extraName.str();
+        
+        CLog::Log(LOGNOTICE, "%s adding stream %d as pseudo device with start channel %d and %d channels total", __FUNCTION__, devNameIdx, (unsigned int)startChannel, (unsigned int)numChannels);
+        list.push_back(std::make_pair(deviceInstance, device));
+      }
+    }
+
     //in the first place of the list add the default device
     //with name "default" - if this is selected
     //we will output to whatever osx claims to be default
     //(allows transition from headphones to speaker and stuff
     //like that
-    if(defaultDeviceName == device.m_deviceName)
+    if(defaultDeviceName == originalDeviceName)
     {
+      deviceInstance.streamIndex = INT_MAX;
       device.m_deviceName = "default";
       device.m_displayName = "Default";
-      list.insert(list.begin(), std::make_pair(deviceID, device));
+      device.m_displayNameExtra = caDevice.GetName();
+      list.insert(list.begin(), std::make_pair(deviceInstance, device));
     }
 
     deviceIDList.pop_front();
@@ -430,6 +492,8 @@ float ScoreStream(const AudioStreamBasicDescription &desc, const AEAudioFormat &
 bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
 {
   AudioDeviceID deviceID = 0;
+  UInt32 requestedStreamIndex = INT_MAX;
+
   CADeviceList devices = GetDevices();
   if (StringUtils::EqualsNoCase(device, "default"))
   {
@@ -441,9 +505,13 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   {
     for (size_t i = 0; i < devices.size(); i++)
     {
-      if (device.find(devices[i].second.m_deviceName) != std::string::npos)
+      if (device == devices[i].second.m_deviceName)
       {
-        deviceID = devices[i].first;
+        struct CADeviceInstance deviceInstance = devices[i].first;
+        deviceID = deviceInstance.audioDeviceId;
+        requestedStreamIndex = deviceInstance.streamIndex;
+        if (requestedStreamIndex != INT_MAX)
+          CLog::Log(LOGNOTICE, "%s pseudo device - requesting stream %d", __FUNCTION__, (unsigned int)requestedStreamIndex);
         break;
       }
     }
@@ -478,6 +546,13 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   UInt32 index = 0;
   for (AudioStreamIdList::const_iterator i = streams.begin(); i != streams.end(); ++i)
   {
+    // skip unwanted streams here
+    if (requestedStreamIndex != INT_MAX && index != requestedStreamIndex)
+    {
+      index++;
+      continue;
+    }
+
     // Probe physical formats
     StreamFormatList formats;
     CCoreAudioStream::GetAvailablePhysicalFormats(*i, &formats);
