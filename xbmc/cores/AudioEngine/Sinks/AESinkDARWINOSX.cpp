@@ -81,7 +81,7 @@ static void EnumerateDevices(CADeviceList &list)
     device.m_deviceType = AE_DEVTYPE_PCM;
     device.m_deviceName = caDevice.GetName();
     device.m_displayName = device.m_deviceName;
-    device.m_displayNameExtra = "";
+    device.m_displayNameExtra = caDevice.GetCurrentDataSourceName();
 
     // flag indicating that passthroughformats where added throughout the stream enumeration
     bool hasPassthroughFormats = false;
