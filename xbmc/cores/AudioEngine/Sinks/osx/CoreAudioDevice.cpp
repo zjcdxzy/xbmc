@@ -671,9 +671,9 @@ std::string CCoreAudioDevice::GetDataSourceName(UInt32 dataSourceId)
   UInt32 propertySize = 0;
   CFStringRef dataSourceNameCF;
   std::string dataSourceName;
-  std::string ret = '';
+  std::string ret = "";
 
-  if (!m_DevieId)
+  if (!m_DeviceId)
     return ret;
 
   AudioObjectPropertyAddress  propertyAddress;
@@ -687,7 +687,7 @@ std::string CCoreAudioDevice::GetDataSourceName(UInt32 dataSourceId)
   translation.mOutputData = &dataSourceNameCF;
   translation.mOutputDataSize = sizeof ( CFStringRef );
   propertySize = sizeof(AudioValueTranslation);
-  OSStatus status = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &propertySize, &translation)
+  OSStatus status = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &propertySize, &translation);
 
   if (( status == noErr ) && dataSourceNameCF )
   {
