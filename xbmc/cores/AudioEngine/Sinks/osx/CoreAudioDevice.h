@@ -29,7 +29,7 @@
 
 #include <CoreAudio/CoreAudio.h>
 
-typedef std::list<UInt32> CoreAudioDataSourceList;
+typedef std::vector<UInt32> CoreAudioDataSourceList;
 typedef std::list<AudioDeviceID> CoreAudioDeviceList;
 
 class CCoreAudioChannelLayout;

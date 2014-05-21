@@ -62,6 +62,7 @@ struct CADeviceInstance
 {
   AudioDeviceID audioDeviceId;
   unsigned int streamIndex;
+  unsigned int sourceId;
 };
 
 typedef std::vector< std::pair<struct CADeviceInstance, CAEDeviceInfo> > CADeviceList;
@@ -293,6 +294,7 @@ static void EnumerateDevices(CADeviceList &list)
     struct CADeviceInstance deviceInstance;
     deviceInstance.audioDeviceId = deviceID;
     deviceInstance.streamIndex = INT_MAX;//don't limit streamidx for the raw device
+    deviceInstance.sourceId = INT_MAX;//don't set audio source by default
     
     //if the device has only one stream
     //or if it is a planar device with multiple streams
@@ -300,7 +302,24 @@ static void EnumerateDevices(CADeviceList &list)
     //else it is a device with multiple non-planar multichannel
     //streams and we add those below as pseudodevice
     if(streams.size() == 1 || isPlanar)
-      list.push_back(std::make_pair(deviceInstance, device));
+    {
+      CoreAudioDataSourceList sourceList;
+      if (caDevice.GetDataSources(&sourceList) && sourceList.size() > 1)
+      {
+        for (unsigned sourceIdx = 0; sourceIdx < sourceList.size(); sourceIdx++)
+        {
+          std::stringstream sourceIdxStr;
+          sourceIdxStr << sourceIdx;
+          device.m_deviceName = originalDeviceName + ":source" + sourceIdxStr.str();
+          device.m_displayName = originalDeviceName;// we display the original devicename ot the user
+          device.m_displayNameExtra = caDevice.GetDataSourceName(sourceIdx);
+          deviceInstance.sourceId = sourceIdx;
+          list.push_back(std::make_pair(deviceInstance, device));
+        }
+      }
+      else
+        list.push_back(std::make_pair(deviceInstance, device));
+    }
     else
     {
       CLog::Log(LOGNOTICE, "%s not adding device %s - it has %d non-planar streams - adding them as pseudo devices", __FUNCTION__, caDevice.GetName().c_str(), (unsigned int)streams.size());
@@ -334,6 +353,7 @@ static void EnumerateDevices(CADeviceList &list)
     if(defaultDeviceName == originalDeviceName)
     {
       deviceInstance.streamIndex = INT_MAX;
+      deviceInstance.sourceId = INT_MAX;
       device.m_deviceName = "default";
       device.m_displayName = "Default";
       device.m_displayNameExtra = caDevice.GetName();
@@ -493,6 +513,7 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
 {
   AudioDeviceID deviceID = 0;
   UInt32 requestedStreamIndex = INT_MAX;
+  UInt32 requestedSourceId = INT_MAX;
 
   CADeviceList devices = GetDevices();
   if (StringUtils::EqualsNoCase(device, "default"))
@@ -510,8 +531,11 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
         struct CADeviceInstance deviceInstance = devices[i].first;
         deviceID = deviceInstance.audioDeviceId;
         requestedStreamIndex = deviceInstance.streamIndex;
+        requestedSourceId = deviceInstance.sourceId;
         if (requestedStreamIndex != INT_MAX)
           CLog::Log(LOGNOTICE, "%s pseudo device - requesting stream %d", __FUNCTION__, (unsigned int)requestedStreamIndex);
+        if (requestedSourceId != INT_MAX)
+          CLog::Log(LOGNOTICE, "%s device - requesting audiosource %d", __FUNCTION__, (unsigned int)requestedSourceId);
         break;
       }
     }
@@ -524,6 +548,9 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   }
 
   m_device.Open(deviceID);
+  
+  if (requestedSourceId != INT_MAX && !m_device.SetDataSource(requestedSourceId))
+    CLog::Log(LOGERROR, "%s: Error setting requested audio source.", __FUNCTION__);
 
   // Fetch a list of the streams defined by the output device
   AudioStreamIdList streams;
