@@ -274,7 +274,7 @@ UInt32 CCoreAudioHardware::GetOutputDevices(CoreAudioDeviceList *pList)
       UInt32 dataSourceId = 0;
       if (device.GetDataSource(dataSourceId))
       {
-        std:string sourceName = device.GetDataSourceName(dataSourceId);
+        std::string sourceName = device.GetDataSourceName(dataSourceId);
         CLog::Log(LOGDEBUG, "%s Current source is %s", __FUNCTION__, sourceName.c_str());
       }
       
