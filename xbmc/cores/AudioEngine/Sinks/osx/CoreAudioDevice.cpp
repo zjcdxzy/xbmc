@@ -730,6 +730,12 @@ UInt32 CCoreAudioDevice::GetOutputSubDevices(CoreAudioDeviceList *pList)
       CoreAudioDataSourceList sourceList;
       CLog::Log(LOGDEBUG, "%s Fetching sources for %s", __FUNCTION__, subDevice.GetName().c_str());
       subDevice.GetDataSources(&sourceList);//just to printout the sources
+      UInt32 dataSourceId = 0;
+      if (subDevice.GetDataSource(dataSourceId))
+      {
+        std:string sourceName = subDevice.GetDataSourceName(dataSourceId);
+        CLog::Log(LOGDEBUG, "%s Current source is %s", __FUNCTION__, sourceName.c_str());
+      }
 
       found++;
       pList->push_back(pSubDevices[subDdev]);
@@ -774,6 +780,13 @@ UInt32 CCoreAudioDevice::GetRelatedOutputDevices(CoreAudioDeviceList *pList)
       CoreAudioDataSourceList sourceList;
       CLog::Log(LOGDEBUG, "%s Fetching sources for %s", __FUNCTION__, relatedDevice.GetName().c_str());
       relatedDevice.GetDataSources(&sourceList);//just to printout the sources
+      UInt32 dataSourceId = 0;
+      if (pRelatedDevices.GetDataSource(dataSourceId))
+      {
+        std:string sourceName = pRelatedDevices.GetDataSourceName(dataSourceId);
+        CLog::Log(LOGDEBUG, "%s Current source is %s", __FUNCTION__, sourceName.c_str());
+      }
+
 
       found++;
       pList->push_back(pRelatedDevices[relatedDev]);

@@ -271,6 +271,12 @@ UInt32 CCoreAudioHardware::GetOutputDevices(CoreAudioDeviceList *pList)
       CoreAudioDataSourceList sourceList;
       CLog::Log(LOGDEBUG, "%s Fetching sources for %s", __FUNCTION__, device.GetName().c_str());
       device.GetDataSources(&sourceList);//just to printout the sources
+      UInt32 dataSourceId = 0;
+      if (device.GetDataSource(dataSourceId))
+      {
+        std:string sourceName = device.GetDataSourceName(dataSourceId);
+        CLog::Log(LOGDEBUG, "%s Current source is %s", __FUNCTION__, sourceName.c_str());
+      }
       
       // handle possible sub devices
       foundSubDevices = device.GetOutputSubDevices(pList);
