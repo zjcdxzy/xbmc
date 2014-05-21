@@ -609,6 +609,41 @@ bool CCoreAudioDevice::GetPreferredChannelLayoutForStereo(CCoreAudioChannelLayou
   return (ret == noErr);
 }
 
+std::string CCoreAudioDevice::GetDataSourceName(UInt32 dataSourceId)
+{
+  UInt32 propertySize = 0;
+  CFStringRef dataSourceNameCF;
+  std::string dataSourceName;
+  std::string ret = '';
+
+  if (!m_DevieId)
+    return ret;
+
+  AudioObjectPropertyAddress  propertyAddress;
+  propertyAddress.mScope    = kAudioDevicePropertyScopeOutput;
+  propertyAddress.mElement  = 0;
+  propertyAddress.mSelector = kAudioDevicePropertyDataSourceNameForIDCFString;
+
+  AudioValueTranslation translation;
+  translation.mInputData = &dataSourceId;
+  translation.mInputDataSize = sizeof(UInt32);
+  translation.mOutputData = &dataSourceNameCF;
+  translation.mOutputDataSize = sizeof ( CFStringRef );
+  propertySize = sizeof(AudioValueTranslation);
+  OSStatus status = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &propertySize, &translation)
+
+  if (( status == noErr ) && dataSourceNameCF )
+  {
+    if (DarwinCFStringRefToUTF8String(dataSourceNameCF, dataSourceName))
+    {
+      ret = dataSourceName;
+    }
+    CFRelease ( dataSourceNameCF );
+  }
+
+  return ret;
+}
+
 bool CCoreAudioDevice::GetDataSources(CoreAudioDataSourceList* pList)
 {
   if (!pList || !m_DeviceId)
@@ -630,7 +665,11 @@ bool CCoreAudioDevice::GetDataSources(CoreAudioDataSourceList* pList)
   if (ret == noErr)
   {
     for (UInt32 i = 0; i < sources; i++)
+    {
+      std::string sourceName = GetDataSourceName(pSources[i]);
+      CLog::Log(LOGDEBUG, "%s found source %s", __FUNCTION__, sourceName.c_str());
       pList->push_back(pSources[i]);
+    }
   }
   delete[] pSources;
   return (!ret);
