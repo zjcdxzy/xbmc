@@ -64,6 +64,7 @@ public:
   bool          GetPreferredChannelLayout(CCoreAudioChannelLayout &layout);
   bool          GetDataSources(CoreAudioDataSourceList *pList);
   bool          GetDataSource(UInt32 &dataSourceId);
+  bool          SetDataSource(UInt32 &dataSourceId);
   std::string   GetDataSourceName(UInt32 dataSourceId);
   std::string   GetCurrentDataSourceName();
   Float64       GetNominalSampleRate();
