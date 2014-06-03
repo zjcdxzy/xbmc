@@ -63,8 +63,7 @@ private:
   AERingBuffer      *m_buffer;
   volatile bool      m_started;     // set once we get a callback from CoreAudio, which can take a little while.
 
-  volatile unsigned int  m_render_enter;
-  volatile unsigned int  m_render_exit;
+  CAESpinSection         m_render_locker;
   volatile int64_t       m_render_tick;
   volatile double        m_render_delay;
 };
