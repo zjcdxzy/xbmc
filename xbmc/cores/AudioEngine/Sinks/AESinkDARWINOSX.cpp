@@ -670,7 +670,8 @@ void CAESinkDARWINOSX::GetDelay(AEDelayStatus& status)
 {
   /* lockless way of guaranteeing consistency of tick/delay/buffer,
    * this work since render callback is short and quick and higher
-   * priority compared to this thread */
+   * priority compared to this thread, unsigned int are assumed
+   * aligned and having atomic read/write */
   unsigned int start, size;
   do
   {
