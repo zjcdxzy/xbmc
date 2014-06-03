@@ -29,6 +29,7 @@
 #include "utils/StringUtils.h"
 #include "threads/Condition.h"
 #include "threads/CriticalSection.h"
+#include "utils/TimeUtils.h"
 
 #include <sstream>
 
