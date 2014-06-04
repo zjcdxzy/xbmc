@@ -726,7 +726,7 @@ bool CDVDPlayerAudio::OutputPacket(DVDAudioFrame &audioframe)
   }
   else if (m_synctype == SYNC_RESAMPLE)
   {
-    m_dvdAudio.SetResampleRatio(m_resampleratio);
+    //m_dvdAudio.SetResampleRatio(m_resampleratio);
     m_dvdAudio.AddPackets(audioframe);
   }
 

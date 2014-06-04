@@ -28,6 +28,8 @@
 #include "cores/AudioEngine/Interfaces/AEStream.h"
 #include "settings/MediaSettings.h"
 
+#include "utils/TimeUtils.h"
+
 using namespace std;
 
 
@@ -227,6 +229,15 @@ unsigned int CDVDAudio::AddPacketsRenderer(unsigned char* data, unsigned int len
     Sleep(1);
     lock.Enter();
   } while (!m_bStop);
+
+#if(1)
+  static unsigned acum = 0;
+  static int64_t base = CurrentHostCounter();
+  acum += total - len;
+  CLog::Log(LOGDEBUG, "AddPacketsRenderer CurrentHostCounter:%f\tGetAbsoluteClock:%f", (1000 * (double)(CurrentHostCounter() - base) / CurrentHostFrequency() + m_pAudioStream->GetDelay()*1000) - (double)acum * m_SecondsPerByte * 1000
+    , (CDVDClock::GetAbsoluteClock()) / DVD_TIME_BASE * 1000 + m_pAudioStream->GetDelay() * 1000 - (double)acum * m_SecondsPerByte * 1000);
+  //CLog::Log(LOGDEBUG, "CActiveAESink::OutputSamples %f", (CDVDClock::GetAbsoluteClock()) / DVD_TIME_BASE * 1000 + m_pAudioStream->GetDelay() * 1000 -(double)acum * m_SecondsPerByte * 1000);
+#endif
 
   return total - len;
 }
