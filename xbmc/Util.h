@@ -204,6 +204,7 @@ public:
   static bool RunCommandLine(const CStdString& cmdLine, bool waitExit = false);
 #endif
   static CStdString ResolveExecutablePath();
+  static CStdString GetPythonPath();
   static CStdString GetFrameworksPath(bool forPython = false);
 
   static bool CanBindPrivileged();

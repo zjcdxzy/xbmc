@@ -46,7 +46,8 @@
 
 #if defined(TARGET_DARWIN)
 #define ENV_PATH ENV_PARTIAL_PATH \
-                 ";special://frameworks/"
+                 ";special://frameworks/" \
+                 ";special://python/"
 #else
 #define ENV_PATH ENV_PARTIAL_PATH
 #endif

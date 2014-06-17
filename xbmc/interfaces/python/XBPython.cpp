@@ -478,12 +478,16 @@ bool XBPython::InitializeEngine()
         // check if we are running as real xbmc.app or just binary
       if (!CUtil::GetFrameworksPath(true).empty())
       {
+        std::string pythonPath = "special://frameworks";
+#if defined(TARGET_DARWIN_OSX)
+        pythonPath = "special://python";
+#endif
         // using external python, it's build looking for xxx/lib/python2.6
         // so point it to frameworks which is where python2.6 is located
-        setenv("PYTHONHOME", CSpecialProtocol::TranslatePath("special://frameworks").c_str(), 1);
-        setenv("PYTHONPATH", CSpecialProtocol::TranslatePath("special://frameworks").c_str(), 1);
-        CLog::Log(LOGDEBUG, "PYTHONHOME -> %s", CSpecialProtocol::TranslatePath("special://frameworks").c_str());
-        CLog::Log(LOGDEBUG, "PYTHONPATH -> %s", CSpecialProtocol::TranslatePath("special://frameworks").c_str());
+        setenv("PYTHONHOME", CSpecialProtocol::TranslatePath(pythonPath).c_str(), 1);
+        setenv("PYTHONPATH", CSpecialProtocol::TranslatePath(pythonPath).c_str(), 1);
+        CLog::Log(LOGDEBUG, "PYTHONHOME -> %s", CSpecialProtocol::TranslatePath(pythonPath).c_str());
+        CLog::Log(LOGDEBUG, "PYTHONPATH -> %s", CSpecialProtocol::TranslatePath(pythonPath).c_str());
       }
       setenv("PYTHONCASEOK", "1", 1); //This line should really be removed
 #elif defined(TARGET_WINDOWS)

@@ -141,15 +141,19 @@ extern "C" void __stdcall init_emu_environ()
   // check if we are running as real xbmc.app or just binary
   if (!CUtil::GetFrameworksPath(true).empty())
   {
+    std::string pythonPath = "special://frameworks";
+#if defined(TARGET_DARWIN_OSX)
+    pythonPath = "special://python";
+#endif
     // using external python, it's build looking for xxx/lib/python2.6
     // so point it to frameworks which is where python2.6 is located
     dll_putenv(string("PYTHONPATH=" +
-      CSpecialProtocol::TranslatePath("special://frameworks")).c_str());
+      CSpecialProtocol::TranslatePath(pythonPath)).c_str());
     dll_putenv(string("PYTHONHOME=" +
-      CSpecialProtocol::TranslatePath("special://frameworks")).c_str());
+      CSpecialProtocol::TranslatePath(pythonPath)).c_str());
     dll_putenv(string("PATH=.;" +
       CSpecialProtocol::TranslatePath("special://xbmc") + ";" +
-      CSpecialProtocol::TranslatePath("special://frameworks")).c_str());
+      CSpecialProtocol::TranslatePath(pythonPath)).c_str());
   }
   else
   {

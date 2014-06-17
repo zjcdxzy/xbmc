@@ -55,6 +55,7 @@ public:
   static void SetProfilePath(const CStdString &path);
   static void SetXBMCPath(const CStdString &path);
   static void SetXBMCBinPath(const CStdString &path);
+  static void SetXBMCPythonPath(const CStdString &dir);
   static void SetXBMCFrameworksPath(const CStdString &path);
   static void SetHomePath(const CStdString &path);
   static void SetUserHomePath(const CStdString &path);

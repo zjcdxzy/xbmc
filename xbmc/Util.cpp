@@ -1835,6 +1835,18 @@ CStdString CUtil::ResolveExecutablePath()
   return strExecutablePath;
 }
 
+CStdString CUtil::GetPythonPath()
+{
+    CStdString strPythonPath;
+#if defined(TARGET_DARWIN_OSX)
+    char given_path[2*MAXPATHLEN];
+    uint32_t path_size = 2*MAXPATHLEN;
+    GetDarwinPythonPath(given_path, &path_size);
+    strPythonPath = given_path;
+#endif
+    return strPythonPath;
+}
+
 CStdString CUtil::GetFrameworksPath(bool forPython)
 {
   CStdString strFrameworksPath;

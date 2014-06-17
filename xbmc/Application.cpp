@@ -1197,6 +1197,9 @@ bool CApplication::InitDirectoriesOSX()
   // setup path to our internal dylibs so loader can find them
   CStdString frameworksPath = CUtil::GetFrameworksPath();
   CSpecialProtocol::SetXBMCFrameworksPath(frameworksPath);
+  CStdString pythonPath = CUtil::GetPythonPath();
+  CSpecialProtocol::SetXBMCPythonPath(pythonPath);
+
 
   // OSX always runs with m_bPlatformDirectories == true
   if (m_bPlatformDirectories)

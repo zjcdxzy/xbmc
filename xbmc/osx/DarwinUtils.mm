@@ -289,6 +289,26 @@ const char *GetOSXVersionString(void)
 #endif
 }
 
+int  GetDarwinPythonPath(char* path, uint32_t *pathsize)
+{
+    CCocoaAutoPool pool;
+    // see if we can figure out who we are
+    NSString *pathname;
+
+    // d) XBMC application running under OSX
+    pathname = [[NSBundle mainBundle] bundlePath];
+    if (pathname)
+    {
+        // check for 'Contents' if we are running as real xbmc.app
+        strcpy(path, [pathname UTF8String]);
+        strcat(path, "/Contents/python");
+        *pathsize = strlen(path);
+        //CLog::Log(LOGDEBUG, "DarwinFrameworkPath(d) -> %s", path);
+        return 0;
+    }
+  return -1;
+}
+
 int  GetDarwinFrameworkPath(bool forPython, char* path, uint32_t *pathsize)
 {
   CCocoaAutoPool pool;

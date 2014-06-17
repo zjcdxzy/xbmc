@@ -58,6 +58,11 @@ void CSpecialProtocol::SetXBMCFrameworksPath(const CStdString &dir)
   SetPath("frameworks", dir);
 }
 
+void CSpecialProtocol::SetXBMCPythonPath(const CStdString &dir)
+{
+    SetPath("python", dir);
+}
+
 void CSpecialProtocol::SetHomePath(const CStdString &dir)
 {
   SetPath("home", dir);
@@ -159,7 +164,8 @@ CStdString CSpecialProtocol::TranslatePath(const CURL &url)
            RootDir.Equals("temp") ||
            RootDir.Equals("profile") ||
            RootDir.Equals("masterprofile") ||
-           RootDir.Equals("frameworks"))
+           RootDir.Equals("frameworks") ||
+           RootDir.Equals("python"))
   {
     CStdString basePath = GetPath(RootDir);
     if (!basePath.empty())
@@ -252,6 +258,8 @@ void CSpecialProtocol::LogPaths()
   //CLog::Log(LOGNOTICE, "special://userhome/ is mapped to: %s", GetPath("userhome").c_str());
   if (!CUtil::GetFrameworksPath().empty())
     CLog::Log(LOGNOTICE, "special://frameworks/ is mapped to: %s", GetPath("frameworks").c_str());
+  if (!CUtil::GetPythonPath().empty())
+    CLog::Log(LOGNOTICE, "special://python/ is mapped to: %s", GetPath("python").c_str());
 }
 
 // private routines, to ensure we only set/get an appropriate path

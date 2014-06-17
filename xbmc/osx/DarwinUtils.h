@@ -40,7 +40,8 @@ extern "C"
   const char *GetDarwinVersionString(void);
   float       GetIOSVersion(void);
   const char *GetIOSVersionString(void);
-  const char *GetOSXVersionString(void); 
+  const char *GetOSXVersionString(void);
+  int         GetDarwinPythonPath(char* path, uint32_t *pathsize);
   int         GetDarwinFrameworkPath(bool forPython, char* path, uint32_t *pathsize);
   int         GetDarwinExecutablePath(char* path, uint32_t *pathsize);
   const char *DarwinGetXbmcRootFolder(void);
