@@ -130,29 +130,48 @@ OSStatus deviceChangedCB(AudioObjectID                       inObjectID,
 
 void RegisterDeviceChangedCB(bool bRegister, void *ref)
 {
+    OSStatus ret = noErr;
+    AudioObjectPropertyAddress inAdr =
+    {
+        kAudioHardwarePropertyDevices,
+        kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyElementMaster
+    };
+    
+    if (bRegister)
+      ret = AudioObjectAddPropertyListener(kAudioObjectSystemObject, &inAdr, deviceChangedCB, ref);
+    else
+      ret = AudioObjectRemovePropertyListener(kAudioObjectSystemObject, &inAdr, deviceChangedCB, ref);
+    
+    if (ret != noErr)
+        CLog::Log(LOGERROR, "CCoreAudioAE::Deinitialize - error %s a listener callback for device changes!", bRegister?"attaching":"removing");
+}
+
+void RegisterDefaultOutputDeviceChangedCB(bool bRegister, void *ref)
+{
   OSStatus ret = noErr;
+  static int registered = -1;
+    
+  //only allow registration once
+  if (bRegister == (registered == 1))
+      return;
+    
   AudioObjectPropertyAddress inAdr =
   {
-    kAudioHardwarePropertyDevices,
+    kAudioHardwarePropertyDefaultOutputDevice,
     kAudioObjectPropertyScopeGlobal,
     kAudioObjectPropertyElementMaster
   };
 
   if (bRegister)
-  {
     ret = AudioObjectAddPropertyListener(kAudioObjectSystemObject, &inAdr, deviceChangedCB, ref);
-    inAdr.mSelector = kAudioHardwarePropertyDefaultOutputDevice;
-    ret = AudioObjectAddPropertyListener(kAudioObjectSystemObject, &inAdr, deviceChangedCB, ref);
-  }
   else
-  {
     ret = AudioObjectRemovePropertyListener(kAudioObjectSystemObject, &inAdr, deviceChangedCB, ref);
-    inAdr.mSelector = kAudioHardwarePropertyDefaultOutputDevice;
-    ret = AudioObjectRemovePropertyListener(kAudioObjectSystemObject, &inAdr, deviceChangedCB, ref);
-  }
 
   if (ret != noErr)
-    CLog::Log(LOGERROR, "CCoreAudioAE::Deinitialize - error %s a listener callback for device changes!", bRegister?"attaching":"removing");
+    CLog::Log(LOGERROR, "CCoreAudioAE::Deinitialize - error %s a listener callback for default output device changes!", bRegister?"attaching":"removing");
+  else
+    registered = bRegister ? 1 : 0;
 }
 
 
@@ -185,11 +204,13 @@ CAESinkDARWINOSX::CAESinkDARWINOSX()
     CLog::Log(LOGERROR, "CCoreAudioAE::constructor: kAudioHardwarePropertyRunLoop error.");
   }
   RegisterDeviceChangedCB(true, this);
+  RegisterDefaultOutputDeviceChangedCB(true, this);
 }
 
 CAESinkDARWINOSX::~CAESinkDARWINOSX()
 {
   RegisterDeviceChangedCB(false, this);
+  RegisterDefaultOutputDeviceChangedCB(false, this);
 }
 
 bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
@@ -254,6 +275,15 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   CLog::Log(LOGDEBUG, "%s: Selected stream[%u] - id: 0x%04X, Physical Format: %s %s", __FUNCTION__, (unsigned int)0, (unsigned int)outputStream, StreamDescriptionToString(outputFormat, formatString), m_outputBitstream ? "bitstreamed passthrough" : "");
 
   SetHogMode(passthrough != PassthroughModeNone);
+  
+  //in case this is a dedicated passthroughformat
+  //unregister the default output device changed callback
+  //because setting an encoded format might change the default output
+  //device - and we will end up looping with output device change ping pong
+  if (passthrough == PassthroughModeNative)
+    RegisterDefaultOutputDeviceChangedCB(false, this);
+  else
+    RegisterDefaultOutputDeviceChangedCB(true, this);
 
   // Configure the output stream object
   m_outputStream.Open(outputStream);
