@@ -213,13 +213,6 @@ LIB_DIRS += lib/cmyth
 CMYTH=cmyth
 endif
 
-SS_DIRS=
-ifneq (@DISABLE_RSXS@,1)
-  SS_DIRS+= xbmc/screensavers/rsxs-0.9/xbmc
-else
-  INSTALL_FILTER+= .*screensaver\.rsxs.*
-endif
-
 ifneq (@DISABLE_SPECTRUM@,1)
   VIS_DIRS+= xbmc/visualizations/OpenGLSpectrum
 else
@@ -338,7 +331,7 @@ all : $(FINAL_TARGETS)
 
 include Makefile.include
 
-.PHONY : dllloader exports visualizations screensavers eventclients papcodecs \
+.PHONY : dllloader exports visualizations eventclients papcodecs \
 	dvdpcodecs dvdpextcodecs imagelib codecs externals force skins libaddon check \
 	testframework testsuite
 
@@ -391,12 +384,7 @@ endif
 $(VIS_DIRS): force exports $(EGLHELPERS)
 	$(MAKE) -C $@
 
-$(SS_DIRS): force exports
-	$(MAKE) -C $@
-
 visualizations: $(VIS_DIRS)
-
-screensavers: $(SS_DIRS)
 
 libaddon: exports
 	$(MAKE) -C lib/addons/library.xbmc.addon
@@ -456,10 +444,10 @@ codecs: papcodecs dvdpcodecs dvdpextcodecs
 
 libs: $(LIBSSE4) libhdhomerun imagelib libexif system/libcpluff-@ARCH@.so $(CMYTH)
 
-externals: codecs libs visualizations screensavers libaddon pvraddons
+externals: codecs libs visualizations libaddon pvraddons
 
 xcode_depends: \
-	codecs libs visualizations screensavers eventclients skins libaddon \
+	codecs libs visualizations eventclients skins libaddon \
 	lib/libsquish/libsquish.a \
 	lib/libRTV/librtv.a \
 	lib/libXDAAP/libxdaap.a \
@@ -509,7 +497,7 @@ OBJSXBMC:=$(filter-out $(DYNOBJSXBMC), $(OBJSXBMC))
 BIN_DIRS = $(dir $(DIRECTORY_ARCHIVES)) $(dir $(NWAOBJSXBMC)) $(dir $(MAINOBJS))
 
 DIRS= $(BIN_DIRS) $(EC_DIRS) $(XBMCTEX_DIRS) $(DVDPCODECS_DIRS) $(PAPCODECS_DIRS) \
-	$(LIB_DIRS) $(SS_DIRS) $(VIS_DIRS) $(LIBADDON_DIRS) $(SKIN_DIRS) xbmc/main
+	$(LIB_DIRS) $(VIS_DIRS) $(LIBADDON_DIRS) $(SKIN_DIRS) xbmc/main
 
 $(NWAOBJSXBMC) $(DIRECTORY_ARCHIVES) $(MAINOBJS): force
 	@$(MAKE) $(if $(V),,-s) -C $(@D)
@@ -700,8 +688,6 @@ clean-papcodecs:
 	for d in $(PAPCODECS_DIRS); do if test -f $$d/Makefile; then $(MAKE) -C $$d clean; fi; done
 clean-libs:
 	for d in $(LIB_DIRS); do if test -f $$d/Makefile; then $(MAKE) -C $$d clean; fi; done
-clean-screensavers:
-	for d in $(SS_DIRS); do if test -f $$d/Makefile; then $(MAKE) -C $$d clean; fi; done
 clean-visualisations:
 	for d in $(VIS_DIRS); do if test -f $$d/Makefile; then $(MAKE) -C $$d clean; fi; done
 clean-libaddons:
@@ -714,7 +700,7 @@ endif
 clean-codecs: clean-dvdpcodecs clean-papcodecs
 
 clean-externals: clean-codecs clean-eventclients clean-xbmctex clean-libs \
-	clean-screensavers clean-visualisations clean-libaddons clean-pvraddons
+	clean-visualisations clean-libaddons clean-pvraddons
 
 ifeq (1,@GTEST_CONFIGURED@)
 check: testsuite
