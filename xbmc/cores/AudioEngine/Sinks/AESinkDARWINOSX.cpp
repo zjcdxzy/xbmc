@@ -190,7 +190,7 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
     {
       if (device == devices[i].second.m_deviceName)
       {
-        struct CADeviceInstance deviceInstance = devices[i].first;
+        const struct CADeviceInstance &deviceInstance = devices[i].first;
         deviceID = deviceInstance.audioDeviceId;
         requestedStreamIndex = deviceInstance.streamIndex;
         requestedSourceId = deviceInstance.sourceId;
