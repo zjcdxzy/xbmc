@@ -95,6 +95,8 @@ public:
   const CStdString& GetFileName() const;
   float GetTextureWidth() const;
   float GetTextureHeight() const;
+  
+  bool AnimFinishedOnce(){ return m_texture.AnimFinishedOnce(); }
 
   virtual CRect CalcRenderRegion() const;
 

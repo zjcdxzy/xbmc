@@ -1,13 +1,17 @@
-SRCS=GUIDialogPictureInfo.cpp \
-     GUIViewStatePictures.cpp \
-     GUIWindowPictures.cpp \
-     GUIWindowSlideShow.cpp \
-     Picture.cpp \
-     PictureInfoLoader.cpp \
-     PictureInfoTag.cpp \
-     PictureThumbLoader.cpp \
-     SlideShowPicture.cpp \
-     
+SRCS  = GUIDialogPictureInfo.cpp
+SRCS += GUIViewStatePictures.cpp
+SRCS += GUIWindowPictures.cpp
+SRCS += GUIWindowSlideShow.cpp
+SRCS += Picture.cpp
+SRCS += PictureInfoLoader.cpp
+SRCS += PictureInfoTag.cpp
+SRCS += PictureThumbLoader.cpp
+SRCS += SlideShowPicture.cpp
+
+ifeq (1,1)
+SRCS += Gif.cpp
+endif
+
 LIB=pictures.a
 
 include ../../Makefile.include

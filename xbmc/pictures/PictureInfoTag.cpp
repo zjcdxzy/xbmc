@@ -32,6 +32,7 @@ void CPictureInfoTag::Reset()
 {
   memset(&m_exifInfo, 0, sizeof(m_exifInfo));
   memset(&m_iptcInfo, 0, sizeof(m_iptcInfo));
+  m_isAnimated = -1;
   m_isLoaded = false;
   m_isInfoSetExternally = false;
   m_dateTimeTaken.Reset();
@@ -42,6 +43,7 @@ const CPictureInfoTag& CPictureInfoTag::operator=(const CPictureInfoTag& right)
   if (this == &right) return * this;
   memcpy(&m_exifInfo, &right.m_exifInfo, sizeof(m_exifInfo));
   memcpy(&m_iptcInfo, &right.m_iptcInfo, sizeof(m_iptcInfo));
+  m_isAnimated = right.m_isAnimated;
   m_isLoaded = right.m_isLoaded;
   m_isInfoSetExternally = right.m_isInfoSetExternally;
   m_dateTimeTaken = right.m_dateTimeTaken;
@@ -68,6 +70,7 @@ void CPictureInfoTag::Archive(CArchive& ar)
 {
   if (ar.IsStoring())
   {
+    ar << m_isAnimated;
     ar << m_isLoaded;
     ar << m_isInfoSetExternally;
     ar << m_exifInfo.ApertureFNumber;
@@ -136,6 +139,7 @@ void CPictureInfoTag::Archive(CArchive& ar)
   }
   else
   {
+    ar >> m_isAnimated;
     ar >> m_isLoaded;
     ar >> m_isInfoSetExternally;
     ar >> m_exifInfo.ApertureFNumber;
@@ -652,4 +656,9 @@ void CPictureInfoTag::ConvertDateTime()
     int sec   = atoi(dateTime.substr(17,2).c_str());
     m_dateTimeTaken.SetDateTime(year, month, day, hour, min, sec);
   }
+}
+
+void CPictureInfoTag::setIsAnimated(int animated)
+{
+  m_isAnimated = animated;
 }

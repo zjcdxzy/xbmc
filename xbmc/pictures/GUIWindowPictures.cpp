@@ -312,7 +312,9 @@ bool CGUIWindowPictures::OnPlayMedia(int iItem)
 {
   if (m_vecItems->Get(iItem)->IsVideo())
     return CGUIMediaWindow::OnPlayMedia(iItem);
-
+  // NEED HELP
+  else if (m_vecItems->Get(iItem)->IsAnimatedPicture());
+  // NEED HELP
   return ShowPicture(iItem, false);
 }
 

@@ -92,6 +92,11 @@
   #define HAS_MDNS_EMBEDDED
 #endif
 
+#if defined(HAVE_LIBGIF)
+  #define HAS_GIFLIB
+#endif
+#define HAS_GIFLIB
+
 /**********************
  * Non-free Components
  **********************/
@@ -134,6 +139,7 @@
 #define HAVE_LIBVORBISENC
 #define HAS_MYSQL
 #define HAS_UPNP
+#define HAS_GIFLIB
 
 #define DECLARE_UNUSED(a,b) a b;
 #endif

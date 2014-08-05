@@ -52,12 +52,23 @@ void CSplash::OnStartup()
 void CSplash::OnExit()
 {}
 
-void CSplash::Show()
+void CSplash::Show(bool updateOnly/* = false*/)
 {
-  Show("");
+  Show("", updateOnly);
 }
 
-void CSplash::Show(const std::string& message)
+bool CSplash::IsFinished()
+{
+  bool finished = true;
+
+  if (m_image)
+  {
+    finished = m_image->AnimFinishedOnce();
+  }
+  return finished;
+}
+
+void CSplash::Show(const std::string& message, bool updateOnly/* = false*/)
 {
   g_graphicsContext.Lock();
   g_graphicsContext.Clear();
@@ -75,7 +86,8 @@ void CSplash::Show(const std::string& message)
 
   m_image->AllocResources();
   m_image->Render();
-  m_image->FreeResources();
+  if (!updateOnly)
+    m_image->FreeResources();
 
   // render message
   if (!message.empty())
@@ -112,6 +124,14 @@ void CSplash::Show(const std::string& message)
 
 void CSplash::Hide()
 {
+}
+
+void CSplash::Update(unsigned int frameTime)
+{
+  static CDirtyRegionList emptyList;
+  if (m_image)
+    m_image->Process(frameTime, emptyList);
+  Show(true);
 }
 
 void CSplash::Process()
