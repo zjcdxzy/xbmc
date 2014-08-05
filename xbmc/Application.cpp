@@ -2973,24 +2973,6 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
 
   if (processEvents)
   {
-    
-    if (m_splash)
-    {
-      //handle possible animated splash screen
-      if (g_advancedSettings.m_splashImage && m_splash)
-      {
-        if (m_splash->IsFinished())
-        {
-          SAFE_DELETE(m_splash);
-        }
-        else 
-        {
-          m_splash->Update(CTimeUtils::GetFrameTime());
-        }
-      }      
-      processGUI = false;
-    }
-
     // currently we calculate the repeat time (ie time from last similar keypress) just global as fps
     float frameTime = m_frameTime.GetElapsedSeconds();
 
