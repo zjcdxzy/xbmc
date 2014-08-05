@@ -1478,6 +1478,9 @@ bool CApplication::Initialize()
       CLog::Log(LOGERROR, "Default skin '%s' not found! Terminating..", defaultSkin.c_str());
       return false;
     }
+    
+    if (g_advancedSettings.m_splashImage && m_splash && m_splash->IsFinished())
+      SAFE_DELETE(m_splash);
 
     if (CSettings::Get().GetBool("masterlock.startuplock") &&
         CProfilesManager::Get().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE &&
@@ -2336,6 +2339,23 @@ void CApplication::Render()
   }
   m_lastFrameTime = XbmcThreads::SystemClockMillis();
 
+  if (m_splash)
+  {
+    //handle possible animated splash screen
+    if (g_advancedSettings.m_splashImage && m_splash)
+    {
+      if (m_splash->IsFinished())
+      {
+        SAFE_DELETE(m_splash);
+      }
+      else 
+      {
+        m_splash->Render(CTimeUtils::GetFrameTime());
+      }
+      flip = false; // don't render the gui while splash is rendered ...
+    }      
+  }
+  
   if (flip)
     g_graphicsContext.Flip(dirtyRegions);
   CTimeUtils::UpdateFrameTime(flip);

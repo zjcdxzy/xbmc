@@ -126,7 +126,7 @@ void CSplash::Hide()
 {
 }
 
-void CSplash::Update(unsigned int frameTime)
+void CSplash::Render(unsigned int frameTime)
 {
   static CDirtyRegionList emptyList;
   if (m_image)

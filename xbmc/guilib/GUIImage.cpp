@@ -35,6 +35,7 @@ CGUIImage::CGUIImage(int parentID, int controlID, float posX, float posY, float 
   m_lastRenderTime = 0;
   ControlType = GUICONTROL_IMAGE;
   m_bDynamicResourceAlloc=false;
+  m_isAnimated = texture.IsAnimated();
 }
 
 CGUIImage::CGUIImage(const CGUIImage &left)
@@ -42,6 +43,7 @@ CGUIImage::CGUIImage(const CGUIImage &left)
   m_image(left.m_image),
   m_info(left.m_info),
   m_texture(left.m_texture),
+  m_isAnimated(left.m_isAnimated),
   m_fadingTextures(),
   m_currentTexture(),
   m_currentFallback()

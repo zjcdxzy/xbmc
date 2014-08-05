@@ -78,6 +78,7 @@ public:
 
   void SetFileName(const std::string &filename);
   const std::string& GetFileName() const { return filename; };
+  bool IsAnimated() const { return m_animated; };
 
   bool       useLarge;
   CRect      border;          // scaled  - unneeded if we get rid of scale on load

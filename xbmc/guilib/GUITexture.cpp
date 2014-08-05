@@ -370,6 +370,9 @@ bool CGUITextureBase::AllocResources()
 
   // call our implementation
   Allocate();
+  
+  if (m_texture.size() < 2)// no animation
+    m_loopedOnce = true;
 
   return changed;
 }

@@ -40,7 +40,7 @@ public:
   void Show(const std::string& messagem, bool updateOnly = false);
   void Hide();
   bool IsFinished();
-  virtual void Update(unsigned int frameTime);
+  virtual void Render(unsigned int frameTime);
 
 private:
   virtual void Process();
