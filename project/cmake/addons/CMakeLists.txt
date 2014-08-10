@@ -24,9 +24,16 @@ else()
 endif()
 get_filename_component(APP_ROOT "${APP_ROOT}" ABSOLUTE)
 
+if(NOT BUILD_DIR)
+    set(BUILD_DIR "${CMAKE_BINARY_DIR}/build")
+else()
+  file(TO_CMAKE_PATH "${BUILD_DIR}" BUILD_DIR)
+endif()
+get_filename_component(BUILD_DIR "${BUILD_DIR}" ABSOLUTE)
+
 if(NOT WIN32)
   if(NOT DEPENDS_PATH)
-    set(DEPENDS_PATH "${PROJECT_SOURCE_DIR}/output/depends")
+    set(DEPENDS_PATH "${BUILD_DIR}/depends")
   else()
     file(TO_CMAKE_PATH "${DEPENDS_PATH}" DEPENDS_PATH)
   endif()
@@ -47,6 +54,7 @@ list(APPEND CMAKE_PREFIX_PATH ${CMAKE_INSTALL_PREFIX})
 
 set(BUILD_ARGS -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
                -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+               -DPACKAGE_CONFIG_PATH=${DEPENDS_PATH}/lib/pkgconfig
                -DCMAKE_BUILD_TYPE=Release
                -DCMAKE_USER_MAKE_RULES_OVERRIDE=${CMAKE_USER_MAKE_RULES_OVERRIDE}
                -DCMAKE_USER_MAKE_RULES_OVERRIDE_CXX=${CMAKE_USER_MAKE_RULES_OVERRIDE_CXX}
@@ -118,30 +126,48 @@ foreach(addon ${addons})
           file(REMOVE_RECURSE "${CMAKE_INSTALL_PREFIX}/${id}/")
         endif()
 
-        # prepare the setup of the call to externalproject_add()
-        set(EXTERNALPROJECT_SETUP INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
-                                  CMAKE_ARGS ${BUILD_ARGS})
-
         # get the URL and revision of the addon
         list(LENGTH def deflength)
         list(GET def 1 url)
-        # check if there's a third parameter in the file
-        if(deflength GREATER 2)
-          # the third parameter is considered as a revision of a git repository
-          list(GET def 2 revision)
+        list(GET def 2 revision)
 
-          externalproject_add(${id}
-                              GIT_REPOSITORY ${url}
-                              GIT_TAG ${revision}
-                              "${EXTERNALPROJECT_SETUP}"
-                             )
-        else()
-          externalproject_add(${id}
-                              URL ${url}
-                              "${EXTERNALPROJECT_SETUP}"
-                             )
+        # download and extract all addons
+        if(deflength GREATER 2)
+          # if there is a 3rd parameter in the file, we consider it a git revision
+          # Note: downloading specific revisions via http in the format below is probably github specific
+          # if we ever use other repositories, this might need adapting
+          set(url ${url}/archive/${revision}.tar.gz)
         endif()
+        if(NOT EXISTS ${BUILD_DIR}/download/${id}.tar.gz)
+          file(DOWNLOAD "${url}" "${BUILD_DIR}/download/${id}.tar.gz" SHOW_PROGRESS)
+        endif()
+        if(EXISTS "${BUILD_DIR}/${id}")
+          file(REMOVE_RECURSE "${BUILD_DIR}/${id}")
+        endif()
+        execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzvf ${BUILD_DIR}/download/${id}.tar.gz
+                        WORKING_DIRECTORY ${BUILD_DIR})
+        file(GLOB extract_dir "${BUILD_DIR}/${id}-${revision}*")
+        file(RENAME "${extract_dir}" "${BUILD_DIR}/${id}")
+
+        list(APPEND downloaded_addons ${id})
+
       endif()
     endif()
+  endif()
+endforeach()
+
+foreach(id ${downloaded_addons})
+  externalproject_add(${id}
+                      SOURCE_DIR ${BUILD_DIR}/${id}
+                      INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
+                      CMAKE_ARGS ${BUILD_ARGS})
+
+  set(${id}_DEPENDS_DIR ${BUILD_DIR}/${id}/depends)
+
+  if(EXISTS ${${id}_DEPENDS_DIR})
+    include(${APP_ROOT}/project/cmake/scripts/common/handle-depends.cmake)
+    add_addon_depends(${id} ${${id}_DEPENDS_DIR})
+    message(STATUS "${id} DEPENDENCIES: ${${id}_DEPS}")
+    add_dependencies(${id} ${${id}_DEPS})
   endif()
 endforeach()
