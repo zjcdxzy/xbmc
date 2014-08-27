@@ -47,6 +47,22 @@ IF %noclean% == true (
   SET addon_depends_mode=noclean
 )
 
+
+  FOR /F "tokens=2,* delims= " %%A IN ('REG QUERY HKLM\SOFTWARE\Microsoft\MSBuild\ToolsVersions\12.0 /v MSBuildToolsRoot') DO SET MSBUILDROOT=%%B
+  SET NET="%MSBUILDROOT%12.0\bin\MSBuild.exe"
+
+  IF EXIST "!NET!" (
+set msbuildemitsolution=1
+set OPTS_EXE="%addon%.sln" /t:Build /p:Configuration="Release" /property:VCTargetsPath="%MSBUILDROOT%Microsoft.Cpp\v4.0\V120" /m
+set CLEAN_EXE="..\VS2010Express\XBMC for Windows.sln" /t:Clean /p:Configuration="%buildconfig%" /property:VCTargetsPath="%MSBUILDROOT%Microsoft.Cpp\v4.0\V120"
+  )
+
+  IF NOT EXIST %NET% (
+    set DIETEXT=MSBuild was not found.
+goto DIE
+  )
+
+
 IF %getdepends% == true (
   ECHO --------------------------------------------------
   ECHO Building addon dependencies
@@ -91,7 +107,7 @@ IF "%addon%" NEQ "" (
 )
 
 rem execute cmake to generate makefiles processable by nmake
-cmake "%ADDONS_PATH%" -G "NMake Makefiles" ^
+cmake "%ADDONS_PATH%" -G "Visual Studio 12 2013" ^
       -DCMAKE_BUILD_TYPE=Release ^
       -DCMAKE_USER_MAKE_RULES_OVERRIDE="%SCRIPTS_PATH%/xbmc-c-flag-overrides.cmake" ^
       -DCMAKE_USER_MAKE_RULES_OVERRIDE_CXX="%SCRIPTS_PATH%/xbmc-cxx-flag-overrides.cmake" ^
@@ -107,7 +123,8 @@ IF ERRORLEVEL 1 (
 )
 
 rem execute nmake to build the addons
-nmake %addon%
+rem nmake %addon%
+%NET% %OPTS_EXE%
 IF ERRORLEVEL 1 (
   ECHO nmake error level: %ERRORLEVEL% > %ERRORFILE%
   GOTO ERROR
