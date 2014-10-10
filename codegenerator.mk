@@ -1,5 +1,5 @@
 TOPDIR ?= .
-INTERFACES_DIR ?= xbmc/interfaces
+INTERFACES_DIR ?= src/interfaces
 
 JAVA ?= $(shell which java)
 ifeq ($(JAVA),)
@@ -35,7 +35,7 @@ GENERATED += $(GENDIR)/AddonModuleXbmcplugin.cpp
 GENERATED += $(GENDIR)/AddonModuleXbmcaddon.cpp
 GENERATED += $(GENDIR)/AddonModuleXbmcvfs.cpp
 
-GENERATE_DEPS += $(TOPDIR)/xbmc/interfaces/legacy/*.h $(TOPDIR)/xbmc/interfaces/python/typemaps/*.intm $(TOPDIR)/xbmc/interfaces/python/typemaps/*.outtm
+GENERATE_DEPS += $(TOPDIR)/src/interfaces/legacy/*.h $(TOPDIR)/src/interfaces/python/typemaps/*.intm $(TOPDIR)/src/interfaces/python/typemaps/*.outtm
 
 vpath %.i $(INTERFACES_DIR)/swig
 
