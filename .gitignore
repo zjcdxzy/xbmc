@@ -509,7 +509,7 @@ lib/cpluff/stamp-h1
 /userdata/cache
 /userdata/guisettings.xml
 
-# /xbmc/
+# /src/
 /src/.GitRevision
 /src/config.h
 /src/config.h.in
@@ -520,20 +520,20 @@ lib/cpluff/stamp-h1
 /src/Makefile
 /src/stamp-h1
 
-# /xbmc/addons/
+# /src/addons/
 /src/addons/Makefile
 /src/addons/visualization.waveform
 
-# /xbmc/android
+# /src/android
 /src/android/Makefile
 /src/android/activity/Makefile
 /src/android/loader/Makefile
 /src/android/jni/Makefile
 
-# /xbmc/cdrip/
+# /src/cdrip/
 /src/cdrip/Makefile
 
-# /xbmc/cores/
+# /src/cores/
 /src/cores/AudioEngine/Makefile
 /src/cores/DllLoader/exports/build_wrapper.sh
 /src/cores/DllLoader/exports/wrapper.def
@@ -553,13 +553,13 @@ lib/cpluff/stamp-h1
 /src/cores/Makefile
 /src/cores/VideoRenderers/Makefile
 
-# /xbmc/filesystem/
+# /src/filesystem/
 /src/filesystem/Makefile
 
-# /xbmc/freebsd/
+# /src/freebsd/
 /src/freebsd/Makefile
 
-# /xbmc/guilib/
+# /src/guilib/
 /src/guilib/Makefile
 /src/guilib/*.obj
 /src/guilib/*.idb
@@ -573,41 +573,41 @@ lib/cpluff/stamp-h1
 /src/guilib/Profile
 /src/guilib/Profile_FastCap
 
-# /xbmc/input
+# /src/input
 /src/input/linux/Makefile
 
-# /xbmc/interfaces/
+# /src/interfaces/
 /src/interfaces/Makefile
 /src/interfaces/json-rpc/ServiceDescription.h
 /src/interfaces/python/Makefile
 /src/interfaces/python/generated/
 /src/interfaces/python/test/Makefile
 
-# /xbmc/linux/
+# /src/linux/
 /src/linux/Makefile
 /src/linux/sse4/Makefile
 
-# /xbmc/main/
+# /src/main/
 /src/main/Makefile
 
-# /xbmc/music/
+# /src/music/
 /src/music/karaoke/Makefile
 
-# /xbmc/network/
+# /src/network/
 /src/network/Makefile
 /src/network/upnp/Makefile
 
-# /xbmc/osx/
+# /src/osx/
 /src/osx/Makefile
 /src/osx/Info.plist
 /src/osx/ios/XBMCIOS-Info.plist
 /src/osx/atv2/XBMCATV2-Info.plist
 
-# /xbmc/peripherals/
+# /src/peripherals/
 /src/peripherals/bus/Makefile
 /src/peripherals/devices/Makefile
 
-#/xbmc/screensavers/
+#/src/screensavers/
 /src/screensavers/Makefile
 /src/screensavers/rsxs-0.9/Makefile
 /src/screensavers/rsxs-0.9/configure
@@ -666,10 +666,10 @@ lib/cpluff/stamp-h1
 /src/screensavers/rsxs-0.9/src/skyrocket/Makefile.in
 /src/screensavers/rsxs-0.9/src/solarwinds/Makefile.in
 
-#/xbmc/utils
+#/src/utils
 /src/utils/Makefile
 
-#/xbmc/visualizations/
+#/src/visualizations/
 /src/visualizations/DirectXSpectrum/Debug (DirectX)
 /src/visualizations/DirectXSpectrum/Release (DirectX)
 /src/visualizations/EGLHelpers/Makefile
@@ -706,12 +706,12 @@ lib/cpluff/stamp-h1
 /src/visualizations/XBMCProjectM/libprojectM/cmake_install.cmake
 /src/visualizations/XBMCProjectM/libprojectM/config.inp
 
-#/xbmc/win32/
+#/src/win32/
 /src/win32/XBMC_PC.rc
 # no longer used
 /src/win32/git_rev.h
 
-# /xbmc/windowing/
+# /src/windowing/
 /src/windowing/Makefile
 /src/windowing/egl/Makefile
 /src/windowing/tests/wayland/xbmc_wayland_test_client_protocol.h
