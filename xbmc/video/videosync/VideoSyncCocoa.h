@@ -20,13 +20,18 @@
  */
 
 #if defined(TARGET_DARWIN)
-
+#include "VideoSync.h"
 class CVideoSyncCocoa : public CVideoSync
 {
 public:
   virtual bool Setup(PUPDATECLOCK func);
   virtual void Run(volatile bool& stop);
   virtual void Cleanup();
+  virtual float GetFps();
+  void VblankHandler(int64_t nowtime, double fps);
+private:
+  void UpdateFPS(double fps);
+  int64_t m_LastVBlankTime;  //timestamp of the last vblank, used for calculating how many vblanks happened
 };
 
 #endif

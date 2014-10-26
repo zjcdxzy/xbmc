@@ -39,6 +39,9 @@
 #if defined(TARGET_WINDOWS)
 #include "video/videosync/VideoSyncD3D.h"
 #endif
+#if defined(TARGET_DARWIN)
+#include "video/videosync/VideoSyncCocoa.h"
+#endif
 
 using namespace std;
 
