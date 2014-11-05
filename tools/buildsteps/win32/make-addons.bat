@@ -47,19 +47,19 @@ IF %noclean% == true (
   SET addon_depends_mode=noclean
 )
 
-IF %getdepends% == true (
-  ECHO --------------------------------------------------
-  ECHO Building addon dependencies
-  ECHO --------------------------------------------------
-
-  CALL make-addon-depends.bat %addon_depends_mode%
-  IF ERRORLEVEL 1 (
-    ECHO make-addon-depends error level: %ERRORLEVEL% > %ERRORFILE%
-    GOTO ERROR
-  )
-
-  ECHO.
-)
+rem IF %getdepends% == true (
+rem   ECHO --------------------------------------------------
+rem   ECHO Building addon dependencies
+rem   ECHO --------------------------------------------------
+rem 
+rem   CALL make-addon-depends.bat %addon_depends_mode%
+rem   IF ERRORLEVEL 1 (
+rem     ECHO make-addon-depends error level: %ERRORLEVEL% > %ERRORFILE%
+rem     GOTO ERROR
+rem   )
+rem 
+rem   ECHO.
+rem )
 
 IF %noclean% == false (
   rem remove the build directory if it exists
@@ -98,6 +98,7 @@ cmake "%ADDONS_PATH%" -G "NMake Makefiles" ^
       -DCMAKE_INSTALL_PREFIX=%ADDONS_INSTALL_PATH% ^
       -DAPP_ROOT=%WORKDIR% ^
       -DCMAKE_PREFIX_PATH=%ADDON_DEPENDS_PATH% ^
+      -DDEPENDS_PATH=%ADDON_DEPENDS_PATH% ^
       -DPACKAGE_ZIP=1 ^
       -DARCH_DEFINES="-DTARGET_WINDOWS -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -D_USE_32BIT_TIME_T -D_WINSOCKAPI_" ^
       -DADDONS_TO_BUILD="%ADDONS_TO_BUILD%"
