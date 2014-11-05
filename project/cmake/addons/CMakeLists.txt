@@ -31,20 +31,18 @@ else()
 endif()
 get_filename_component(BUILD_DIR "${BUILD_DIR}" ABSOLUTE)
 
-if(NOT WIN32)
-  if(NOT DEPENDS_PATH)
-    set(DEPENDS_PATH "${BUILD_DIR}/depends")
-  else()
-    file(TO_CMAKE_PATH "${DEPENDS_PATH}" DEPENDS_PATH)
-  endif()
+if(NOT DEPENDS_PATH)
+  set(DEPENDS_PATH "${BUILD_DIR}/depends")
+else()
+  file(TO_CMAKE_PATH "${DEPENDS_PATH}" DEPENDS_PATH)
+endif()
 
-  # make sure CMAKE_PREFIX_PATH is set
-  if(NOT CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH "${DEPENDS_PATH}")
-  else()
-    file(TO_CMAKE_PATH "${CMAKE_PREFIX_PATH}" CMAKE_PREFIX_PATH)
-    list(APPEND CMAKE_PREFIX_PATH "${DEPENDS_PATH}")
-  endif()
+# make sure CMAKE_PREFIX_PATH is set
+if(NOT CMAKE_PREFIX_PATH)
+  set(CMAKE_PREFIX_PATH "${DEPENDS_PATH}")
+else()
+  file(TO_CMAKE_PATH "${CMAKE_PREFIX_PATH}" CMAKE_PREFIX_PATH)
+  list(APPEND CMAKE_PREFIX_PATH "${DEPENDS_PATH}")
 endif()
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR NOT CMAKE_INSTALL_PREFIX)
@@ -89,6 +87,8 @@ if(NOT WIN32)
   # include prepare-env.cmake which contains the logic to install the addon header bindings etc
   include(prepare-env)
 endif()
+
+add_subdirectory(depends)
 
 ### get and build all the binary addons
 # look for all the addons to be built
