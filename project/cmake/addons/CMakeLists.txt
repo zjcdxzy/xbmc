@@ -162,6 +162,11 @@ foreach(id ${downloaded_addons})
                       INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
                       CMAKE_ARGS ${BUILD_ARGS})
 
+  # on win32 we need to add the "kodi" dependency to every addon
+  if (WIN32)
+    add_dependencies(${id} kodi)
+  endif()
+
   set(${id}_DEPENDS_DIR ${BUILD_DIR}/${id}/depends)
 
   if(EXISTS ${${id}_DEPENDS_DIR})
