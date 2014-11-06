@@ -134,7 +134,6 @@ ifeq (@USE_MDNSEMBEDDED@,1)
 DIRECTORY_ARCHIVES += xbmc/network/mdns/mdns.a
 endif
 
-INSTALL_FILTER = .*visualization\.dxspectrum.*
 INSTALL_FILTER += .*visualization\.milkdrop.*
 
 ifeq ($(findstring osx,@ARCH@),osx)
