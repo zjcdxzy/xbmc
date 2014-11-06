@@ -282,6 +282,7 @@ SectionEnd
 !include /nonfatal "audioencoder-addons.nsi"
 !include /nonfatal "pvr-addons.nsi"
 !include /nonfatal "skin-addons.nsi"
+!include /nonfatal "visualization-addons.nsi"
 
 ;--------------------------------
 ;Descriptions
