@@ -109,21 +109,34 @@ function(add_addon_depends addon searchpath)
 
         # if there's an url defined we need to pass that to externalproject_add()
         if(DEFINED url AND NOT "${url}" STREQUAL "")
-          separate_arguments(EXTERNALPROJECT_SETUP)
-          externalproject_add(${id}
-                              URL ${url}
-                              DOWNLOAD_DIR ${BUILD_DIR}/download
-                              CONFIGURE_COMMAND PKG_CONFIG_PATH=${OUTPUT_DIR}/lib/pkgconfig
-                                            ${CMAKE_COMMAND} -DCMAKE_LIBRARY_PATH=${OUTPUT_DIR}/lib ${extraflags}
-                                            ${BUILD_DIR}/${id}/src/${id}
-                                            -DPACKAGE_CONFIG_PATH=${OUTPUT_DIR}/lib/pkgconfig
-                                            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-                                            -DOUTPUT_DIR=${OUTPUT_DIR}
-                                            -DCMAKE_PREFIX_PATH=${OUTPUT_DIR}
-                                            -DCMAKE_INSTALL_PREFIX=${OUTPUT_DIR}
-                                            -DCMAKE_EXE_LINKER_FLAGS=-L${OUTPUT_DIR}/lib
-                                            -DCMAKE_INCLUDE_PATH=${OUTPUT_DIR}/include
-                              ${EXTERNALPROJECT_SETUP})
+          if(deflength GREATER 2)
+            list(GET def 2 revision)
+            externalproject_add(${id}
+                                GIT_REPOSITORY ${url}
+                                GIT_TAG ${revision}
+                                ${EXTERNALPROJECT_SETUP})
+          else()
+            if(WIN32)
+              set(CONFIGURE_COMMAND "")
+            else()
+              set(CONFIGURE_COMMAND PKG_CONFIG_PATH=${OUTPUT_DIR}/lib/pkgconfig
+                                    ${CMAKE_COMMAND} -DCMAKE_LIBRARY_PATH=${OUTPUT_DIR}/lib ${extraflags}
+                                    ${BUILD_DIR}/${id}/src/${id}
+                                    -DPACKAGE_CONFIG_PATH=${OUTPUT_DIR}/lib/pkgconfig
+                                    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                                    -DOUTPUT_DIR=${OUTPUT_DIR}
+                                    -DCMAKE_PREFIX_PATH=${OUTPUT_DIR}
+                                    -DCMAKE_INSTALL_PREFIX=${OUTPUT_DIR}
+                                    -DCMAKE_EXE_LINKER_FLAGS=-L${OUTPUT_DIR}/lib
+                                    -DCMAKE_INCLUDE_PATH=${OUTPUT_DIR}/include)
+            endif()
+
+            externalproject_add(${id}
+                                URL ${url}
+                                DOWNLOAD_DIR ${BUILD_DIR}/download
+                                CONFIGURE_COMMAND ${CONFIGURE_COMMAND}
+                                ${EXTERNALPROJECT_SETUP})
+          endif()
         else()
           externalproject_add(${id}
                               SOURCE_DIR ${dir}
