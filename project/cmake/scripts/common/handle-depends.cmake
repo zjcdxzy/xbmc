@@ -101,7 +101,7 @@ function(add_addon_depends addon searchpath)
         endif()
 
         # prepare the setup of the call to externalproject_add()
-        set(EXTERNALPROJECT_SETUP PREFIX build/${id}
+        set(EXTERNALPROJECT_SETUP PREFIX ${BUILD_DIR}/${id}
                                 CMAKE_ARGS ${extraflags} ${BUILD_ARGS}
                                 PATCH_COMMAND ${PATCH_COMMAND}
                                 ${INSTALL_COMMAND}
