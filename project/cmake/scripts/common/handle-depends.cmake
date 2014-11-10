@@ -42,14 +42,14 @@ function(add_addon_depends addon searchpath)
         endif()
 
         set(BUILD_ARGS -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
-                     -DOUTPUT_DIR=${DEPENDS_PATH}
-                     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-                     -DCMAKE_USER_MAKE_RULES_OVERRIDE=${CMAKE_USER_MAKE_RULES_OVERRIDE}
-                     -DCMAKE_USER_MAKE_RULES_OVERRIDE_CXX=${CMAKE_USER_MAKE_RULES_OVERRIDE_CXX}
-                     -DCMAKE_INSTALL_PREFIX=${DEPENDS_PATH}
-                     -DARCH_DEFINES=${ARCH_DEFINES}
-                     -DENABLE_STATIC=1
-                     -DBUILD_SHARED_LIBS=0)
+                       -DOUTPUT_DIR=${DEPENDS_PATH}
+                       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                       -DCMAKE_USER_MAKE_RULES_OVERRIDE=${CMAKE_USER_MAKE_RULES_OVERRIDE}
+                       -DCMAKE_USER_MAKE_RULES_OVERRIDE_CXX=${CMAKE_USER_MAKE_RULES_OVERRIDE_CXX}
+                       -DCMAKE_INSTALL_PREFIX=${DEPENDS_PATH}
+                       -DARCH_DEFINES=${ARCH_DEFINES}
+                       -DENABLE_STATIC=1
+                       -DBUILD_SHARED_LIBS=0)
 
         if(CMAKE_TOOLCHAIN_FILE)
           list(APPEND BUILD_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
@@ -80,12 +80,12 @@ function(add_addon_depends addon searchpath)
         # if there's an install.txt use it to properly install the built files
         if(EXISTS ${dir}/install.txt)
           set(INSTALL_COMMAND INSTALL_COMMAND ${CMAKE_COMMAND}
-                                  -DINPUTDIR=${BUILD_DIR}/${id}/src/${id}-build/
-                                  -DINPUTFILE=${dir}/install.txt
-                                  -DDESTDIR=${DEPENDS_PATH}
-                                  -DENABLE_STATIC=1
-                                  "${extraflags}"
-                                  -P ${PROJECT_SOURCE_DIR}/install.cmake)
+                                              -DINPUTDIR=${BUILD_DIR}/${id}/src/${id}-build/
+                                              -DINPUTFILE=${dir}/install.txt
+                                              -DDESTDIR=${DEPENDS_PATH}
+                                              -DENABLE_STATIC=1
+                                              "${extraflags}"
+                                              -P ${PROJECT_SOURCE_DIR}/install.cmake)
         elseif(EXISTS ${dir}/noinstall.txt)
           set(INSTALL_COMMAND INSTALL_COMMAND "")
         else()
@@ -102,9 +102,9 @@ function(add_addon_depends addon searchpath)
 
         # prepare the setup of the call to externalproject_add()
         set(EXTERNALPROJECT_SETUP PREFIX ${BUILD_DIR}/${id}
-                                CMAKE_ARGS ${extraflags} ${BUILD_ARGS}
-                                PATCH_COMMAND ${PATCH_COMMAND}
-                                ${INSTALL_COMMAND}
+                                  CMAKE_ARGS ${extraflags} ${BUILD_ARGS}
+                                  PATCH_COMMAND ${PATCH_COMMAND}
+                                  ${INSTALL_COMMAND})
 
         # if there's an url defined we need to pass that to externalproject_add()
         if(DEFINED url AND NOT "${url}" STREQUAL "")
