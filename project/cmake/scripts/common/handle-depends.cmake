@@ -105,7 +105,6 @@ function(add_addon_depends addon searchpath)
                                 CMAKE_ARGS ${extraflags} ${BUILD_ARGS}
                                 PATCH_COMMAND ${PATCH_COMMAND}
                                 ${INSTALL_COMMAND}
-                                ${DEPENDS_COMMAND})
 
         # if there's an url defined we need to pass that to externalproject_add()
         if(DEFINED url AND NOT "${url}" STREQUAL "")
