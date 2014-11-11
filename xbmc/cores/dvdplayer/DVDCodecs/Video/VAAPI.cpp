@@ -30,6 +30,7 @@
 #include "settings/Settings.h"
 #include "guilib/GraphicContext.h"
 #include "settings/MediaSettings.h"
+#include "settings/AdvancedSettings.h"
 #include <va/va_x11.h>
 
 extern "C" {
@@ -142,7 +143,8 @@ bool CVAAPIContext::CreateContext()
     return false;
   }
 
-  CLog::Log(LOGDEBUG, "VAAPI - initialize version %d.%d", major_version, minor_version);
+  if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+    CLog::Log(LOGDEBUG, "VAAPI - initialize version %d.%d", major_version, minor_version);
 
 
   QueryCaps();
@@ -174,13 +176,16 @@ void CVAAPIContext::QueryCaps()
   for(int i = 0; i < m_attributeCount; i++)
   {
     VADisplayAttribute * const display_attr = &m_attributes[i];
-    CLog::Log(LOGDEBUG, "VAAPI - attrib %d (%s/%s) min %d max %d value 0x%x\n"
-                       , display_attr->type
-                       ,(display_attr->flags & VA_DISPLAY_ATTRIB_GETTABLE) ? "get" : "---"
-                       ,(display_attr->flags & VA_DISPLAY_ATTRIB_SETTABLE) ? "set" : "---"
-                       , display_attr->min_value
-                       , display_attr->max_value
-                       , display_attr->value);
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+    {
+      CLog::Log(LOGDEBUG, "VAAPI - attrib %d (%s/%s) min %d max %d value 0x%x\n"
+                         , display_attr->type
+                         ,(display_attr->flags & VA_DISPLAY_ATTRIB_GETTABLE) ? "get" : "---"
+                         ,(display_attr->flags & VA_DISPLAY_ATTRIB_SETTABLE) ? "set" : "---"
+                         , display_attr->min_value
+                         , display_attr->max_value
+                         , display_attr->value);
+    }
   }
 
   int max_profiles = vaMaxNumProfiles(m_display);
@@ -190,7 +195,10 @@ void CVAAPIContext::QueryCaps()
     return;
 
   for(int i = 0; i < m_profileCount; i++)
-    CLog::Log(LOGDEBUG, "VAAPI - profile %d", m_profiles[i]);
+  {
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+      CLog::Log(LOGDEBUG, "VAAPI - profile %d", m_profiles[i]);
+  }
 }
 
 VAConfigAttrib CVAAPIContext::GetAttrib(VAProfile profile)
@@ -482,7 +490,8 @@ bool CDecoder::Open(AVCodecContext* avctx, const enum PixelFormat fmt, unsigned 
   if (CDVDVideoCodec::IsCodecDisabled(g_vaapi_available, settings_count, avctx->codec_id))
     return false;
 
-  CLog::Log(LOGDEBUG,"VAAPI - open decoder");
+  if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+    CLog::Log(LOGDEBUG,"VAAPI - open decoder");
 
   if (!CVAAPIContext::EnsureContext(&m_vaapiConfig.context, this))
     return false;
@@ -616,7 +625,8 @@ long CDecoder::Release()
   if (m_vaapiConfigured == true)
   {
     CSingleLock lock(m_DecoderSection);
-    CLog::Log(LOGDEBUG,"VAAPI::Release pre-cleanup");
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+      CLog::Log(LOGDEBUG,"VAAPI::Release pre-cleanup");
 
     Message *reply;
     if (m_vaapiOutput.m_controlPort.SendOutMessageSync(COutputControlProtocol::PRECLEANUP,
@@ -832,7 +842,8 @@ int CDecoder::Check(AVCodecContext* avctx)
 
   if (state == VAAPI_LOST)
   {
-    CLog::Log(LOGDEBUG,"VAAPI::Check waiting for display reset event");
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+      CLog::Log(LOGDEBUG,"VAAPI::Check waiting for display reset event");
     if (!m_DisplayEvent.WaitMSec(4000))
     {
       CLog::Log(LOGERROR, "VAAPI::Check - device didn't reset in reasonable time");
@@ -1069,7 +1080,8 @@ void CDecoder::FiniVAAPIOutput()
   m_vaapiConfig.contextId = VA_INVALID_ID;
 
   // detroy surfaces
-  CLog::Log(LOGDEBUG, "VAAPI::FiniVAAPIOutput destroying %d video surfaces", m_videoSurfaces.Size());
+  if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+    CLog::Log(LOGDEBUG, "VAAPI::FiniVAAPIOutput destroying %d video surfaces", m_videoSurfaces.Size());
   VASurfaceID surf;
   while((surf = m_videoSurfaces.RemoveNext()) != VA_INVALID_SURFACE)
   {
@@ -1823,7 +1835,8 @@ void COutput::InitCycle()
     }
     else
     {
-      CLog::Log(LOGDEBUG,"VAAPI - deinterlace method not supported, falling back to BOB");
+      if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+        CLog::Log(LOGDEBUG,"VAAPI - deinterlace method not supported, falling back to BOB");
       method = VS_INTERLACEMETHOD_RENDER_BOB;
     }
 
@@ -2069,7 +2082,8 @@ bool COutput::ProcessSyncPicture()
     }
     else
     {
-      CLog::Log(LOGDEBUG, "COutput::%s - return of invalid render pic", __FUNCTION__);
+      if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+        CLog::Log(LOGDEBUG, "COutput::%s - return of invalid render pic", __FUNCTION__);
     }
   }
   return busy;
@@ -2173,8 +2187,8 @@ bool COutput::EnsureBufferPool()
   }
 
   m_bufferPool.procPicId = 0;
-
-  CLog::Log(LOGDEBUG, "VAAPI::COutput::InitBufferPool - Surfaces created");
+  if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+    CLog::Log(LOGDEBUG, "VAAPI::COutput::InitBufferPool - Surfaces created");
   return true;
 }
 
@@ -2338,8 +2352,8 @@ bool COutput::CreateGlxContext()
     CLog::Log(LOGERROR, "VAAPI::COutput::CreateGlxContext - Could not make Pixmap current");
     return false;
   }
-
-  CLog::Log(LOGDEBUG, "VAAPI::COutput::CreateGlxContext - created context");
+  if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+    CLog::Log(LOGDEBUG, "VAAPI::COutput::CreateGlxContext - created context");
   return true;
 }
 
@@ -3035,7 +3049,8 @@ bool CFFmpegPostproc::Init(EINTERLACEMETHOD method)
   else if (method == VS_INTERLACEMETHOD_RENDER_BOB ||
            method == VS_INTERLACEMETHOD_NONE)
   {
-    CLog::Log(LOGDEBUG, "CFFmpegPostproc::Init  - skip deinterlacing");
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+      CLog::Log(LOGDEBUG, "CFFmpegPostproc::Init  - skip deinterlacing");
     avfilter_inout_free(&outputs);
     avfilter_inout_free(&inputs);
   }
