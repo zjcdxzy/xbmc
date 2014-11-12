@@ -28,6 +28,7 @@
 #include "DVDCodecUtils.h"
 #include "DVDVideoCodecVideoToolBox.h"
 #include "settings/Settings.h"
+#include "settings/AdvancedSettings.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
 #include "osx/DarwinUtils.h"
@@ -197,7 +198,8 @@ vtdec_session_dump_property(CFStringRef prop_name, CFDictionaryRef prop_attrs, V
     char *attrs_str;
 
     attrs_str = vtutil_object_to_string(prop_attrs);
-    CLog::Log(LOGDEBUG, "%s = %s\n", name_str, attrs_str);
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+      CLog::Log(LOGDEBUG, "%s = %s\n", name_str, attrs_str);
     free(attrs_str);
   }
 
@@ -207,7 +209,8 @@ vtdec_session_dump_property(CFStringRef prop_name, CFDictionaryRef prop_attrs, V
     char *value_str;
 
     value_str = vtutil_object_to_string(prop_value);
-    CLog::Log(LOGDEBUG, "%s = %s\n", name_str, value_str);
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+      CLog::Log(LOGDEBUG, "%s = %s\n", name_str, value_str);
     free(value_str);
 
     if (prop_value != NULL)
@@ -215,7 +218,8 @@ vtdec_session_dump_property(CFStringRef prop_name, CFDictionaryRef prop_attrs, V
   }
   else
   {
-    CLog::Log(LOGDEBUG, "%s = <failed to query: %d>\n", name_str, (int)status);
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+      CLog::Log(LOGDEBUG, "%s = <failed to query: %d>\n", name_str, (int)status);
   }
 
   free(name_str);
@@ -236,7 +240,8 @@ void vtdec_session_dump_properties(VTDecompressionSessionRef session)
   return;
 
 error:
-  CLog::Log(LOGDEBUG, "failed to dump properties\n");
+  if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+    CLog::Log(LOGDEBUG, "failed to dump properties\n");
 }
 #endif
 //-----------------------------------------------------------------------------------
@@ -343,7 +348,8 @@ CreateFormatDescriptionFromCodecData(VTFormatId format_id, int width, int height
   
   if (CDarwinUtils::GetIOSVersion() < 4.3)
   {
-    CLog::Log(LOGDEBUG, "%s - GetIOSVersion says < 4.3", __FUNCTION__);
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+      CLog::Log(LOGDEBUG, "%s - GetIOSVersion says < 4.3", __FUNCTION__);
     status = FigVideoHack.FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom1(
       NULL,
       format_id,
@@ -356,7 +362,8 @@ CreateFormatDescriptionFromCodecData(VTFormatId format_id, int width, int height
   }
   else
   {
-    CLog::Log(LOGDEBUG, "%s - GetIOSVersion says >= 4.3", __FUNCTION__);
+    if (g_advancedSettings.CanLogComponent(LOGVIDEO))
+      CLog::Log(LOGDEBUG, "%s - GetIOSVersion says >= 4.3", __FUNCTION__);
     status = FigVideoHack.FigVideoFormatDescriptionCreateWithSampleDescriptionExtensionAtom2(
       NULL,
       format_id,
@@ -1463,7 +1470,7 @@ bool CDVDVideoCodecVideoToolBox::GetPicture(DVDVideoPicture* pDvdVideoPicture)
   DisplayQueuePop();
 
   static double old_pts;
-  if (pDvdVideoPicture->pts < old_pts)
+  if (g_advancedSettings.CanLogComponent(LOGVIDEO) && pDvdVideoPicture->pts < old_pts)
     CLog::Log(LOGDEBUG, "%s - VTBDecoderDecode dts(%f), pts(%f), old_pts(%f)", __FUNCTION__,
       pDvdVideoPicture->dts, pDvdVideoPicture->pts, old_pts);
   old_pts = pDvdVideoPicture->pts;
@@ -1626,7 +1633,7 @@ CDVDVideoCodecVideoToolBox::VTDecoderCallback(
       "VTDecoderCallback", (int)format_type);
     return;
   }
-  if (kVTDecodeInfo_FrameDropped & infoFlags)
+  if (g_advancedSettings.CanLogComponent(LOGVIDEO) && kVTDecodeInfo_FrameDropped & infoFlags)
   {
     CLog::Log(LOGDEBUG, "%s - frame dropped", __FUNCTION__);
     return;
