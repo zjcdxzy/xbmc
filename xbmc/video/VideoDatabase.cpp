@@ -6596,27 +6596,48 @@ bool CVideoDatabase::GetMusicVideosNav(const CStdString& strBaseDir, CFileItemLi
   return GetMusicVideosByWhere(videoUrl.ToString(), filter, items, true, sortDescription);
 }
 
-bool CVideoDatabase::GetRecentlyAddedMoviesNav(const CStdString& strBaseDir, CFileItemList& items, unsigned int limit)
+bool CVideoDatabase::GetRecentlyAddedMoviesNav(const CStdString& strBaseDir, CFileItemList& items, unsigned int limit, bool hideWatched)
 {
   Filter filter;
   filter.order = "dateAdded desc, idMovie desc";
   filter.limit = PrepareSQL("%u", limit ? limit : g_advancedSettings.m_iVideoLibraryRecentlyAddedItems);
+
+  if (hideWatched)
+  {
+    filter.AppendWhere("playCount <= 0");// only query unwatched items
+    filter.AppendWhere("playCount IS NULL", false);
+  }
+
   return GetMoviesByWhere(strBaseDir, filter, items);
 }
 
-bool CVideoDatabase::GetRecentlyAddedEpisodesNav(const CStdString& strBaseDir, CFileItemList& items, unsigned int limit)
+bool CVideoDatabase::GetRecentlyAddedEpisodesNav(const CStdString& strBaseDir, CFileItemList& items, unsigned int limit, bool hideWatched)
 {
   Filter filter;
   filter.order = "dateAdded desc, idEpisode desc";
   filter.limit = PrepareSQL("%u", limit ? limit : g_advancedSettings.m_iVideoLibraryRecentlyAddedItems);
+
+  if (hideWatched)
+  {
+    filter.AppendWhere("playCount <= 0");// only query unwatched items
+    filter.AppendWhere("playCount IS NULL", false);
+  }
+
   return GetEpisodesByWhere(strBaseDir, filter, items, false);
 }
 
-bool CVideoDatabase::GetRecentlyAddedMusicVideosNav(const CStdString& strBaseDir, CFileItemList& items, unsigned int limit)
+bool CVideoDatabase::GetRecentlyAddedMusicVideosNav(const CStdString& strBaseDir, CFileItemList& items, unsigned int limit, bool hideWatched)
 {
   Filter filter;
   filter.order = "dateAdded desc, idMVideo desc";
   filter.limit = PrepareSQL("%u", limit ? limit : g_advancedSettings.m_iVideoLibraryRecentlyAddedItems);
+
+  if (hideWatched)
+  {
+    filter.AppendWhere("playCount <= 0");// only query unwatched items
+    filter.AppendWhere("playCount IS NULL", false);
+  }
+
   return GetMusicVideosByWhere(strBaseDir, filter, items);
 }
 
