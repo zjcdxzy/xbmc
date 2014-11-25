@@ -497,13 +497,23 @@ int CFile::Stat(const CURL& file, struct __stat64* buffer)
 
 ssize_t CFile::Read(void *lpBuf, size_t uiBufSize)
 {
+  CLog::Log(LOGNOTICE, "ISOT%s (%p, %zu)", __FUNCTION__, lpBuf, uiBufSize);
   if (!m_pFile)
+  {
+    CLog::Log(LOGNOTICE, "ISOT%s - !m_pFile", __FUNCTION__);
     return -1;
+  }
   if (lpBuf == NULL && uiBufSize != 0)
+  {
+    CLog::Log(LOGNOTICE, "ISOT%s - lpBuf == NULL && uiBufSize != 0", __FUNCTION__);
     return -1;
+  }
 
   if (uiBufSize > SSIZE_MAX)
+  {
+    CLog::Log(LOGNOTICE, "ISOT%s - uiBufSize > SSIZE_MAX", __FUNCTION__);
     uiBufSize = SSIZE_MAX;
+  }
 
   if(m_pBuffer)
   {
@@ -514,6 +524,7 @@ ssize_t CFile::Read(void *lpBuf, size_t uiBufSize)
                                                   m_pBuffer->in_avail()));
       if (m_bitStreamStats && nBytes>0)
         m_bitStreamStats->AddSampleBytes(nBytes);
+      CLog::Log(LOGNOTICE, "ISOT%s - m_pBuffer && READ_TRUNCATED, returns %zd", __FUNCTION__, nBytes);
       return nBytes;
     }
     else
@@ -521,6 +532,7 @@ ssize_t CFile::Read(void *lpBuf, size_t uiBufSize)
       const ssize_t nBytes = m_pBuffer->sgetn((char*)lpBuf, uiBufSize);
       if (m_bitStreamStats && nBytes>0)
         m_bitStreamStats->AddSampleBytes(nBytes);
+      CLog::Log(LOGNOTICE, "ISOT%s - m_pBuffer && !READ_TRUNCATED, returns %zd", __FUNCTION__, nBytes);
       return nBytes;
     }
   }
@@ -530,12 +542,18 @@ ssize_t CFile::Read(void *lpBuf, size_t uiBufSize)
     if (uiBufSize == 0)
     { // "test" read with zero size
       if (lpBuf != NULL)
-        return m_pFile->Read(lpBuf, 0);
+      {
+        ssize_t ret = m_pFile->Read(lpBuf, 0);
+        CLog::Log(LOGNOTICE, "ISOT%s - uiBufSize == 0 && lpBuf != NULL, returns %zd", __FUNCTION__, ret);
+        return ret;
+      }
 
       // some VFSs don't handle correctly null buffer pointer
       // provide valid buffer pointer for them
       auto_buffer dummyBuf(255);
-      return m_pFile->Read(dummyBuf.get(), 0);
+      ssize_t ret2 = m_pFile->Read(dummyBuf.get(), 0);
+      CLog::Log(LOGNOTICE, "ISOT%s - uiBufSize == 0 && lpBuf == NULL, returns %zd", __FUNCTION__, ret2);
+      return ret2;
     }
 
     if(m_flags & READ_TRUNCATED)
@@ -543,6 +561,7 @@ ssize_t CFile::Read(void *lpBuf, size_t uiBufSize)
       const ssize_t nBytes = m_pFile->Read(lpBuf, uiBufSize);
       if (m_bitStreamStats && nBytes>0)
         m_bitStreamStats->AddSampleBytes(nBytes);
+      CLog::Log(LOGNOTICE, "ISOT%s - READ_TRUNCATED, returns %zd", __FUNCTION__, nBytes);
       return nBytes;
     }
     else
@@ -551,17 +570,22 @@ ssize_t CFile::Read(void *lpBuf, size_t uiBufSize)
       while((uiBufSize-done) > 0)
       {
         const ssize_t curr = m_pFile->Read((char*)lpBuf+done, uiBufSize-done);
+        CLog::Log(LOGNOTICE, "ISOT%s - !READ_TRUNCATED, curr == %zd", __FUNCTION__, curr);
         if (curr <= 0)
         {
           if (curr < 0 && done == 0)
+          {
+            CLog::Log(LOGNOTICE, "ISOT%s - curr < 0 && done == 0", __FUNCTION__);
             return -1;
-
+          }
+          CLog::Log(LOGNOTICE, "ISOT%s - curr <= 0 break", __FUNCTION__);
           break;
         }
         done+=curr;
       }
       if (m_bitStreamStats && done > 0)
         m_bitStreamStats->AddSampleBytes(done);
+      CLog::Log(LOGNOTICE, "ISOT%s - !READ_TRUNCATED, returns %zd", __FUNCTION__, done);
       return done;
     }
   }
@@ -571,6 +595,7 @@ ssize_t CFile::Read(void *lpBuf, size_t uiBufSize)
     CLog::Log(LOGERROR, "%s - Unhandled exception", __FUNCTION__);
     return -1;
   }
+  CLog::Log(LOGNOTICE, "ISOT%s - returns 0", __FUNCTION__);
   return 0;
 }
 
@@ -611,11 +636,16 @@ void CFile::Flush()
 //*********************************************************************************************
 int64_t CFile::Seek(int64_t iFilePosition, int iWhence)
 {
+  CLog::Log(LOGNOTICE, "ISOT%s (%"PRId64", %d)", __FUNCTION__, iFilePosition, iWhence);
   if (!m_pFile)
+  {
+    CLog::Log(LOGNOTICE, "ISOT%s !m_pFile", __FUNCTION__);
     return -1;
+  }
 
   if (m_pBuffer)
   {
+    CLog::Log(LOGNOTICE, "ISOT%s m_pBuffer - TODO add logging...", __FUNCTION__);
     if(iWhence == SEEK_CUR)
       return m_pBuffer->pubseekoff(iFilePosition,ios_base::cur);
     else if(iWhence == SEEK_END)
@@ -626,13 +656,16 @@ int64_t CFile::Seek(int64_t iFilePosition, int iWhence)
 
   try
   {
-    return m_pFile->Seek(iFilePosition, iWhence);
+    int64_t seeked = m_pFile->Seek(iFilePosition, iWhence)
+    CLog::Log(LOGNOTICE, "ISOT%s m_pFile->Seek returned %"PRId64, __FUNCTION__, seeked);
+    return seeked;
   }
   XBMCCOMMONS_HANDLE_UNCHECKED
   catch(...)
   {
     CLog::Log(LOGERROR, "%s - Unhandled exception", __FUNCTION__);
   }
+  CLog::Log(LOGNOTICE, "ISOT%s m_pFile->Seek returned -1", __FUNCTION__);
   return -1;
 }
 
@@ -674,21 +707,32 @@ int64_t CFile::GetLength()
 //*********************************************************************************************
 int64_t CFile::GetPosition() const
 {
+  CLog::Log(LOGNOTICE, "ISOT%s", __FUNCTION__);
   if (!m_pFile)
+  {
+    CLog::Log(LOGNOTICE, "ISOT%s !m_pFile", __FUNCTION__);
     return -1;
+  }
 
   if (m_pBuffer)
-    return m_pBuffer->pubseekoff(0, ios_base::cur);
+  {
+    int64_t pos = m_pBuffer->pubseekoff(0, ios_base::cur);
+    CLog::Log(LOGNOTICE, "ISOT%s m_pBuffer, returns %"PRId64, __FUNCTION__, pos);
+    return pos;
+  }
 
   try
   {
-    return m_pFile->GetPosition();
+    int64_t pos = m_pFile->GetPosition()
+    CLog::Log(LOGNOTICE, "ISOT%s m_pFile->GetPosition, returns %"PRId64, __FUNCTION__, pos);
+    return pos;
   }
   XBMCCOMMONS_HANDLE_UNCHECKED
   catch(...)
   {
     CLog::Log(LOGERROR, "%s - Unhandled exception", __FUNCTION__);
   }
+  CLog::Log(LOGNOTICE, "ISOT%s returns -1", __FUNCTION__);
   return -1;
 }
 
