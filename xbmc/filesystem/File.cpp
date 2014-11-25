@@ -656,7 +656,7 @@ int64_t CFile::Seek(int64_t iFilePosition, int iWhence)
 
   try
   {
-    int64_t seeked = m_pFile->Seek(iFilePosition, iWhence)
+    int64_t seeked = m_pFile->Seek(iFilePosition, iWhence);
     CLog::Log(LOGNOTICE, "ISOT%s m_pFile->Seek returned %"PRId64, __FUNCTION__, seeked);
     return seeked;
   }
@@ -723,7 +723,7 @@ int64_t CFile::GetPosition() const
 
   try
   {
-    int64_t pos = m_pFile->GetPosition()
+    int64_t pos = m_pFile->GetPosition();
     CLog::Log(LOGNOTICE, "ISOT%s m_pFile->GetPosition, returns %"PRId64, __FUNCTION__, pos);
     return pos;
   }
