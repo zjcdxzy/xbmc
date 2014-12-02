@@ -6404,7 +6404,7 @@
 				DFFA43CE19104BFA00C3923B /* media */,
 				C6859E96029091FE04C91782 /* docs */,
 				E38E185C0D25F9FA00618676 /* lib */,
-				E38E14610D25F9F900618676 /* xbmc */,
+				E38E14610D25F9F900618676 /* src */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -8580,7 +8580,7 @@
 			path = osx;
 			sourceTree = "<group>";
 		};
-		E38E14610D25F9F900618676 /* xbmc */ = {
+		E38E14610D25F9F900618676 /* src */ = {
 			isa = PBXGroup;
 			children = (
 				18B49FF01152BEEB001AF8A6 /* addons */,
@@ -8696,7 +8696,7 @@
 				EC720A9B1550927000FFD782 /* XbmcContext.cpp */,
 				EC720A9C1550927000FFD782 /* XbmcContext.h */,
 			);
-			path = xbmc;
+			path = src;
 			sourceTree = "<group>";
 		};
 		E38E147F0D25F9F900618676 /* cdrip */ = {
