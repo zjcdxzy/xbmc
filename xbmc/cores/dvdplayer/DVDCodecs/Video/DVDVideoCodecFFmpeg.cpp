@@ -72,6 +72,20 @@ extern "C" {
 
 using namespace boost;
 
+static void ResetHwDecoder(struct AVCodecContext * avctx)
+{
+  CDVDVideoCodecFFmpeg* ctx  = (CDVDVideoCodecFFmpeg*)avctx->opaque;
+  // hardware decoder de-selected, restore standard ffmpeg
+  if (ctx->GetHardware())
+  {
+    ctx->SetHardware(NULL);
+    avctx->get_buffer2     = avcodec_default_get_buffer2;
+    avctx->slice_flags     = 0;
+    avctx->hwaccel_context = 0;
+  }
+}
+
+
 enum PixelFormat CDVDVideoCodecFFmpeg::GetFormat( struct AVCodecContext * avctx
                                                 , const PixelFormat * fmt )
 {
@@ -130,6 +144,8 @@ enum PixelFormat CDVDVideoCodecFFmpeg::GetFormat( struct AVCodecContext * avctx
 #ifdef TARGET_DARWIN_OSX
     if (*cur == AV_PIX_FMT_VDA && CSettings::Get().GetBool("videoplayer.usevda") && g_advancedSettings.m_useFfmpegVda)
     {
+      //reset HW decoder because some macs only can have 1 decoder instance open at once
+      ResetHwDecoder(avctx);
       VDA::CDecoder* dec = new VDA::CDecoder();
       if(dec->Open(avctx, *cur, ctx->m_uSurfacesCount))
       {
@@ -144,13 +160,7 @@ enum PixelFormat CDVDVideoCodecFFmpeg::GetFormat( struct AVCodecContext * avctx
   }
 
   // hardware decoder de-selected, restore standard ffmpeg
-  if (ctx->GetHardware())
-  {
-    ctx->SetHardware(NULL);
-    avctx->get_buffer2     = avcodec_default_get_buffer2;
-    avctx->slice_flags     = 0;
-    avctx->hwaccel_context = 0;
-  }
+  ResetHwDecoder(avctx);
 
   return avcodec_default_get_format(avctx, fmt);
 }
