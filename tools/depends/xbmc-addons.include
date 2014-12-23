@@ -9,8 +9,14 @@ CMAKE_EXTRA =
 ifeq (darwin, $(findstring darwin, $(HOST)))
   INSTALL_PREFIX = ../../../../../addons/
   CMAKE_EXTRA = -DPACKAGE_ZIP=1 -DDEPENDS_PATH=$(PREFIX)
-else ifneq ($(PREFIX),)
-  INSTALL_PREFIX = $(PREFIX)
+else
+  ifneq ($(PREFIX),)
+    INSTALL_PREFIX = $(PREFIX)
+  endif
+
+  ifeq (android, $(findstring android, $(HOST)))
+    CMAKE_EXTRA += -DCORE_SYSTEM_NAME=android
+  endif
 endif
 
 all: .installed-$(PLATFORM)
