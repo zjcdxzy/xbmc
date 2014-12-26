@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "utils/log.h"
 
 /********************************************************
 256 BYTES IS ENOUGH FOR ALL THE SUPPORTED CHARACTERS IN
@@ -873,27 +872,21 @@ int handle_708_C1 (cc708_service_decoder *decoder, unsigned char *data, int data
   case CW5:
   case CW6:
   case CW7:
-    CLog::Log(LOGNOTICE,"--------- set win %d", com.code-CW0);
     handle_708_CWx_SetCurrentWindow (decoder, com.code-CW0); /* Window 0 to 7 */
     break;
   case CLW:
-    CLog::Log(LOGNOTICE,"--------- clear win");
     handle_708_CLW_ClearWindows (decoder, data[1]);
     break;
   case DSW:
-    CLog::Log(LOGNOTICE,"--------- disp win %d", data[1]);
     handle_708_DSW_DisplayWindows (decoder, data[1]);
     break;
   case HDW:
-    CLog::Log(LOGNOTICE,"--------- hide win");
     handle_708_HDW_HideWindows (decoder, data[1]);
     break;
   case TGW:
-    CLog::Log(LOGNOTICE,"--------- toggle win");
     handle_708_TGW_ToggleWindows (decoder, data[1]);
     break;
   case DLW:
-    CLog::Log(LOGNOTICE,"--------- delete win %d", data[1]);
     handle_708_DLW_DeleteWindows (decoder, data[1]);
     break;
   case DLY:
@@ -903,7 +896,6 @@ int handle_708_C1 (cc708_service_decoder *decoder, unsigned char *data, int data
     handle_708_DLC_DelayCancel (decoder);
     break;
   case RST:
-    CLog::Log(LOGNOTICE,"--------- reset win");
     cc708_service_reset(decoder);
     break;
   case SPA:
@@ -931,7 +923,6 @@ int handle_708_C1 (cc708_service_decoder *decoder, unsigned char *data, int data
   case DF5:
   case DF6:
   case DF7:
-    CLog::Log(LOGNOTICE,"--------- define win %d", com.code-DF0);
     handle_708_DFx_DefineWindow (decoder, com.code-DF0, data); /* Window 0 to 7 */
     break;
   default:
