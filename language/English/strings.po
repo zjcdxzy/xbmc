@@ -12716,7 +12716,7 @@ msgstr ""
 
 #: system/settings/settings.xml
 msgctxt "#24131"
-msgid "Enable to parse for CC in video stream"
+msgid "Enable to parse for CC in video stream. Puts slightly more load on the CPU"
 msgstr ""
 
 #empty strings from id 24132 to 24998
