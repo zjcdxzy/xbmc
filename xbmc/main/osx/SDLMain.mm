@@ -42,7 +42,6 @@
 #import "storage/osx/DarwinStorageProvider.h"
 #undef BOOL
 
-#import "osx/HotKeyController.h"
 #import "osx/DarwinUtils.h"
 #import "SDLMain.h"
 
@@ -486,7 +485,7 @@ int main(int argc, char *argv[])
   // as the whole ProcessSerialNumber approach is deprecated
   // in that case assume finder launch - else
   // we wouldn't handle documents/movies someone dragged on the app icon
-  if (DarwinIsMavericks())
+  if (CDarwinUtils::IsMavericks())
     gFinderLaunch = TRUE;
 
   // fix open with document/movie - autostart

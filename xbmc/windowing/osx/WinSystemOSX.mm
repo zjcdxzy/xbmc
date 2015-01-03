@@ -1194,7 +1194,6 @@ bool CWinSystemOSX::DestroyWindowSystem()
   [center removeObserver:(windowDidReSizeNoteClass*)m_windowDidReSize name:NSWindowDidResizeNotification object:nil];
   */
   
->>>>>>> [osx/windowing] - remove sdl windowing and start implementation of nswindow /cocoa based native windowing - by gimli
   if (m_can_display_switch)
     CGDisplayRemoveReconfigurationCallback(DisplayReconfigured, (void*)this);
 
@@ -1507,7 +1506,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
       //[window setStyleMask:windowStyleMask];
       
       // Show menubar.
-      if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay || DarwinIsMavericks())
+      if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay || CDarwinUtils::IsMavericks())
         SetMenuBarVisible(true);
       
       // Unblank.
@@ -1518,7 +1517,7 @@ bool CWinSystemOSX::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
     else
     {
       // Show menubar.
-      if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay || DarwinIsMavericks())
+      if (GetDisplayID(res.iScreen) == kCGDirectMainDisplay || CDarwinUtils::IsMavericks())
         SetMenuBarVisible(true);
       
       // release displays
@@ -2127,7 +2126,7 @@ int CWinSystemOSX::GetCurrentScreen()
   return 0;
 }
 
-void CWinSystemOSX::CheckDisplayChanging(u_int32_t flags)
+int CWinSystemOSX::CheckDisplayChanging(u_int32_t flags)
 {
   NSOpenGLContext* context = [NSOpenGLContext currentContext];
   

@@ -80,7 +80,7 @@ public:
 
   
   void         SetMovedToOtherScreen(bool moved) { m_movedToOtherScreen = moved; }
-  void         CheckDisplayChanging(u_int32_t flags);
+  int         CheckDisplayChanging(u_int32_t flags);
   void         SetFullscreenWillToggle(bool toggle){ m_fullscreenWillToggle = toggle; }
   bool         GetFullscreenWillToggle(){ return m_fullscreenWillToggle; }
   
