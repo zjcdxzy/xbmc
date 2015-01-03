@@ -35,3 +35,4 @@ TexturePacker_SOURCES =  md5.cpp \
 
 XBTF.cpp:
 	@cp @KODI_SRC_DIR@/xbmc/guilib/XBTF.cpp .
+	@cp @KODI_SRC_DIR@/xbmc/guilib/XBTF.h .
