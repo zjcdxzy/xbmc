@@ -19,7 +19,7 @@ AM_CPPFLAGS =\
 
 #AM_LDFLAGS = -static -ljpeg -L@KODI_SRC_DIR@/lib/libsquish -lsquish-native @LIBS@ -lz -lm -L/opt/xbmc-deps/x86_64-linux-gnu-native/lib -lgif 
 #AM_LDFLAGS = -static -Wl,--whole-archive -L@KODI_SRC_DIR@/lib/libsquish -lsquish-native -L/opt/xbmc-deps/x86_64-linux-gnu-native/lib -lgif @LIBS@ -Wl,--no-whole-archive
-AM_LDFLAGS = -static -Wl,--whole-archive -L@KODI_SRC_DIR@/lib/libsquish -lsquish-native @LIBS@ -Wl,--no-whole-archive
+AM_LDFLAGS = -L@KODI_SRC_DIR@/lib/libsquish -lsquish-native @LIBS@
 
 
 bin_PROGRAMS = TexturePacker
