@@ -24,7 +24,7 @@ $(PLATFORM):
 	-rm -rf $(PLATFORM)/*; mkdir -p $(PLATFORM)
 	cd $(PLATFORM); cp -a $(SOURCE)/* .
 	cd $(PLATFORM); ./autogen.sh
-	cd $(PLATFORM); ./configure --prefix=$(PREFIX)
+	cd $(PLATFORM); ./configure --prefix=$(PREFIX) EXTRA_DEFINES="$(ARCH_DEFINES)"
 
 
 $(APP): $(PLATFORM)

@@ -8,8 +8,6 @@ AC_PROG_CXX
 abs_top_srcdir=${abs_top_srcdir=$(cd $srcdir; pwd)}
 KODI_SRC_DIR=${KODI_SRC_DIR:-"${abs_top_srcdir}/../../../../.."}
 
-EXTRA_DEFINES =
-
 PKG_CHECK_MODULES([PNG], [libpng],
   [INCLUDES="$PNG_CFLAGS"; LIBS=$(pkg-config --silence-errors --static --libs libpng)],
   AC_MSG_ERROR("libpng not found"))
