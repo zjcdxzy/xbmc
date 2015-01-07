@@ -2446,13 +2446,6 @@ OUTPUT_FILES="Makefile \
     xbmc/cores/AudioEngine/Makefile \
     xbmc/cores/paplayer/Makefile \
     xbmc/cores/omxplayer/Makefile \
-    lib/timidity/Makefile \
-    lib/asap/Makefile \
-    lib/nosefart/Makefile \
-    lib/libsidplay2/Makefile \
-    lib/vgmstream/Makefile \
-    lib/snesapu/SNES/SNESAPU/Makefile \
-    lib/stsound/StSoundLibrary/Makefile \
     xbmc/cores/playercorefactory/Makefile \
     xbmc/music/karaoke/Makefile \
     xbmc/osx/Makefile \

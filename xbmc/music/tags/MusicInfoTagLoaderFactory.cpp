@@ -26,19 +26,10 @@
 #ifdef HAS_MOD_PLAYER
 #include "cores/ModPlayer.h"
 #endif
-#include "MusicInfoTagLoaderNSF.h"
-#include "MusicInfoTagLoaderSPC.h"
-#include "MusicInfoTagLoaderYM.h"
 #include "MusicInfoTagLoaderDatabase.h"
-#include "MusicInfoTagLoaderASAP.h"
-#include "MusicInfoTagLoaderMidi.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "FileItem.h"
-
-#ifdef HAS_ASAP_CODEC
-#include "cores/paplayer/ASAPCodec.h"
-#endif
 
 using namespace MUSIC_INFO;
 
@@ -95,28 +86,6 @@ IMusicInfoTagLoader* CMusicInfoTagLoaderFactory::CreateLoader(const std::string&
   else if (strExtension == "shn")
   {
     CMusicInfoTagLoaderSHN *pTagLoader = new CMusicInfoTagLoaderSHN();
-    return (IMusicInfoTagLoader*)pTagLoader;
-  }
-  else if (strExtension == "spc")
-  {
-    CMusicInfoTagLoaderSPC *pTagLoader = new CMusicInfoTagLoaderSPC();
-    return (IMusicInfoTagLoader*)pTagLoader;
-  }
-  else if (strExtension == "ym")
-  {
-    CMusicInfoTagLoaderYM *pTagLoader = new CMusicInfoTagLoaderYM();
-    return (IMusicInfoTagLoader*)pTagLoader;
-  }
-#ifdef HAS_ASAP_CODEC
-  else if (ASAPCodec::IsSupportedFormat(strExtension) || strExtension == "asapstream")
-  {
-    CMusicInfoTagLoaderASAP *pTagLoader = new CMusicInfoTagLoaderASAP();
-    return (IMusicInfoTagLoader*)pTagLoader;
-  }
-#endif
-  else if ( TimidityCodec::IsSupportedFormat( strExtension ) )
-  {
-    CMusicInfoTagLoaderMidi * pTagLoader = new CMusicInfoTagLoaderMidi();
     return (IMusicInfoTagLoader*)pTagLoader;
   }
 

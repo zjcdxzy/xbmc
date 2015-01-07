@@ -188,19 +188,6 @@ ifeq (@USE_OMXPLAYER@,1)
 DIRECTORY_ARCHIVES += xbmc/cores/omxplayer/omxplayer.a
 endif
 
-PAPCODECS_DIRS= \
-	lib/nosefart \
-	lib/timidity \
-	lib/libsidplay2 \
-	lib/stsound/StSoundLibrary \
-	lib/snesapu/SNES/SNESAPU \
-	lib/vgmstream
-
-ifeq (@USE_ASAP_CODEC@,1)
-PAPCODECS_DIRS+= \
-	lib/asap
-endif
-
 LIB_DIRS=\
 	lib/cximage-6.0 \
 	lib/libexif \
@@ -338,7 +325,7 @@ all : $(FINAL_TARGETS)
 
 include Makefile.include
 
-.PHONY : dllloader exports visualizations screensavers eventclients papcodecs \
+.PHONY : dllloader exports visualizations screensavers eventclients \
 	dvdpcodecs dvdpextcodecs imagelib codecs externals force skins libaddon check \
 	testframework testsuite
 
@@ -362,7 +349,7 @@ skins:
 endif
 
 # Setup some dependencies for subdir makes
-xbmc/cores/paplayer/paplayer.a: papcodecs
+xbmc/cores/paplayer/paplayer.a:
 $(DVDPLAYER_ARCHIVES)         : dvdpcodecs
 
 lib/cpluff/libcpluff/.libs/libcpluff.a: force
@@ -427,23 +414,6 @@ cmyth: dllloader
 	$(MAKE) -C lib/cmyth
 libhdhomerun: dllloader
 	$(MAKE) -C lib/libhdhomerun
-papcodecs: dllloader dvdpcodecs
-	test -d system/players/paplayer || mkdir system/players/paplayer
-	$(MAKE) -C lib/vgmstream
-	$(MAKE) -C lib/timidity
-	$(MAKE) -C lib/nosefart
-ifneq ($(findstring arm-osx,@ARCH@), arm-osx)
-	$(MAKE) -C lib/libsidplay2
-endif
-ifeq (@USE_ASAP_CODEC@,1)
-  ifneq ($(findstring osx,@ARCH@), osx)
-	$(MAKE) -C lib/asap asap-xbmc
-  endif
-endif
-	$(MAKE) -C lib/stsound/StSoundLibrary
-ifeq ($(or $(findstring powerpc,@ARCH@),$(findstring x86_64-linux,@ARCH@),$(findstring arm, @ARCH@),$(findstring freebsd,@ARCH@)),)
-	$(MAKE) -C lib/snesapu/SNES/SNESAPU
-endif
 imagelib: dllloader
 	$(MAKE) -C lib/cximage-6.0
 
@@ -452,7 +422,7 @@ ifeq (@USE_PVR_ADDONS@,1)
 	$(MAKE) -C pvr-addons
 endif
 
-codecs: papcodecs dvdpcodecs dvdpextcodecs
+codecs: dvdpcodecs dvdpextcodecs
 
 libs: $(LIBSSE4) libhdhomerun imagelib libexif system/libcpluff-@ARCH@.so $(CMYTH)
 
@@ -508,7 +478,7 @@ OBJSXBMC:=$(filter-out $(DYNOBJSXBMC), $(OBJSXBMC))
 
 BIN_DIRS = $(dir $(DIRECTORY_ARCHIVES)) $(dir $(NWAOBJSXBMC)) $(dir $(MAINOBJS))
 
-DIRS= $(BIN_DIRS) $(EC_DIRS) $(XBMCTEX_DIRS) $(DVDPCODECS_DIRS) $(PAPCODECS_DIRS) \
+DIRS= $(BIN_DIRS) $(EC_DIRS) $(XBMCTEX_DIRS) $(DVDPCODECS_DIRS) \
 	$(LIB_DIRS) $(SS_DIRS) $(VIS_DIRS) $(LIBADDON_DIRS) $(SKIN_DIRS) xbmc/main
 
 $(NWAOBJSXBMC) $(DIRECTORY_ARCHIVES) $(MAINOBJS): force
@@ -696,8 +666,6 @@ clean-xbmctex:
 	for d in $(XBMCTEX_DIRS); do if test -f $$d/Makefile; then $(MAKE) -C $$d clean; fi; done
 clean-dvdpcodecs:
 	for d in $(DVDPCODECS_DIRS); do if test -f $$d/Makefile; then $(MAKE) -C $$d clean; fi; done
-clean-papcodecs:
-	for d in $(PAPCODECS_DIRS); do if test -f $$d/Makefile; then $(MAKE) -C $$d clean; fi; done
 clean-libs:
 	for d in $(LIB_DIRS); do if test -f $$d/Makefile; then $(MAKE) -C $$d clean; fi; done
 clean-screensavers:
@@ -711,7 +679,7 @@ ifeq (@USE_PVR_ADDONS@,1)
 	if test -f pvr-addons/Makefile; then $(MAKE) -C pvr-addons clean; fi;
 endif
 
-clean-codecs: clean-dvdpcodecs clean-papcodecs
+clean-codecs: clean-dvdpcodecs
 
 clean-externals: clean-codecs clean-eventclients clean-xbmctex clean-libs \
 	clean-screensavers clean-visualisations clean-libaddons clean-pvraddons
