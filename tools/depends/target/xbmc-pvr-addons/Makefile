@@ -24,7 +24,7 @@ CONFIGURE=./configure --prefix=$(PREFIX) --libdir=$(PREFIX)/lib/$(APP_NAME)/addo
 all: .installed-$(PLATFORM)
 
 $(GIT_DIR)/HEAD:
-	cd $(TARBALLS_LOCATION); git clone --bare $(BASE_URL)
+	cd $(TARBALLS_LOCATION); git clone --bare $(BASE_URL) $(GIT_DIR)
 
 $(GIT_DIR)/current/$(VERSION): $(GIT_DIR)/HEAD $(DEPS)
 	git rev-list -1 $(VERSION) >/dev/null || git fetch origin "+refs/heads/*:refs/remotes/origin/*"
