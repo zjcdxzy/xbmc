@@ -2,7 +2,7 @@ include ../../Makefile.include
 #DEPS= ../../Makefile.include Makefile
 
 LIBNAME=xbmc-pvr-addons
-VERSION=a5a57e114ce78a54d52272a84f1927eaaed26ec8
+VERSION=05b0ea3c279ca349b370b8ff32cc9bc7ce3b67f0
 GIT_REPO=Memphiz
 GIT_DIR=$(TARBALLS_LOCATION)/$(LIBNAME)-$(GIT_REPO).git
 BASE_URL=git://github.com/$(GIT_REPO)/$(LIBNAME).git
