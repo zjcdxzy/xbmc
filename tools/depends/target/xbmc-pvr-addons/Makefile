@@ -3,8 +3,9 @@ include ../../Makefile.include
 
 LIBNAME=xbmc-pvr-addons
 VERSION=a5a57e114ce78a54d52272a84f1927eaaed26ec8
-GIT_DIR=$(TARBALLS_LOCATION)/$(LIBNAME).git
-BASE_URL=git://github.com/Memphiz/$(LIBNAME).git
+GIT_REPO=Memphiz
+GIT_DIR=$(TARBALLS_LOCATION)/$(LIBNAME)-$(GIT_REPO).git
+BASE_URL=git://github.com/$(GIT_REPO)/$(LIBNAME).git
 DYLIB=$(PLATFORM)/addons/pvr.demo/.libs/libpvrdemo-addon.so
 XBMC_ADDONSDIR=../../../../addons
 
